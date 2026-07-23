@@ -16,7 +16,7 @@ not sent to an external web server.
 - Progress, cancellation, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## Phase 2 status
+## Phase 3 status
 
 This checkpoint contains:
 
@@ -35,19 +35,26 @@ This checkpoint contains:
 - Cached backend table search and pagination; only the current page is sent to the browser
 - Password visibility controls
 - Paginated table selection with fast search, filtered select-all, and page size
+- Live SQL Server and PostgreSQL column-metadata retrieval
+- Case-insensitive column matching with compatible cross-database type families
+- Column type, length, precision, scale, timestamp precision, and nullability checks
+- Missing and database-only column detection
+- Primary-key and unique-key discovery, including composite keys
+- Automatic comparison-key matching when the same key exists on both sides
+- Table-by-table schema execution with progress and safe Stop behaviour
+- Expandable per-table column-difference results
 - Comparison settings, progress, Start/Stop controls, and result states
 - Results and execution-log tabs
 - Windows setup and launch scripts
 - Environment and Git safety rules
 - Health endpoint and automated page checks
 
-Phase 2 retrieves table names only. Column metadata, primary/unique keys, and
-the actual schema comparison intentionally begin in Phase 3. Table-name
-metadata is small compared with table data: the local backend reads and merges
-the names once, then keeps a short-lived in-memory catalog for search, status
-filtering, and pagination. Repeated searches do not reconnect to both databases.
-Only the requested page is sent to the browser. No table rows are loaded in
-Phase 2.
+Phase 3 retrieves table and column metadata only. Table-name metadata is read
+once and retained in a short-lived in-memory catalog for fast search, filtering,
+pagination, and safe table mapping. When comparison starts, each selected table
+is processed separately so progress remains visible and Stop can take effect
+between metadata requests. No table business rows or row counts are loaded in
+Phase 3.
 
 ## Windows prerequisites
 
@@ -84,7 +91,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## Phase 2 workflow
+## Phase 3 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -93,6 +100,10 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
 5. Keep **Common** selected for migration comparisons, or include either
    database-only filter to investigate missing tables.
 6. Search or page through the cached table-name list.
+7. Select one or more tables.
+8. Click **Start comparison**.
+9. Review the result status and expand **View columns** for metadata differences.
+10. Use **Stop** to cancel before the next table begins.
 
 For SQL Server ODBC Driver 18, encryption is enabled. Leave **Trust server
 certificate** off when the server has a certificate trusted by Windows. Enable
@@ -125,8 +136,20 @@ The table status values mean:
 - **SQL Server only**: the name exists only in the selected SQL Server schema.
 - **PostgreSQL only**: the name exists only in the selected PostgreSQL schema.
 
-Phase 3 will add column counts, column metadata, key discovery, and detailed
-schema results.
+The column count is shown as **SQL Server / PostgreSQL**. Type matching recognises
+common equivalents such as SQL Server `int` and PostgreSQL `integer`,
+`nvarchar` and `character varying`, and `bit` and `boolean`. Length, numeric
+precision/scale, timestamp precision, and nullability must also agree.
+
+The comparison key is selected automatically when matching primary or unique
+keys exist on both databases. **Keys differ** means keys were discovered but do
+not map to the same columns. **Key required** means neither database exposes a
+usable primary or unique key; manual selection is planned for the scalable
+row-data comparison phase.
+
+Phase 4 will add exact row counts and row-count progress. Phase 5 will add
+manual/composite key selection, batch-streamed row data comparison, and
+value-normalisation rules.
 
 ## Development commands
 
@@ -188,16 +211,16 @@ run.bat
 
 ## GitHub checkpoint
 
-The suggested Phase 2 commit is:
+The suggested Phase 3 commit is:
 
 ```text
-feat: add live database connectivity and table discovery
+feat: add table and column schema comparison
 ```
 
-The suggested Phase 2 tag is:
+The suggested Phase 3 tag is:
 
 ```text
-v0.3.0-database-connectivity
+v0.4.0-schema-comparison
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

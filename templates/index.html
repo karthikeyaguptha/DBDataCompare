@@ -37,8 +37,8 @@
                 <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
             </div>
             <div class="phase-pill">
-                <span>Phase 2</span>
-                Live connectivity
+                <span>Phase 3</span>
+                Schema comparison
             </div>
         </section>
 
@@ -325,9 +325,9 @@
                 <label>
                     <span>Comparison mode</span>
                     <select id="comparisonMode" disabled>
-                        <option>Full comparison</option>
-                        <option>Structure + row count</option>
-                        <option>Structure only</option>
+                        <option disabled>Full comparison — Phase 5</option>
+                        <option disabled>Structure + row count — Phase 4</option>
+                        <option selected>Structure only</option>
                     </select>
                 </label>
                 <label>
@@ -370,7 +370,7 @@
         <section class="results-shell" aria-labelledby="results-title">
             <div class="results-tabs" role="tablist" aria-label="Results and logs">
                 <button class="tab-button active" id="resultsTab" type="button" role="tab" aria-selected="true" aria-controls="resultsPanel">
-                    Results <span class="tab-count">0</span>
+                    Results <span class="tab-count" id="resultsCount">0</span>
                 </button>
                 <button class="tab-button" id="logTab" type="button" role="tab" aria-selected="false" aria-controls="logPanel">
                     Execution log <span class="live-indicator" aria-hidden="true"></span>
@@ -381,10 +381,25 @@
             </div>
 
             <div class="tab-panel" id="resultsPanel" role="tabpanel" aria-labelledby="resultsTab">
-                <div class="empty-state">
+                <div class="empty-state" id="resultsEmpty">
                     <span class="empty-mark" aria-hidden="true">≠</span>
                     <h2 id="results-title">No comparison results yet</h2>
                     <p>Completed tables and their column, row-count, and data differences will appear here.</p>
+                </div>
+                <div class="schema-results-table-wrap is-hidden" id="schemaResultsTable">
+                    <table class="data-table schema-results-table">
+                        <thead>
+                            <tr>
+                                <th>Table</th>
+                                <th>Columns SQL / PG</th>
+                                <th>Differences</th>
+                                <th>Comparison key</th>
+                                <th>Status</th>
+                                <th><span class="sr-only">Details</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="schemaResultsBody"></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -404,7 +419,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.3.0</b></span>
+        <span>DB Compare Studio <b>v0.4.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

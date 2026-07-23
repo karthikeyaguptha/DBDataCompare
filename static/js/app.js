@@ -16,6 +16,10 @@ const state = {
     searchTimer: null,
     tableRequestController: null,
     tableRequestId: 0,
+    schemaResults: new Map(),
+    comparing: false,
+    stopRequested: false,
+    compareController: null,
 };
 
 const elements = {
@@ -40,6 +44,18 @@ const elements = {
     comparisonMode: document.querySelector("#comparisonMode"),
     batchSize: document.querySelector("#batchSize"),
     startCompare: document.querySelector("#startCompare"),
+    stopCompare: document.querySelector("#stopCompare"),
+    progressTitle: document.querySelector("#progressTitle"),
+    progressStatus: document.querySelector("#progressStatus"),
+    progressPercent: document.querySelector("#progressPercent"),
+    progressBar: document.querySelector("#progressBar"),
+    progressTrack: document.querySelector(".progress-track"),
+    currentTable: document.querySelector("#currentTable"),
+    completedTables: document.querySelector("#completedTables"),
+    resultsBody: document.querySelector("#schemaResultsBody"),
+    resultsEmpty: document.querySelector("#resultsEmpty"),
+    resultsTable: document.querySelector("#schemaResultsTable"),
+    resultsCount: document.querySelector("#resultsCount"),
     resultsTab: document.querySelector("#resultsTab"),
     logTab: document.querySelector("#logTab"),
     resultsPanel: document.querySelector("#resultsPanel"),
@@ -200,6 +216,8 @@ function lockTables() {
     state.catalogToken = "";
     state.currentMatchingIds = [];
     state.selectedTables.clear();
+    state.schemaResults.clear();
+    resetSchemaResults();
     elements.tablesOverlay.classList.remove("is-hidden");
     [elements.tableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
         .forEach((control) => { control.disabled = true; });
@@ -301,12 +319,18 @@ function renderTableRows(rows) {
             postgres_only: ["PostgreSQL only", "missing"],
         }[table.status];
         row.dataset.id = table.id;
+        const priorResult = state.schemaResults.get(table.id);
+        const columnSummary = priorResult
+            ? `${priorResult.sqlserver_column_count ?? 0} / ${priorResult.postgres_column_count ?? 0}`
+            : "Not compared";
+        const keySummary = priorResult?.comparison_key?.join(", ")
+            || (priorResult?.key_status === "different" ? "Keys differ" : "Not checked");
         row.innerHTML = `
             <td><input class="table-checkbox" type="checkbox"></td>
             <td><strong></strong><small></small></td>
             <td><strong></strong><small></small></td>
-            <td><span class="muted-value">Phase 3</span></td>
-            <td><span class="muted-value">Phase 3</span></td>
+            <td><span class="column-summary"></span></td>
+            <td><span class="key-summary"></span></td>
             <td><span class="status-chip ${status[1]}">${status[0]}</span></td>`;
         const checkbox = row.querySelector(".table-checkbox");
         checkbox.setAttribute("aria-label", `Select ${sqlName !== "Not found" ? sqlName : pgName} table`);
@@ -326,6 +350,12 @@ function renderTableRows(rows) {
         cells[2].querySelector("small").textContent = table.postgres ? (elements.pgForm.elements.schema.value || "public") : "";
         if (!table.sqlserver) cells[1].querySelector("strong").classList.add("muted-value");
         if (!table.postgres) cells[2].querySelector("strong").classList.add("muted-value");
+        cells[3].querySelector(".column-summary").textContent = columnSummary;
+        cells[4].querySelector(".key-summary").textContent = keySummary;
+        if (!priorResult) {
+            cells[3].firstElementChild.classList.add("muted-value");
+            cells[4].firstElementChild.classList.add("muted-value");
+        }
         elements.tablesBody.append(row);
     });
     updateSelectionCount();
@@ -343,7 +373,7 @@ function updateSelectionCount() {
     );
     elements.selectionCount.textContent = `${selectedCount} selected`;
     elements.selectedSummary.textContent = String(selectedCount);
-    elements.startCompare.disabled = selectedCount === 0;
+    elements.startCompare.disabled = selectedCount === 0 || state.comparing;
     elements.selectAllTables.checked = state.currentMatchingIds.length > 0
         && selectedMatchingCount === state.currentMatchingIds.length;
     elements.selectAllTables.indeterminate = selectedMatchingCount > 0
@@ -367,6 +397,209 @@ function activateTab(name) {
     elements.logTab.setAttribute("aria-selected", String(!showResults));
     elements.resultsPanel.classList.toggle("is-hidden", !showResults);
     elements.logPanel.classList.toggle("is-hidden", showResults);
+}
+
+function resetSchemaResults() {
+    elements.resultsBody?.replaceChildren();
+    elements.resultsEmpty?.classList.remove("is-hidden");
+    elements.resultsTable?.classList.add("is-hidden");
+    if (elements.resultsCount) elements.resultsCount.textContent = "0";
+}
+
+function setProgress(completed, total, title, status) {
+    const percent = total ? Math.round((completed / total) * 100) : 0;
+    elements.progressTitle.textContent = title;
+    elements.progressStatus.textContent = status;
+    elements.progressPercent.textContent = `${percent}%`;
+    elements.progressBar.style.width = `${percent}%`;
+    elements.progressTrack.setAttribute("aria-valuenow", String(percent));
+    elements.completedTables.textContent = `${completed} / ${total}`;
+}
+
+function resultStatus(result) {
+    if (result.status === "match") return ["Schema match", "ready"];
+    if (result.status === "missing_table") return ["Table missing", "missing"];
+    if (result.status === "error") return ["Error", "missing"];
+    return ["Differences", "warning"];
+}
+
+function appendSchemaResult(tableId, result) {
+    elements.resultsEmpty.classList.add("is-hidden");
+    elements.resultsTable.classList.remove("is-hidden");
+    const status = resultStatus(result);
+    const row = document.createElement("tr");
+    row.className = "schema-result-row";
+
+    const tableCell = document.createElement("td");
+    const tableName = document.createElement("strong");
+    tableName.textContent = result.sqlserver_table || result.postgres_table || tableId;
+    tableCell.append(tableName);
+
+    const columnsCell = document.createElement("td");
+    columnsCell.textContent = result.status === "error"
+        ? "—"
+        : `${result.sqlserver_column_count ?? 0} / ${result.postgres_column_count ?? 0}`;
+
+    const differenceCell = document.createElement("td");
+    differenceCell.textContent = result.status === "error"
+        ? result.summary
+        : String((result.counts?.different || 0) + (result.counts?.missing || 0));
+
+    const keyCell = document.createElement("td");
+    keyCell.textContent = result.comparison_key?.join(", ")
+        || ({
+            different: "Keys differ",
+            required: "Key required",
+            not_available: "Not available",
+        }[result.key_status] || "Not found");
+
+    const statusCell = document.createElement("td");
+    const chip = document.createElement("span");
+    chip.className = `status-chip ${status[1]}`;
+    chip.textContent = status[0];
+    statusCell.append(chip);
+
+    const actionCell = document.createElement("td");
+    const detailButton = document.createElement("button");
+    detailButton.type = "button";
+    detailButton.className = "button ghost detail-button";
+    detailButton.textContent = result.columns?.length ? "View columns" : "No details";
+    detailButton.disabled = !result.columns?.length;
+    actionCell.append(detailButton);
+    row.append(tableCell, columnsCell, differenceCell, keyCell, statusCell, actionCell);
+
+    const detailRow = document.createElement("tr");
+    detailRow.className = "schema-detail-row is-hidden";
+    const detailCell = document.createElement("td");
+    detailCell.colSpan = 6;
+    detailCell.append(buildColumnDetails(result.columns || []));
+    detailRow.append(detailCell);
+    detailButton.addEventListener("click", () => {
+        const opening = detailRow.classList.contains("is-hidden");
+        detailRow.classList.toggle("is-hidden", !opening);
+        detailButton.textContent = opening ? "Hide columns" : "View columns";
+    });
+    elements.resultsBody.append(row, detailRow);
+    elements.resultsCount.textContent = String(state.schemaResults.size);
+}
+
+function buildColumnDetails(columns) {
+    const wrap = document.createElement("div");
+    wrap.className = "column-detail-wrap";
+    const table = document.createElement("table");
+    table.className = "column-detail-table";
+    table.innerHTML = `
+        <thead><tr><th>Column</th><th>SQL Server</th><th>PostgreSQL</th><th>Difference</th></tr></thead>
+        <tbody></tbody>`;
+    const body = table.querySelector("tbody");
+    columns.forEach((column) => {
+        const row = document.createElement("tr");
+        const sql = column.sqlserver
+            ? `${column.sqlserver.type} · ${column.sqlserver.nullable ? "NULL" : "NOT NULL"}`
+            : "Missing";
+        const pg = column.postgres
+            ? `${column.postgres.type} · ${column.postgres.nullable ? "NULL" : "NOT NULL"}`
+            : "Missing";
+        [column.name, sql, pg, column.differences.join(", ") || "Match"].forEach((value) => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.append(cell);
+        });
+        row.dataset.status = column.status;
+        body.append(row);
+    });
+    wrap.append(table);
+    return wrap;
+}
+
+async function runSchemaComparison() {
+    if (state.comparing || !state.selectedTables.size) return;
+    const tableIds = [...state.selectedTables];
+    state.comparing = true;
+    state.stopRequested = false;
+    state.schemaResults.clear();
+    resetSchemaResults();
+    elements.startCompare.disabled = true;
+    elements.stopCompare.disabled = false;
+    elements.currentTable.textContent = "Preparing…";
+    setProgress(0, tableIds.length, "Comparing table schemas", "Reading column metadata and keys.");
+    activateTab("results");
+    addLog("INFO", `Schema comparison started for ${tableIds.length} table(s).`);
+
+    let completed = 0;
+    for (const tableId of tableIds) {
+        if (state.stopRequested) break;
+        elements.currentTable.textContent = tableId;
+        elements.progressStatus.textContent = `Comparing ${tableId}`;
+        state.compareController = new AbortController();
+        try {
+            const response = await requestJson("/api/schema/compare", {
+                method: "POST",
+                body: JSON.stringify({
+                    sqlserver: connectionConfig("sql"),
+                    postgres: connectionConfig("pg"),
+                    catalog_token: state.catalogToken,
+                    table_id: tableId,
+                }),
+                signal: state.compareController.signal,
+            });
+            state.schemaResults.set(tableId, response.result);
+            appendSchemaResult(tableId, response.result);
+            const logLevel = response.result.status === "match" ? "READY" : "WARN";
+            addLog(logLevel, `${tableId}: ${response.result.summary}`);
+        } catch (error) {
+            if (error.name === "AbortError" && state.stopRequested) break;
+            const result = {
+                status: "error",
+                summary: error.message,
+                sqlserver_table: tableId,
+                postgres_table: tableId,
+                columns: [],
+                key_status: "not_available",
+            };
+            state.schemaResults.set(tableId, result);
+            appendSchemaResult(tableId, result);
+            addLog("WARN", `${tableId}: ${error.message}`);
+        }
+        completed += 1;
+        setProgress(
+            completed,
+            tableIds.length,
+            "Comparing table schemas",
+            `${completed} of ${tableIds.length} tables completed.`,
+        );
+    }
+
+    const stopped = state.stopRequested;
+    state.comparing = false;
+    state.compareController = null;
+    elements.stopCompare.disabled = true;
+    elements.startCompare.disabled = state.selectedTables.size === 0;
+    elements.currentTable.textContent = "—";
+    setProgress(
+        completed,
+        tableIds.length,
+        stopped ? "Comparison stopped" : "Schema comparison complete",
+        stopped
+            ? `Stopped safely after ${completed} of ${tableIds.length} tables.`
+            : `${completed} table schemas reviewed.`,
+    );
+    addLog(stopped ? "WARN" : "READY", stopped ? "Schema comparison stopped by user." : "Schema comparison completed.");
+    showToast(stopped ? "Comparison stopped safely." : "Schema comparison complete.");
+    renderCurrentPageFromCache();
+}
+
+function renderCurrentPageFromCache() {
+    currentCheckboxes().forEach((checkbox) => {
+        const row = checkbox.closest("tr");
+        const result = state.schemaResults.get(row.dataset.id);
+        if (!result) return;
+        row.querySelector(".column-summary").textContent =
+            `${result.sqlserver_column_count ?? 0} / ${result.postgres_column_count ?? 0}`;
+        row.querySelector(".key-summary").textContent =
+            result.comparison_key?.join(", ")
+            || (result.key_status === "different" ? "Keys differ" : "Key required");
+    });
 }
 
 elements.sqlAuthentication.addEventListener("change", () => {
@@ -449,9 +682,13 @@ elements.clearSelection.addEventListener("click", () => {
     updateSelectionCount();
 });
 
-elements.startCompare.addEventListener("click", () => {
-    showToast("Table and column comparison begins in Phase 3.");
-    addLog("INFO", "Comparison requested; schema comparison is not enabled in Phase 2.");
+elements.startCompare.addEventListener("click", runSchemaComparison);
+elements.stopCompare.addEventListener("click", () => {
+    if (!state.comparing) return;
+    state.stopRequested = true;
+    state.compareController?.abort();
+    elements.stopCompare.disabled = true;
+    elements.progressStatus.textContent = "Stopping safely after the current metadata request…";
 });
 elements.resultsTab.addEventListener("click", () => activateTab("results"));
 elements.logTab.addEventListener("click", () => activateTab("log"));
@@ -464,7 +701,7 @@ document.querySelector("#copyLog").addEventListener("click", async () => {
     }
 });
 document.querySelector("#themeInfo").addEventListener("click", () => {
-    showToast("Phase 2 · Live database connectivity · Local access only.");
+    showToast("Phase 3 · Schema comparison · Local access only.");
 });
 document.addEventListener("keydown", (event) => {
     if (event.altKey && event.key === "1") activateTab("results");

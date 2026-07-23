@@ -106,6 +106,78 @@ def list_tables(config: dict[str, Any]) -> list[str]:
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
 
 
+def load_table_schema(config: dict[str, Any], table_name: str) -> dict[str, Any]:
+    schema = str(config.get("schema") or "dbo").strip()
+    try:
+        with closing(connect(config)) as connection:
+            with closing(connection.cursor()) as cursor:
+                cursor.execute(
+                    """
+                    SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE,
+                           CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION,
+                           NUMERIC_SCALE, DATETIME_PRECISION
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+                    ORDER BY ORDINAL_POSITION
+                    """,
+                    schema,
+                    table_name,
+                )
+                columns = [
+                    {
+                        "name": str(row[0]),
+                        "data_type": str(row[1]),
+                        "nullable": str(row[2]).upper() == "YES",
+                        "character_length": row[3],
+                        "numeric_precision": row[4],
+                        "numeric_scale": row[5],
+                        "datetime_precision": row[6],
+                    }
+                    for row in cursor.fetchall()
+                ]
+                if not columns:
+                    raise DatabaseConfigurationError(
+                        f'SQL Server table "{table_name}" was not found in schema "{schema}".'
+                    )
+                cursor.execute(
+                    """
+                    SELECT i.is_primary_key, i.name, c.name, ic.key_ordinal
+                    FROM sys.indexes i
+                    JOIN sys.index_columns ic
+                      ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+                    JOIN sys.columns c
+                      ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+                    JOIN sys.tables t ON i.object_id = t.object_id
+                    JOIN sys.schemas s ON t.schema_id = s.schema_id
+                    WHERE s.name = ? AND t.name = ?
+                      AND (i.is_primary_key = 1 OR i.is_unique = 1)
+                      AND i.has_filter = 0
+                      AND ic.key_ordinal > 0
+                    ORDER BY i.is_primary_key DESC, i.index_id, ic.key_ordinal
+                    """,
+                    schema,
+                    table_name,
+                )
+                keys: dict[tuple[bool, str], list[str]] = {}
+                for row in cursor.fetchall():
+                    keys.setdefault((bool(row[0]), str(row[1])), []).append(str(row[2]))
+                primary_key = next(
+                    (value for (is_primary, _), value in keys.items() if is_primary), []
+                )
+                unique_keys = [
+                    value for (is_primary, _), value in keys.items() if not is_primary
+                ]
+                return {
+                    "columns": columns,
+                    "primary_key": primary_key,
+                    "unique_keys": unique_keys,
+                }
+    except (DatabaseConnectionError, DatabaseConfigurationError):
+        raise
+    except Exception as exc:
+        raise DatabaseConnectionError(_friendly_error(exc)) from exc
+
+
 def _friendly_error(error: Exception) -> str:
     text = str(error).lower()
     if (

@@ -70,6 +70,78 @@ def list_tables(config: dict[str, Any]) -> list[str]:
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
 
 
+def load_table_schema(config: dict[str, Any], table_name: str) -> dict[str, Any]:
+    schema = str(config.get("schema") or "public").strip()
+    try:
+        with closing(connect(config)) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT column_name, data_type, is_nullable,
+                           character_maximum_length, numeric_precision,
+                           numeric_scale, datetime_precision
+                    FROM information_schema.columns
+                    WHERE table_schema = %s AND table_name = %s
+                    ORDER BY ordinal_position
+                    """,
+                    (schema, table_name),
+                )
+                columns = [
+                    {
+                        "name": str(row[0]),
+                        "data_type": str(row[1]),
+                        "nullable": str(row[2]).upper() == "YES",
+                        "character_length": row[3],
+                        "numeric_precision": row[4],
+                        "numeric_scale": row[5],
+                        "datetime_precision": row[6],
+                    }
+                    for row in cursor.fetchall()
+                ]
+                if not columns:
+                    raise DatabaseConfigurationError(
+                        f'PostgreSQL table "{table_name}" was not found in schema "{schema}".'
+                    )
+                cursor.execute(
+                    """
+                    SELECT tc.constraint_type, tc.constraint_name,
+                           kcu.column_name, kcu.ordinal_position
+                    FROM information_schema.table_constraints tc
+                    JOIN information_schema.key_column_usage kcu
+                      ON tc.constraint_name = kcu.constraint_name
+                     AND tc.constraint_schema = kcu.constraint_schema
+                    WHERE tc.table_schema = %s AND tc.table_name = %s
+                      AND tc.constraint_type IN ('PRIMARY KEY', 'UNIQUE')
+                    ORDER BY CASE WHEN tc.constraint_type = 'PRIMARY KEY' THEN 0 ELSE 1 END,
+                             tc.constraint_name, kcu.ordinal_position
+                    """,
+                    (schema, table_name),
+                )
+                keys: dict[tuple[str, str], list[str]] = {}
+                for row in cursor.fetchall():
+                    keys.setdefault((str(row[0]), str(row[1])), []).append(str(row[2]))
+                primary_key = next(
+                    (
+                        value
+                        for (kind, _), value in keys.items()
+                        if kind == "PRIMARY KEY"
+                    ),
+                    [],
+                )
+                unique_keys = [
+                    value for (kind, _), value in keys.items() if kind == "UNIQUE"
+                ]
+                return {
+                    "columns": columns,
+                    "primary_key": primary_key,
+                    "unique_keys": unique_keys,
+                }
+    except (DatabaseConnectionError, DatabaseConfigurationError):
+        raise
+    except Exception as exc:
+        raise DatabaseConnectionError(_friendly_error(exc)) from exc
+
+
 def _friendly_error(error: Exception) -> str:
     text = str(error).lower()
     if "password authentication failed" in text or "authentication failed" in text:

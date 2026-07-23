@@ -1186,6 +1186,80 @@ select:disabled {
     line-height: 1.55;
 }
 
+.schema-results-table-wrap {
+    overflow: auto;
+}
+
+.schema-results-table-wrap.is-hidden,
+.empty-state.is-hidden {
+    display: none;
+}
+
+.schema-results-table {
+    min-width: 880px;
+}
+
+.schema-result-row > td {
+    vertical-align: middle;
+}
+
+.schema-result-row td:first-child strong {
+    color: var(--ink);
+}
+
+.detail-button {
+    min-width: 94px;
+    padding: 7px 10px;
+}
+
+.schema-detail-row > td {
+    padding: 0 !important;
+    border-bottom: 1px solid var(--line);
+    background: #f8fafc;
+}
+
+.schema-detail-row.is-hidden {
+    display: none;
+}
+
+.column-detail-wrap {
+    max-height: 340px;
+    overflow: auto;
+    padding: 14px 18px 18px 54px;
+}
+
+.column-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #fff;
+    font-size: 11px;
+}
+
+.column-detail-table th,
+.column-detail-table td {
+    padding: 9px 11px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+.column-detail-table th {
+    background: #f2f5f9;
+    color: var(--ink-soft);
+    font-size: 10px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.column-detail-table tr[data-status="different"] td:last-child,
+.column-detail-table tr[data-status="sql_only"] td:last-child,
+.column-detail-table tr[data-status="postgres_only"] td:last-child {
+    color: var(--warning);
+    font-weight: 700;
+}
+
 .log-toolbar {
     display: flex;
     min-height: 48px;
