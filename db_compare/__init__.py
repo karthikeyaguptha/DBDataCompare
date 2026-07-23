@@ -12,6 +12,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.config.from_mapping(
         SECRET_KEY=None,
         JSON_SORT_KEYS=False,
+        MAX_CONTENT_LENGTH=64 * 1024,
     )
 
     if test_config:
@@ -19,4 +20,3 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     app.register_blueprint(web)
     return app
-

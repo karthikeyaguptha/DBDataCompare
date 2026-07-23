@@ -16,35 +16,33 @@ not sent to an external web server.
 - Progress, cancellation, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## Phase 1 status
+## Phase 2 status
 
 This checkpoint contains:
 
 - Flask application foundation
 - Modern, responsive browser workspace
-- SQL Server and PostgreSQL connection forms
-- Front-end validation and password visibility controls
-- SQL Server Authentication selected by default
-- Paginated table selection with search, select-all, page size, and key-status preview
+- Live SQL Server connectivity through `pyodbc`
+- Live PostgreSQL connectivity through Psycopg 3
+- Connection validation, timeout handling, and safe user-facing errors
+- SQL Server Authentication selected by default; Windows Authentication supported
+- Optional SQL Server `Trust server certificate` setting
+- Live schema-based table discovery for both databases
+- Case-insensitive same-name table availability preview
+- Backend table search and pagination; only the current page is sent to the browser
+- Password visibility controls
+- Paginated table selection with search, all-matching select-all, and page size
 - Comparison settings, progress, Start/Stop controls, and result states
 - Results and execution-log tabs
 - Windows setup and launch scripts
 - Environment and Git safety rules
 - Health endpoint and automated page checks
-- Placeholder modules for database and comparison logic
 
-Phase 1 uses representative table data only after both connection forms pass
-front-end validation. It does not make a database call. Live connection tests
-are intentionally reserved for Phase 2. Pagination currently limits rendered
-preview rows; Phase 2 will connect it to paged table-metadata requests so large
-table lists are not loaded into the browser in one response.
-
-### v0.2.1 UI enhancements
-
-- SQL Server Authentication is the default authentication mode.
-- Step 2 includes configurable pagination with Previous/Next navigation.
-- Search and Compare All operate across every matching row, including rows on
-  other pages.
+Phase 2 retrieves table names only. Column metadata, primary/unique keys, and
+the actual schema comparison intentionally begin in Phase 3. Table-name
+metadata is small compared with table data: the local backend reads the names,
+merges availability across both databases, applies search, and sends only the
+requested page to the browser. No table rows are loaded in Phase 2.
 
 ## Windows prerequisites
 
@@ -81,6 +79,27 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
+## Phase 2 workflow
+
+1. Enter SQL Server and PostgreSQL details.
+2. Click each **Test** button.
+3. Correct any friendly connection error shown in the card or execution log.
+4. When both tests succeed, click **Load tables**.
+5. Search or page through the live table-name list.
+
+For SQL Server ODBC Driver 18, encryption is enabled. Leave **Trust server
+certificate** off when the server has a certificate trusted by Windows. Enable
+it only for an approved internal server that uses a self-signed certificate.
+
+The table status values mean:
+
+- **Available in both**: the same table name exists in both schemas, ignoring case.
+- **SQL Server only**: the name exists only in the selected SQL Server schema.
+- **PostgreSQL only**: the name exists only in the selected PostgreSQL schema.
+
+Phase 3 will add column counts, column metadata, key discovery, and detailed
+schema results.
+
 ## Development commands
 
 Run the tests:
@@ -100,6 +119,8 @@ Run the development server:
 - Use read-only database accounts.
 - Never commit passwords, connection strings, `.env`, logs, or reports.
 - Password values must never be written to application logs.
+- Credentials are posted only to the local Flask process and retained in the
+  browser form for the current page session; they are not saved by the app.
 - The server binds to `127.0.0.1`, so it is accessible only from the local
   computer by default.
 - Do not expose port 5000 through a firewall or router.
@@ -137,16 +158,16 @@ run.bat
 
 ## GitHub checkpoint
 
-The suggested Phase 1 commit is:
+The suggested Phase 2 commit is:
 
 ```text
-feat: build modern comparison workspace
+feat: add live database connectivity and table discovery
 ```
 
-The suggested Phase 1 tag is:
+The suggested Phase 2 tag is:
 
 ```text
-v0.2.0-ui-shell
+v0.3.0-database-connectivity
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

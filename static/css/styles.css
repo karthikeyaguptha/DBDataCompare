@@ -625,8 +625,17 @@ select:disabled {
     width: 100%;
 }
 
+.button.is-loading {
+    cursor: wait;
+    opacity: 0.78;
+}
+
 .button-icon {
     font-size: 14px;
+}
+
+.trust-certificate {
+    margin: -2px 0 13px;
 }
 
 .connection-actions {
@@ -765,6 +774,12 @@ select:disabled {
 
 .data-table td small {
     color: var(--ink-faint);
+}
+
+.data-table .table-empty {
+    height: 190px;
+    color: var(--ink-faint);
+    text-align: center;
 }
 
 .check-column {

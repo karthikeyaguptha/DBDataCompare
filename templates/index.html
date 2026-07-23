@@ -37,8 +37,8 @@
                 <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
             </div>
             <div class="phase-pill">
-                <span>Phase 1</span>
-                UI shell
+                <span>Phase 2</span>
+                Live connectivity
             </div>
         </section>
 
@@ -135,6 +135,11 @@
                             </select>
                         </label>
 
+                        <label class="check-label trust-certificate">
+                            <input type="checkbox" name="trust_server_certificate">
+                            <span>Trust server certificate</span>
+                        </label>
+
                         <div class="form-feedback" id="sqlFeedback" aria-live="polite"></div>
                         <button class="button secondary test-button" type="submit">
                             <span class="button-icon" aria-hidden="true">↗</span>
@@ -214,7 +219,7 @@
             <div class="connection-actions">
                 <div class="connection-hint">
                     <span class="hint-icon" aria-hidden="true">i</span>
-                    <span>Actual database tests are enabled in Phase 2. Phase 1 validates the form and demonstrates every UI state.</span>
+                    <span>Connection tests run locally. Credentials remain in this browser session and are not written to disk or logs.</span>
                 </div>
                 <button class="button primary" id="loadTablesButton" type="button" disabled>
                     Load tables <span aria-hidden="true">→</span>
@@ -229,7 +234,7 @@
                     <h2 id="tables-title">Select tables</h2>
                     <p>Search, select, and confirm the key used to match corresponding rows.</p>
                 </div>
-                <span class="selection-count" id="selectionCount">0 of 5 selected</span>
+                <span class="selection-count" id="selectionCount">0 of 0 selected</span>
             </div>
 
             <div class="table-toolbar">
@@ -257,54 +262,13 @@
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr data-name="customers">
-                            <td><input class="table-checkbox" type="checkbox" aria-label="Select Customers table" disabled></td>
-                            <td><strong>Customers</strong><small>dbo</small></td>
-                            <td><strong>customers</strong><small>public</small></td>
-                            <td>14</td>
-                            <td><span class="key-chip">CustomerId</span></td>
-                            <td><span class="status-chip ready">Ready</span></td>
-                        </tr>
-                        <tr data-name="orders">
-                            <td><input class="table-checkbox" type="checkbox" aria-label="Select Orders table" disabled></td>
-                            <td><strong>Orders</strong><small>dbo</small></td>
-                            <td><strong>orders</strong><small>public</small></td>
-                            <td>22</td>
-                            <td><span class="key-chip">OrderId</span></td>
-                            <td><span class="status-chip ready">Ready</span></td>
-                        </tr>
-                        <tr data-name="order items">
-                            <td><input class="table-checkbox" type="checkbox" aria-label="Select OrderItems table" disabled></td>
-                            <td><strong>OrderItems</strong><small>dbo</small></td>
-                            <td><strong>order_items</strong><small>public</small></td>
-                            <td>9</td>
-                            <td><span class="key-chip">OrderId + LineNo</span></td>
-                            <td><span class="status-chip ready">Ready</span></td>
-                        </tr>
-                        <tr data-name="products">
-                            <td><input class="table-checkbox" type="checkbox" aria-label="Select Products table" disabled></td>
-                            <td><strong>Products</strong><small>dbo</small></td>
-                            <td><strong>products</strong><small>public</small></td>
-                            <td>18</td>
-                            <td><button class="inline-action" type="button" disabled>Choose key</button></td>
-                            <td><span class="status-chip warning">Key required</span></td>
-                        </tr>
-                        <tr data-name="audit history">
-                            <td><input class="table-checkbox" type="checkbox" aria-label="Select AuditHistory table" disabled></td>
-                            <td><strong>AuditHistory</strong><small>dbo</small></td>
-                            <td><span class="muted-value">Not found</span></td>
-                            <td>11</td>
-                            <td>—</td>
-                            <td><span class="status-chip missing">SQL only</span></td>
-                        </tr>
-                    </tbody>
+                    <tbody id="tablesBody"></tbody>
                 </table>
 
                 <div class="locked-overlay" id="tablesOverlay">
                     <span class="lock-mark" aria-hidden="true">2</span>
                     <strong>Connect both databases to load tables</strong>
-                    <p>Table discovery and matching will become available after both connection tests pass.</p>
+                    <p>Live table discovery becomes available after both connection tests pass.</p>
                 </div>
             </div>
 
@@ -312,13 +276,14 @@
                 <label class="page-size">
                     <span>Rows per page</span>
                     <select id="tablePageSize" disabled>
-                        <option value="5" selected>5</option>
-                        <option value="10">10</option>
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
                         <option value="25">25</option>
                         <option value="50">50</option>
+                        <option value="100">100</option>
                     </select>
                 </label>
-                <span class="page-range" id="tablePageRange" aria-live="polite">1–5 of 5 tables</span>
+                <span class="page-range" id="tablePageRange" aria-live="polite">0 of 0 tables</span>
                 <div class="page-controls">
                     <button class="page-button" id="previousTablePage" type="button" disabled aria-label="Previous table page">←</button>
                     <span id="tablePageStatus">Page 1 of 1</span>
@@ -425,7 +390,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.2.1</b></span>
+        <span>DB Compare Studio <b>v0.3.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>
