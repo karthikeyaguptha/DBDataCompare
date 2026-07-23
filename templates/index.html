@@ -243,9 +243,23 @@
                     <span class="sr-only">Search tables</span>
                     <input id="tableSearch" type="search" placeholder="Search table names" disabled>
                 </label>
-                <label class="check-label">
+                <div class="status-filters" role="group" aria-label="Filter tables by availability">
+                    <label class="filter-check common">
+                        <input class="table-status-filter" type="checkbox" value="available" checked disabled>
+                        <span>Common</span>
+                    </label>
+                    <label class="filter-check sql-only">
+                        <input class="table-status-filter" type="checkbox" value="sql_only" disabled>
+                        <span>Only in SQL Server</span>
+                    </label>
+                    <label class="filter-check pg-only">
+                        <input class="table-status-filter" type="checkbox" value="postgres_only" disabled>
+                        <span>Only in PostgreSQL</span>
+                    </label>
+                </div>
+                <label class="check-label compare-all">
                     <input type="checkbox" id="selectAllTables" disabled>
-                    <span>Compare all tables</span>
+                    <span>Select all filtered tables</span>
                 </label>
                 <button class="button ghost" id="clearSelection" type="button" disabled>Clear selection</button>
             </div>

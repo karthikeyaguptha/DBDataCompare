@@ -670,14 +670,14 @@ select:disabled {
 }
 
 .table-toolbar {
-    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 14px;
     margin-bottom: 14px;
 }
 
 .search-box {
     position: relative;
-    width: min(380px, 100%);
+    width: min(330px, 100%);
 }
 
 .search-box > span:first-child {
@@ -709,6 +709,62 @@ select:disabled {
     min-height: 16px;
     margin: 0;
     accent-color: var(--primary);
+}
+
+.status-filters {
+    display: flex;
+    flex: 1 1 430px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-check {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.filter-check:has(input:checked).common {
+    border-color: #b8dfcf;
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.filter-check:has(input:checked).sql-only {
+    border-color: #efd9ad;
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.filter-check:has(input:checked).pg-only {
+    border-color: #f0cbd0;
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.filter-check input {
+    width: 15px;
+    min-height: 15px;
+    margin: 0;
+    accent-color: currentColor;
+}
+
+.filter-check:has(input:disabled) {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.compare-all {
+    margin-left: auto;
 }
 
 .data-table-wrap {
@@ -1304,6 +1360,18 @@ select:disabled {
 
     .table-pagination {
         gap: 10px;
+    }
+
+    .status-filters {
+        flex-basis: auto;
+    }
+
+    .filter-check {
+        flex: 1 1 100%;
+    }
+
+    .compare-all {
+        margin-left: 0;
     }
 
     .page-range {

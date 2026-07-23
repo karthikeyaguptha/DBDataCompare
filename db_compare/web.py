@@ -1,4 +1,7 @@
 from math import ceil
+from secrets import token_urlsafe
+from threading import Lock
+from time import monotonic
 from typing import Any
 
 from flask import Blueprint, jsonify, render_template, request
@@ -13,6 +16,11 @@ from .db import (
 
 web = Blueprint("web", __name__)
 
+_TABLE_CATALOG_TTL_SECONDS = 30 * 60
+_TABLE_CATALOG_LIMIT = 8
+_TABLE_CATALOGS: dict[str, dict[str, Any]] = {}
+_TABLE_CATALOG_LOCK = Lock()
+
 
 @web.get("/")
 def index():
@@ -25,7 +33,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.3.1-connectivity-diagnostics",
+            "phase": "v0.3.2-table-filtering",
         }
     )
 
@@ -59,9 +67,23 @@ def tables():
     if page_size not in {5, 10, 25, 50, 100}:
         raise DatabaseConfigurationError("Choose a supported page size.")
 
+    catalog_token = str(payload.get("catalog_token", "")).strip()
+    rows = _get_table_catalog(catalog_token) if catalog_token else None
+    if rows is None:
+        sql_names, pg_names = load_table_names(sqlserver_config, postgres_config)
+        rows = _merge_table_names(sql_names, pg_names)
+        catalog_token = _store_table_catalog(rows)
+
     search = str(payload.get("search", "")).strip().casefold()
-    sql_names, pg_names = load_table_names(sqlserver_config, postgres_config)
-    rows = _merge_table_names(sql_names, pg_names)
+    statuses = payload.get("statuses", ["available"])
+    if not isinstance(statuses, list) or any(not isinstance(status, str) for status in statuses):
+        raise DatabaseConfigurationError("Table status filters must be a list.")
+    supported_statuses = {"available", "sql_only", "postgres_only"}
+    status_filter = set(statuses)
+    if not status_filter <= supported_statuses:
+        raise DatabaseConfigurationError("Choose supported table status filters.")
+
+    rows = [row for row in rows if row["status"] in status_filter]
     if search:
         rows = [
             row
@@ -77,7 +99,9 @@ def tables():
     return jsonify(
         {
             "status": "ready",
+            "catalog_token": catalog_token,
             "tables": rows[start : start + page_size],
+            "matching_ids": [row["id"] for row in rows],
             "pagination": {
                 "page": page,
                 "page_size": page_size,
@@ -86,6 +110,45 @@ def tables():
             },
         }
     )
+
+
+def _store_table_catalog(rows: list[dict[str, Any]]) -> str:
+    now = monotonic()
+    token = token_urlsafe(24)
+    with _TABLE_CATALOG_LOCK:
+        _remove_expired_catalogs(now)
+        while len(_TABLE_CATALOGS) >= _TABLE_CATALOG_LIMIT:
+            oldest_token = min(
+                _TABLE_CATALOGS,
+                key=lambda item: _TABLE_CATALOGS[item]["last_accessed"],
+            )
+            del _TABLE_CATALOGS[oldest_token]
+        _TABLE_CATALOGS[token] = {
+            "rows": rows,
+            "last_accessed": now,
+        }
+    return token
+
+
+def _get_table_catalog(token: str) -> list[dict[str, Any]] | None:
+    now = monotonic()
+    with _TABLE_CATALOG_LOCK:
+        _remove_expired_catalogs(now)
+        catalog = _TABLE_CATALOGS.get(token)
+        if catalog is None:
+            return None
+        catalog["last_accessed"] = now
+        return catalog["rows"]
+
+
+def _remove_expired_catalogs(now: float) -> None:
+    expired = [
+        token
+        for token, catalog in _TABLE_CATALOGS.items()
+        if now - catalog["last_accessed"] > _TABLE_CATALOG_TTL_SECONDS
+    ]
+    for token in expired:
+        del _TABLE_CATALOGS[token]
 
 
 def _merge_table_names(sql_names: list[str], pg_names: list[str]) -> list[dict[str, Any]]:

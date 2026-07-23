@@ -18,6 +18,9 @@ def test_home_page_loads():
     assert b'<option value="credentials" selected>SQL Server Authentication</option>' in response.data
     assert b'id="tablePagination"' in response.data
     assert b'id="tablesBody"' in response.data
+    assert b'value="available" checked disabled' in response.data
+    assert b"Only in SQL Server" in response.data
+    assert b"Only in PostgreSQL" in response.data
 
 
 def test_health_endpoint_reports_phase_2():
@@ -25,7 +28,7 @@ def test_health_endpoint_reports_phase_2():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.3.1-connectivity-diagnostics"
+    assert response.json["phase"] == "v0.3.2-table-filtering"
 
 
 @patch("db_compare.web.test_database_connection")
@@ -74,6 +77,7 @@ def test_tables_endpoint_merges_searches_and_paginates(mock_load):
             "sqlserver": {"server": "source"},
             "postgres": {"host": "target"},
             "search": "o",
+            "statuses": ["available", "sql_only", "postgres_only"],
             "page": 1,
             "page_size": 5,
         },
@@ -94,6 +98,67 @@ def test_tables_endpoint_merges_searches_and_paginates(mock_load):
     ]
     assert response.json["tables"][0]["status"] == "available"
     assert response.json["tables"][1]["status"] == "postgres_only"
+    assert len(response.json["matching_ids"]) == 4
+    assert response.json["catalog_token"]
+
+
+@patch("db_compare.web.load_table_names")
+def test_tables_endpoint_defaults_to_common_tables(mock_load):
+    mock_load.return_value = (
+        ["Audit", "Customers", "Orders"],
+        ["customers", "Invoices", "orders"],
+    )
+
+    response = client().post(
+        "/api/tables",
+        json={
+            "sqlserver": {"server": "source"},
+            "postgres": {"host": "target"},
+            "page": 1,
+            "page_size": 10,
+        },
+    )
+
+    assert response.status_code == 200
+    assert [row["id"] for row in response.json["tables"]] == ["customers", "orders"]
+    assert {row["status"] for row in response.json["tables"]} == {"available"}
+
+
+@patch("db_compare.web.load_table_names")
+def test_cached_catalog_search_and_filter_do_not_reload_databases(mock_load):
+    mock_load.return_value = (
+        ["Audit", "Customers", "Orders"],
+        ["customers", "Invoices", "orders"],
+    )
+    test_client = client()
+    initial = test_client.post(
+        "/api/tables",
+        json={
+            "sqlserver": {"server": "source"},
+            "postgres": {"host": "target"},
+            "statuses": ["available"],
+            "page": 1,
+            "page_size": 10,
+        },
+    )
+
+    filtered = test_client.post(
+        "/api/tables",
+        json={
+            "sqlserver": {"server": "source"},
+            "postgres": {"host": "target"},
+            "catalog_token": initial.json["catalog_token"],
+            "search": "inv",
+            "statuses": ["postgres_only"],
+            "page": 1,
+            "page_size": 10,
+        },
+    )
+
+    assert filtered.status_code == 200
+    assert [row["id"] for row in filtered.json["tables"]] == ["invoices"]
+    assert filtered.json["catalog_token"] == initial.json["catalog_token"]
+    mock_load.assert_called_once()
 
 
 def test_tables_endpoint_rejects_unsupported_page_size():

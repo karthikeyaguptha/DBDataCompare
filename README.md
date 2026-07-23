@@ -31,9 +31,10 @@ This checkpoint contains:
 - Optional SQL Server `Trust server certificate` setting
 - Live schema-based table discovery for both databases
 - Case-insensitive same-name table availability preview
-- Backend table search and pagination; only the current page is sent to the browser
+- Common, SQL Server-only, and PostgreSQL-only table filters; Common is selected by default
+- Cached backend table search and pagination; only the current page is sent to the browser
 - Password visibility controls
-- Paginated table selection with search, all-matching select-all, and page size
+- Paginated table selection with fast search, filtered select-all, and page size
 - Comparison settings, progress, Start/Stop controls, and result states
 - Results and execution-log tabs
 - Windows setup and launch scripts
@@ -42,9 +43,11 @@ This checkpoint contains:
 
 Phase 2 retrieves table names only. Column metadata, primary/unique keys, and
 the actual schema comparison intentionally begin in Phase 3. Table-name
-metadata is small compared with table data: the local backend reads the names,
-merges availability across both databases, applies search, and sends only the
-requested page to the browser. No table rows are loaded in Phase 2.
+metadata is small compared with table data: the local backend reads and merges
+the names once, then keeps a short-lived in-memory catalog for search, status
+filtering, and pagination. Repeated searches do not reconnect to both databases.
+Only the requested page is sent to the browser. No table rows are loaded in
+Phase 2.
 
 ## Windows prerequisites
 
@@ -87,7 +90,9 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
 2. Click each **Test** button.
 3. Correct any friendly connection error shown in the card or execution log.
 4. When both tests succeed, click **Load tables**.
-5. Search or page through the live table-name list.
+5. Keep **Common** selected for migration comparisons, or include either
+   database-only filter to investigate missing tables.
+6. Search or page through the cached table-name list.
 
 For SQL Server ODBC Driver 18, encryption is enabled. Leave **Trust server
 certificate** off when the server has a certificate trusted by Windows. Enable
@@ -174,6 +179,7 @@ run.bat
 | v0.2.0 | Modern UI shell |
 | v0.3.0 | Database connectivity |
 | v0.3.1 | Connectivity diagnostics fix |
+| v0.3.2 | Fast table search and availability filters |
 | v0.4.0 | Schema comparison |
 | v0.5.0 | Row-count comparison |
 | v0.6.0 | Scalable data comparison |

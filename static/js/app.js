@@ -10,10 +10,12 @@ const state = {
     tablePageSize: 10,
     tableTotal: 0,
     tableTotalPages: 1,
-    selectAllMatching: false,
+    catalogToken: "",
+    currentMatchingIds: [],
     selectedTables: new Set(),
-    excludedTables: new Set(),
     searchTimer: null,
+    tableRequestController: null,
+    tableRequestId: 0,
 };
 
 const elements = {
@@ -25,6 +27,7 @@ const elements = {
     tablesOverlay: document.querySelector("#tablesOverlay"),
     tablesBody: document.querySelector("#tablesBody"),
     tableSearch: document.querySelector("#tableSearch"),
+    tableStatusFilters: [...document.querySelectorAll(".table-status-filter")],
     selectAllTables: document.querySelector("#selectAllTables"),
     clearSelection: document.querySelector("#clearSelection"),
     selectionCount: document.querySelector("#selectionCount"),
@@ -191,12 +194,14 @@ function markFormChanged(prefix) {
 }
 
 function lockTables() {
+    state.tableRequestController?.abort();
+    state.tableRequestId += 1;
     state.tablesLoaded = false;
-    state.selectAllMatching = false;
+    state.catalogToken = "";
+    state.currentMatchingIds = [];
     state.selectedTables.clear();
-    state.excludedTables.clear();
     elements.tablesOverlay.classList.remove("is-hidden");
-    [elements.tableSearch, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
+    [elements.tableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
         .forEach((control) => { control.disabled = true; });
     elements.tablesBody.replaceChildren();
     updateSelectionCount();
@@ -205,7 +210,7 @@ function lockTables() {
 function unlockTableWorkspace() {
     state.tablesLoaded = true;
     elements.tablesOverlay.classList.add("is-hidden");
-    [elements.tableSearch, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
+    [elements.tableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
         .forEach((control) => { control.disabled = false; });
     elements.comparisonMode.disabled = false;
     elements.batchSize.disabled = false;
@@ -213,12 +218,26 @@ function unlockTableWorkspace() {
     document.querySelector("[data-step='3']").classList.add("active");
 }
 
-async function loadTables({ resetPage = false, scroll = false } = {}) {
+function activeTableStatuses() {
+    return elements.tableStatusFilters
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.value);
+}
+
+async function loadTables({ resetPage = false, scroll = false, refreshCatalog = false } = {}) {
     if (!state.sqlValidated || !state.pgValidated) {
         showToast("Test both connections again before loading tables.");
         return;
     }
+    if (refreshCatalog) {
+        state.catalogToken = "";
+        state.currentMatchingIds = [];
+        state.selectedTables.clear();
+    }
     if (resetPage) state.tablePage = 1;
+    state.tableRequestController?.abort();
+    state.tableRequestController = new AbortController();
+    const requestId = ++state.tableRequestId;
     elements.loadTablesButton.disabled = true;
     elements.loadTablesButton.classList.add("is-loading");
     elements.loadTablesButton.textContent = "Loading tables…";
@@ -229,25 +248,33 @@ async function loadTables({ resetPage = false, scroll = false } = {}) {
             body: JSON.stringify({
                 sqlserver: connectionConfig("sql"),
                 postgres: connectionConfig("pg"),
+                catalog_token: state.catalogToken,
                 search: elements.tableSearch.value,
+                statuses: activeTableStatuses(),
                 page: state.tablePage,
                 page_size: state.tablePageSize,
             }),
+            signal: state.tableRequestController.signal,
         });
+        if (requestId !== state.tableRequestId) return;
+        state.catalogToken = result.catalog_token;
+        state.currentMatchingIds = result.matching_ids;
         state.tablePage = result.pagination.page;
         state.tableTotal = result.pagination.total;
         state.tableTotalPages = result.pagination.total_pages;
         renderTableRows(result.tables);
         unlockTableWorkspace();
         updatePagination();
-        addLog("INFO", `Loaded ${result.tables.length} of ${state.tableTotal} matching table names.`);
+        addLog("INFO", `Showing ${result.tables.length} of ${state.tableTotal} filtered table names.`);
         if (scroll) {
             document.querySelector("#tablesSection").scrollIntoView({ behavior: "smooth", block: "start" });
         }
     } catch (error) {
+        if (error.name === "AbortError") return;
         addLog("WARN", error.message);
         showToast(error.message);
     } finally {
+        if (requestId !== state.tableRequestId) return;
         elements.loadTablesButton.disabled = !(state.sqlValidated && state.pgValidated);
         elements.loadTablesButton.classList.remove("is-loading");
         elements.loadTablesButton.innerHTML = 'Reload tables <span aria-hidden="true">→</span>';
@@ -283,14 +310,9 @@ function renderTableRows(rows) {
             <td><span class="status-chip ${status[1]}">${status[0]}</span></td>`;
         const checkbox = row.querySelector(".table-checkbox");
         checkbox.setAttribute("aria-label", `Select ${sqlName !== "Not found" ? sqlName : pgName} table`);
-        checkbox.checked = state.selectAllMatching
-            ? !state.excludedTables.has(table.id)
-            : state.selectedTables.has(table.id);
+        checkbox.checked = state.selectedTables.has(table.id);
         checkbox.addEventListener("change", () => {
-            if (state.selectAllMatching) {
-                if (checkbox.checked) state.excludedTables.delete(table.id);
-                else state.excludedTables.add(table.id);
-            } else if (checkbox.checked) {
+            if (checkbox.checked) {
                 state.selectedTables.add(table.id);
             } else {
                 state.selectedTables.delete(table.id);
@@ -314,14 +336,18 @@ function currentCheckboxes() {
 }
 
 function updateSelectionCount() {
-    const selectedCount = state.selectAllMatching
-        ? Math.max(0, state.tableTotal - state.excludedTables.size)
-        : state.selectedTables.size;
+    const selectedCount = state.selectedTables.size;
+    const selectedMatchingCount = state.currentMatchingIds.reduce(
+        (count, id) => count + Number(state.selectedTables.has(id)),
+        0,
+    );
     elements.selectionCount.textContent = `${selectedCount} selected`;
     elements.selectedSummary.textContent = String(selectedCount);
     elements.startCompare.disabled = selectedCount === 0;
-    elements.selectAllTables.checked = state.selectAllMatching && state.excludedTables.size === 0;
-    elements.selectAllTables.indeterminate = selectedCount > 0 && !elements.selectAllTables.checked;
+    elements.selectAllTables.checked = state.currentMatchingIds.length > 0
+        && selectedMatchingCount === state.currentMatchingIds.length;
+    elements.selectAllTables.indeterminate = selectedMatchingCount > 0
+        && selectedMatchingCount < state.currentMatchingIds.length;
 }
 
 function updatePagination() {
@@ -374,22 +400,29 @@ document.querySelectorAll(".password-toggle").forEach((button) => {
     });
 });
 
-elements.loadTablesButton.addEventListener("click", () => loadTables({ resetPage: true, scroll: true }));
+elements.loadTablesButton.addEventListener("click", () => loadTables({
+    resetPage: true,
+    scroll: true,
+    refreshCatalog: true,
+}));
 elements.tableSearch.addEventListener("input", () => {
     window.clearTimeout(state.searchTimer);
     state.searchTimer = window.setTimeout(() => {
-        state.selectAllMatching = false;
-        state.selectedTables.clear();
-        state.excludedTables.clear();
         loadTables({ resetPage: true });
-    }, 300);
+    }, 180);
+});
+elements.tableStatusFilters.forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+        window.clearTimeout(state.searchTimer);
+        loadTables({ resetPage: true });
+    });
 });
 elements.selectAllTables.addEventListener("change", () => {
-    state.selectAllMatching = elements.selectAllTables.checked;
-    state.selectedTables.clear();
-    state.excludedTables.clear();
-    elements.tablesBody.querySelectorAll("tr[data-id]").forEach((row) => {
-        const checkbox = row.querySelector(".table-checkbox");
+    state.currentMatchingIds.forEach((id) => {
+        if (elements.selectAllTables.checked) state.selectedTables.add(id);
+        else state.selectedTables.delete(id);
+    });
+    currentCheckboxes().forEach((checkbox) => {
         checkbox.checked = elements.selectAllTables.checked;
     });
     updateSelectionCount();
@@ -411,9 +444,7 @@ elements.nextTablePage.addEventListener("click", () => {
     }
 });
 elements.clearSelection.addEventListener("click", () => {
-    state.selectAllMatching = false;
     state.selectedTables.clear();
-    state.excludedTables.clear();
     currentCheckboxes().forEach((checkbox) => { checkbox.checked = false; });
     updateSelectionCount();
 });
