@@ -25,6 +25,8 @@ This checkpoint contains:
 - Live SQL Server connectivity through `pyodbc`
 - Live PostgreSQL connectivity through Psycopg 3
 - Connection validation, timeout handling, and safe user-facing errors
+- Explicit ODBC driver detection and separate network, login, certificate,
+  database-access, and timeout diagnostics
 - SQL Server Authentication selected by default; Windows Authentication supported
 - Optional SQL Server `Trust server certificate` setting
 - Live schema-based table discovery for both databases
@@ -91,6 +93,27 @@ For SQL Server ODBC Driver 18, encryption is enabled. Leave **Trust server
 certificate** off when the server has a certificate trusted by Windows. Enable
 it only for an approved internal server that uses a self-signed certificate.
 
+### SQL Server connection troubleshooting
+
+Confirm that the same Python environment used by the app can see the driver:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import pyodbc; print(pyodbc.drivers())"
+```
+
+If Driver 18 is listed but the connection still fails, follow the specific
+message shown by the app:
+
+- **Could not be reached**: verify the server/instance name, port, SQL Server
+  service, TCP/IP, firewall, and network/VPN.
+- **Rejected the login**: verify SQL Server Authentication is enabled and check
+  the username and password.
+- **Database could not be opened**: verify the database name and that the login
+  has access.
+- **Certificate validation failed**: verify the server certificate; use Trust
+  server certificate only for an approved internal server.
+- **Timed out**: verify the server address, network path, and firewall.
+
 The table status values mean:
 
 - **Available in both**: the same table name exists in both schemas, ignoring case.
@@ -150,6 +173,7 @@ run.bat
 | v0.1.0 | Project setup |
 | v0.2.0 | Modern UI shell |
 | v0.3.0 | Database connectivity |
+| v0.3.1 | Connectivity diagnostics fix |
 | v0.4.0 | Schema comparison |
 | v0.5.0 | Row-count comparison |
 | v0.6.0 | Scalable data comparison |

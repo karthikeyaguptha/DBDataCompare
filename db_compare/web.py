@@ -25,7 +25,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.3.0-database-connectivity",
+            "phase": "v0.3.1-connectivity-diagnostics",
         }
     )
 

@@ -25,7 +25,7 @@ def test_health_endpoint_reports_phase_2():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.3.0-database-connectivity"
+    assert response.json["phase"] == "v0.3.1-connectivity-diagnostics"
 
 
 @patch("db_compare.web.test_database_connection")

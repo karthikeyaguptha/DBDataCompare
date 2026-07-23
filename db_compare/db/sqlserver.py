@@ -60,6 +60,16 @@ def connect(config: dict[str, Any]):
             "The SQL Server Python driver is not installed. Run setup.bat and try again."
         ) from exc
 
+    selected_driver = str(
+        config.get("driver") or "ODBC Driver 18 for SQL Server"
+    ).strip()
+    installed_drivers = {name.casefold() for name in pyodbc.drivers()}
+    if selected_driver.casefold() not in installed_drivers:
+        raise DatabaseConnectionError(
+            f'The selected SQL Server ODBC driver "{selected_driver}" is unavailable '
+            "to this Python installation. Run setup.bat again or choose an installed driver."
+        )
+
     try:
         return pyodbc.connect(_connection_string(config), timeout=8)
     except DatabaseConfigurationError:
@@ -98,14 +108,38 @@ def list_tables(config: dict[str, Any]) -> list[str]:
 
 def _friendly_error(error: Exception) -> str:
     text = str(error).lower()
-    if "login failed" in text or "authentication" in text:
+    if (
+        "login failed" in text
+        or "authentication failed" in text
+        or "28000" in text
+        or "18456" in text
+    ):
         return "SQL Server rejected the login. Check the authentication type, username, and password."
-    if "server does not exist" in text or "could not open a connection" in text:
-        return "SQL Server could not be reached. Check the server, port, network, and firewall."
     if "certificate" in text or "ssl provider" in text:
         return "SQL Server certificate validation failed. Verify the certificate or enable Trust server certificate for an approved internal server."
-    if "data source name not found" in text or "driver" in text:
+    if (
+        "data source name not found" in text
+        or "specified driver could not be loaded" in text
+        or "im002" in text
+        or "im003" in text
+    ):
         return "The selected SQL Server ODBC driver is unavailable. Install Microsoft ODBC Driver 18 or choose an installed driver."
-    if "timeout" in text:
+    if "cannot open database" in text or "4060" in text:
+        return "SQL Server was reached, but the selected database could not be opened. Check the database name and the login's access."
+    if "timeout" in text or "hyt00" in text or "hyt01" in text:
         return "The SQL Server connection timed out. Check the server address and network access."
-    return "SQL Server connection failed. Check the supplied details and database availability."
+    if (
+        "server does not exist" in text
+        or "could not open a connection" in text
+        or "network-related" in text
+        or "tcp provider" in text
+        or "named pipes provider" in text
+        or "connection refused" in text
+        or "actively refused" in text
+        or "08001" in text
+        or "08004" in text
+        or "error 26" in text
+        or "error 40" in text
+    ):
+        return "SQL Server could not be reached. Check the server or instance name, port, SQL Server service, TCP/IP, network, and firewall."
+    return "SQL Server connection failed. Check the server, database, authentication, and SQL Server availability."
