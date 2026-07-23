@@ -4,74 +4,411 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light">
+    <meta name="description" content="Compare SQL Server and PostgreSQL tables from a local, read-only workspace.">
     <title>DB Compare Studio</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 </head>
 <body>
-    <header class="app-header">
-        <div>
-            <p class="eyebrow">SQL Server ↔ PostgreSQL</p>
-            <h1>DB Compare Studio</h1>
-            <p class="subtitle">Local, read-only database comparison for Windows.</p>
+    <a class="skip-link" href="#workspace">Skip to workspace</a>
+
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+                <span></span><span></span><span></span>
+            </span>
+            <div>
+                <h1>DB Compare Studio</h1>
+                <p>SQL Server <span aria-hidden="true">→</span> PostgreSQL</p>
+            </div>
         </div>
-        <span class="phase-badge">Phase 0 · Project setup</span>
+
+        <div class="topbar-actions">
+            <span class="local-badge"><span class="status-dot"></span> Local session</span>
+            <button class="icon-button" type="button" id="themeInfo" aria-label="About this version" title="About this version">i</button>
+        </div>
     </header>
 
-    <main>
-        <section class="status-card" aria-labelledby="setup-title">
-            <div class="status-icon" aria-hidden="true">✓</div>
+    <main class="workspace" id="workspace">
+        <section class="intro" aria-labelledby="page-title">
             <div>
-                <h2 id="setup-title">Foundation is ready</h2>
-                <p>
-                    The local Flask service and browser interface are running.
-                    Connection controls arrive in the next milestone.
-                </p>
+                <p class="eyebrow">Database migration assurance</p>
+                <h2 id="page-title">Compare with confidence.</h2>
+                <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
+            </div>
+            <div class="phase-pill">
+                <span>Phase 1</span>
+                UI shell
             </div>
         </section>
 
-        <section class="connection-grid" aria-label="Planned database connections">
-            <article class="connection-card">
-                <div class="card-heading">
-                    <span class="database-mark sql-mark" aria-hidden="true">S</span>
-                    <div>
-                        <h2>SQL Server</h2>
-                        <p>Source database</p>
-                    </div>
-                </div>
-                <div class="placeholder-field"></div>
-                <div class="placeholder-field short"></div>
-                <button type="button" disabled>Test Connection</button>
-            </article>
+        <nav class="stepper" aria-label="Comparison workflow">
+            <div class="step active" data-step="1">
+                <span class="step-number">1</span>
+                <span><strong>Connections</strong><small>Configure both databases</small></span>
+            </div>
+            <span class="step-line" aria-hidden="true"></span>
+            <div class="step" data-step="2">
+                <span class="step-number">2</span>
+                <span><strong>Select tables</strong><small>Choose comparison scope</small></span>
+            </div>
+            <span class="step-line" aria-hidden="true"></span>
+            <div class="step" data-step="3">
+                <span class="step-number">3</span>
+                <span><strong>Compare</strong><small>Run and review results</small></span>
+            </div>
+        </nav>
 
-            <article class="connection-card">
-                <div class="card-heading">
-                    <span class="database-mark pg-mark" aria-hidden="true">P</span>
-                    <div>
-                        <h2>PostgreSQL</h2>
-                        <p>Target database</p>
-                    </div>
+        <section class="section-block" aria-labelledby="connections-title">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Step 1</p>
+                    <h2 id="connections-title">Database connections</h2>
+                    <p>Credentials stay in memory for this local session and are never stored by the UI.</p>
                 </div>
-                <div class="placeholder-field"></div>
-                <div class="placeholder-field short"></div>
-                <button type="button" disabled>Test Connection</button>
-            </article>
+                <span class="read-only-badge">Read-only recommended</span>
+            </div>
+
+            <div class="connection-grid">
+                <article class="connection-card sql-card" data-connection="sql">
+                    <div class="card-heading">
+                        <span class="database-mark sql-mark" aria-hidden="true">MS</span>
+                        <div>
+                            <h3>SQL Server</h3>
+                            <p>Source database</p>
+                        </div>
+                        <span class="connection-state neutral" id="sqlState">Not tested</span>
+                    </div>
+
+                    <form id="sqlForm" novalidate>
+                        <div class="field-row host-row">
+                            <label>
+                                <span>Server <b aria-hidden="true">*</b></span>
+                                <input type="text" name="server" placeholder="localhost or server name" autocomplete="off" required>
+                            </label>
+                            <label class="port-field">
+                                <span>Port</span>
+                                <input type="number" name="port" placeholder="1433" min="1" max="65535">
+                            </label>
+                        </div>
+
+                        <div class="field-row">
+                            <label>
+                                <span>Database <b aria-hidden="true">*</b></span>
+                                <input type="text" name="database" placeholder="Source database" autocomplete="off" required>
+                            </label>
+                            <label>
+                                <span>Schema</span>
+                                <input type="text" name="schema" value="dbo" autocomplete="off">
+                            </label>
+                        </div>
+
+                        <label>
+                            <span>Authentication</span>
+                            <select name="authentication" id="sqlAuthentication">
+                                <option value="windows">Windows Authentication</option>
+                                <option value="credentials">SQL Server Authentication</option>
+                            </select>
+                        </label>
+
+                        <div class="credential-fields is-hidden" id="sqlCredentials">
+                            <div class="field-row">
+                                <label>
+                                    <span>Username <b aria-hidden="true">*</b></span>
+                                    <input type="text" name="username" placeholder="Database user" autocomplete="username">
+                                </label>
+                                <label>
+                                    <span>Password <b aria-hidden="true">*</b></span>
+                                    <span class="password-wrap">
+                                        <input type="password" name="password" placeholder="Enter password" autocomplete="current-password">
+                                        <button class="password-toggle" type="button" aria-label="Show password">Show</button>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <label class="driver-field">
+                            <span>ODBC driver</span>
+                            <select name="driver">
+                                <option>ODBC Driver 18 for SQL Server</option>
+                                <option>ODBC Driver 17 for SQL Server</option>
+                            </select>
+                        </label>
+
+                        <div class="form-feedback" id="sqlFeedback" aria-live="polite"></div>
+                        <button class="button secondary test-button" type="submit">
+                            <span class="button-icon" aria-hidden="true">↗</span>
+                            Test SQL Server
+                        </button>
+                    </form>
+                </article>
+
+                <article class="connection-card pg-card" data-connection="pg">
+                    <div class="card-heading">
+                        <span class="database-mark pg-mark" aria-hidden="true">PG</span>
+                        <div>
+                            <h3>PostgreSQL</h3>
+                            <p>Target database</p>
+                        </div>
+                        <span class="connection-state neutral" id="pgState">Not tested</span>
+                    </div>
+
+                    <form id="pgForm" novalidate>
+                        <div class="field-row host-row">
+                            <label>
+                                <span>Host <b aria-hidden="true">*</b></span>
+                                <input type="text" name="host" placeholder="localhost or host name" autocomplete="off" required>
+                            </label>
+                            <label class="port-field">
+                                <span>Port</span>
+                                <input type="number" name="port" value="5432" min="1" max="65535">
+                            </label>
+                        </div>
+
+                        <div class="field-row">
+                            <label>
+                                <span>Database <b aria-hidden="true">*</b></span>
+                                <input type="text" name="database" placeholder="Target database" autocomplete="off" required>
+                            </label>
+                            <label>
+                                <span>Schema</span>
+                                <input type="text" name="schema" value="public" autocomplete="off">
+                            </label>
+                        </div>
+
+                        <div class="field-row">
+                            <label>
+                                <span>Username <b aria-hidden="true">*</b></span>
+                                <input type="text" name="username" placeholder="Database user" autocomplete="username" required>
+                            </label>
+                            <label>
+                                <span>Password <b aria-hidden="true">*</b></span>
+                                <span class="password-wrap">
+                                    <input type="password" name="password" placeholder="Enter password" autocomplete="current-password" required>
+                                    <button class="password-toggle" type="button" aria-label="Show password">Show</button>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="field-row">
+                            <label>
+                                <span>SSL mode</span>
+                                <select name="sslmode">
+                                    <option value="prefer">Prefer</option>
+                                    <option value="require">Require</option>
+                                    <option value="disable">Disable</option>
+                                </select>
+                            </label>
+                            <div class="field-spacer" aria-hidden="true"></div>
+                        </div>
+
+                        <div class="form-feedback" id="pgFeedback" aria-live="polite"></div>
+                        <button class="button secondary test-button" type="submit">
+                            <span class="button-icon" aria-hidden="true">↗</span>
+                            Test PostgreSQL
+                        </button>
+                    </form>
+                </article>
+            </div>
+
+            <div class="connection-actions">
+                <div class="connection-hint">
+                    <span class="hint-icon" aria-hidden="true">i</span>
+                    <span>Actual database tests are enabled in Phase 2. Phase 1 validates the form and demonstrates every UI state.</span>
+                </div>
+                <button class="button primary" id="loadTablesButton" type="button" disabled>
+                    Load tables <span aria-hidden="true">→</span>
+                </button>
+            </div>
         </section>
 
-        <section class="roadmap" aria-labelledby="roadmap-title">
-            <div>
-                <p class="eyebrow">Next checkpoint</p>
-                <h2 id="roadmap-title">Modern connection workspace</h2>
+        <section class="section-block muted-section" id="tablesSection" aria-labelledby="tables-title">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Step 2</p>
+                    <h2 id="tables-title">Select tables</h2>
+                    <p>Search, select, and confirm the key used to match corresponding rows.</p>
+                </div>
+                <span class="selection-count" id="selectionCount">0 of 5 selected</span>
             </div>
-            <p>
-                Phase 1 will add connection forms, table selection, progress,
-                results, and execution-log areas using one consistent visual system.
-            </p>
+
+            <div class="table-toolbar">
+                <label class="search-box">
+                    <span aria-hidden="true">⌕</span>
+                    <span class="sr-only">Search tables</span>
+                    <input id="tableSearch" type="search" placeholder="Search table names" disabled>
+                </label>
+                <label class="check-label">
+                    <input type="checkbox" id="selectAllTables" disabled>
+                    <span>Compare all tables</span>
+                </label>
+                <button class="button ghost" id="clearSelection" type="button" disabled>Clear selection</button>
+            </div>
+
+            <div class="data-table-wrap" tabindex="0" aria-label="Table selection preview">
+                <table class="data-table" id="tablesTable">
+                    <thead>
+                        <tr>
+                            <th class="check-column"><span class="sr-only">Select</span></th>
+                            <th>SQL Server table</th>
+                            <th>PostgreSQL table</th>
+                            <th>Columns</th>
+                            <th>Comparison key</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-name="customers">
+                            <td><input class="table-checkbox" type="checkbox" aria-label="Select Customers table" disabled></td>
+                            <td><strong>Customers</strong><small>dbo</small></td>
+                            <td><strong>customers</strong><small>public</small></td>
+                            <td>14</td>
+                            <td><span class="key-chip">CustomerId</span></td>
+                            <td><span class="status-chip ready">Ready</span></td>
+                        </tr>
+                        <tr data-name="orders">
+                            <td><input class="table-checkbox" type="checkbox" aria-label="Select Orders table" disabled></td>
+                            <td><strong>Orders</strong><small>dbo</small></td>
+                            <td><strong>orders</strong><small>public</small></td>
+                            <td>22</td>
+                            <td><span class="key-chip">OrderId</span></td>
+                            <td><span class="status-chip ready">Ready</span></td>
+                        </tr>
+                        <tr data-name="order items">
+                            <td><input class="table-checkbox" type="checkbox" aria-label="Select OrderItems table" disabled></td>
+                            <td><strong>OrderItems</strong><small>dbo</small></td>
+                            <td><strong>order_items</strong><small>public</small></td>
+                            <td>9</td>
+                            <td><span class="key-chip">OrderId + LineNo</span></td>
+                            <td><span class="status-chip ready">Ready</span></td>
+                        </tr>
+                        <tr data-name="products">
+                            <td><input class="table-checkbox" type="checkbox" aria-label="Select Products table" disabled></td>
+                            <td><strong>Products</strong><small>dbo</small></td>
+                            <td><strong>products</strong><small>public</small></td>
+                            <td>18</td>
+                            <td><button class="inline-action" type="button" disabled>Choose key</button></td>
+                            <td><span class="status-chip warning">Key required</span></td>
+                        </tr>
+                        <tr data-name="audit history">
+                            <td><input class="table-checkbox" type="checkbox" aria-label="Select AuditHistory table" disabled></td>
+                            <td><strong>AuditHistory</strong><small>dbo</small></td>
+                            <td><span class="muted-value">Not found</span></td>
+                            <td>11</td>
+                            <td>—</td>
+                            <td><span class="status-chip missing">SQL only</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="locked-overlay" id="tablesOverlay">
+                    <span class="lock-mark" aria-hidden="true">2</span>
+                    <strong>Connect both databases to load tables</strong>
+                    <p>Table discovery and matching will become available after both connection tests pass.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-block muted-section" id="compareSection" aria-labelledby="compare-title">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Step 3</p>
+                    <h2 id="compare-title">Run comparison</h2>
+                    <p>Review scope, track progress, and stop safely between processing batches.</p>
+                </div>
+                <div class="compare-buttons">
+                    <button class="button danger" id="stopCompare" type="button" disabled>Stop</button>
+                    <button class="button primary" id="startCompare" type="button" disabled>
+                        Start comparison <span aria-hidden="true">▶</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="run-settings">
+                <label>
+                    <span>Comparison mode</span>
+                    <select id="comparisonMode" disabled>
+                        <option>Full comparison</option>
+                        <option>Structure + row count</option>
+                        <option>Structure only</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Batch size</span>
+                    <select id="batchSize" disabled>
+                        <option>5,000 rows</option>
+                        <option>2,000 rows</option>
+                        <option>10,000 rows</option>
+                    </select>
+                </label>
+                <div class="run-summary">
+                    <span>Selected tables</span>
+                    <strong id="selectedSummary">0</strong>
+                </div>
+                <div class="run-summary">
+                    <span>Estimated work</span>
+                    <strong>Waiting for tables</strong>
+                </div>
+            </div>
+
+            <div class="progress-panel">
+                <div class="progress-copy">
+                    <div>
+                        <strong id="progressTitle">Ready when you are</strong>
+                        <span id="progressStatus">Complete both connection tests to continue.</span>
+                    </div>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Overall comparison progress">
+                    <span id="progressBar"></span>
+                </div>
+                <div class="progress-meta">
+                    <span>Current table: <strong id="currentTable">—</strong></span>
+                    <span>Elapsed: <strong id="elapsedTime">00:00</strong></span>
+                    <span>Completed: <strong id="completedTables">0 / 0</strong></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="results-shell" aria-labelledby="results-title">
+            <div class="results-tabs" role="tablist" aria-label="Results and logs">
+                <button class="tab-button active" id="resultsTab" type="button" role="tab" aria-selected="true" aria-controls="resultsPanel">
+                    Results <span class="tab-count">0</span>
+                </button>
+                <button class="tab-button" id="logTab" type="button" role="tab" aria-selected="false" aria-controls="logPanel">
+                    Execution log <span class="live-indicator" aria-hidden="true"></span>
+                </button>
+                <div class="tab-actions">
+                    <button class="button ghost" type="button" disabled>Export report</button>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="resultsPanel" role="tabpanel" aria-labelledby="resultsTab">
+                <div class="empty-state">
+                    <span class="empty-mark" aria-hidden="true">≠</span>
+                    <h2 id="results-title">No comparison results yet</h2>
+                    <p>Completed tables and their column, row-count, and data differences will appear here.</p>
+                </div>
+            </div>
+
+            <div class="tab-panel is-hidden" id="logPanel" role="tabpanel" aria-labelledby="logTab">
+                <div class="log-toolbar">
+                    <span>Session log</span>
+                    <button class="button ghost" id="copyLog" type="button">Copy log</button>
+                </div>
+                <div class="log-window" id="logWindow" role="log" aria-live="polite">
+                    <div><time>00:00:00</time><span class="log-level info">INFO</span><span>DB Compare Studio UI initialized.</span></div>
+                    <div><time>00:00:00</time><span class="log-level info">INFO</span><span>Waiting for database connection details.</span></div>
+                </div>
+            </div>
         </section>
     </main>
 
-    <footer>
-        Runs only on <code>127.0.0.1</code> · No credentials are stored in this phase
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <footer class="footer">
+        <span>DB Compare Studio <b>v0.2.0</b></span>
+        <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>
 </html>
-

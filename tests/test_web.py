@@ -9,6 +9,10 @@ def test_home_page_loads():
 
     assert response.status_code == 200
     assert b"DB Compare Studio" in response.data
+    assert b"Database connections" in response.data
+    assert b"Select tables" in response.data
+    assert b"Run comparison" in response.data
+    assert b"Execution log" in response.data
 
 
 def test_health_endpoint():
@@ -19,5 +23,4 @@ def test_health_endpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.1.0-project-setup"
-
+    assert response.json["phase"] == "v0.2.0-ui-shell"

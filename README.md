@@ -16,19 +16,25 @@ not sent to an external web server.
 - Progress, cancellation, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## Phase 0 status
+## Phase 1 status
 
 This checkpoint contains:
 
 - Flask application foundation
-- Browser-based starter screen
+- Modern, responsive browser workspace
+- SQL Server and PostgreSQL connection forms
+- Front-end validation and password visibility controls
+- Table selection, search, select-all, and key-status preview
+- Comparison settings, progress, Start/Stop controls, and result states
+- Results and execution-log tabs
 - Windows setup and launch scripts
 - Environment and Git safety rules
-- Health endpoint and a basic automated test
+- Health endpoint and automated page checks
 - Placeholder modules for database and comparison logic
 
-Database connections and comparison actions are intentionally disabled until
-their corresponding implementation phases.
+Phase 1 uses representative table data only after both connection forms pass
+front-end validation. It does not make a database call. Live connection tests
+are intentionally reserved for Phase 2.
 
 ## Windows prerequisites
 
@@ -121,12 +127,17 @@ run.bat
 
 ## GitHub checkpoint
 
-The suggested first tag is:
+The suggested Phase 1 commit is:
 
 ```text
-v0.1.0-project-setup
+feat: build modern comparison workspace
+```
+
+The suggested Phase 1 tag is:
+
+```text
+v0.2.0-ui-shell
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,
 and licensing have been reviewed.
-
