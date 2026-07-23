@@ -24,7 +24,8 @@ This checkpoint contains:
 - Modern, responsive browser workspace
 - SQL Server and PostgreSQL connection forms
 - Front-end validation and password visibility controls
-- Table selection, search, select-all, and key-status preview
+- SQL Server Authentication selected by default
+- Paginated table selection with search, select-all, page size, and key-status preview
 - Comparison settings, progress, Start/Stop controls, and result states
 - Results and execution-log tabs
 - Windows setup and launch scripts
@@ -34,7 +35,16 @@ This checkpoint contains:
 
 Phase 1 uses representative table data only after both connection forms pass
 front-end validation. It does not make a database call. Live connection tests
-are intentionally reserved for Phase 2.
+are intentionally reserved for Phase 2. Pagination currently limits rendered
+preview rows; Phase 2 will connect it to paged table-metadata requests so large
+table lists are not loaded into the browser in one response.
+
+### v0.2.1 UI enhancements
+
+- SQL Server Authentication is the default authentication mode.
+- Step 2 includes configurable pagination with Previous/Next navigation.
+- Search and Compare All operate across every matching row, including rows on
+  other pages.
 
 ## Windows prerequisites
 

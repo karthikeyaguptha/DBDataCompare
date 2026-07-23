@@ -15,6 +15,6 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.2.0-ui-shell",
+            "phase": "v0.2.1-ui-enhancements",
         }
     )

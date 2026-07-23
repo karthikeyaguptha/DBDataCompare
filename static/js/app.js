@@ -4,6 +4,8 @@ const state = {
     sqlValidated: false,
     pgValidated: false,
     tablesLoaded: false,
+    tablePage: 1,
+    tablePageSize: 5,
 };
 
 const elements = {
@@ -17,6 +19,11 @@ const elements = {
     selectAllTables: document.querySelector("#selectAllTables"),
     clearSelection: document.querySelector("#clearSelection"),
     selectionCount: document.querySelector("#selectionCount"),
+    tablePageSize: document.querySelector("#tablePageSize"),
+    tablePageRange: document.querySelector("#tablePageRange"),
+    tablePageStatus: document.querySelector("#tablePageStatus"),
+    previousTablePage: document.querySelector("#previousTablePage"),
+    nextTablePage: document.querySelector("#nextTablePage"),
     selectedSummary: document.querySelector("#selectedSummary"),
     comparisonMode: document.querySelector("#comparisonMode"),
     batchSize: document.querySelector("#batchSize"),
@@ -119,31 +126,62 @@ function unlockTablePreview() {
     elements.tableSearch.disabled = false;
     elements.selectAllTables.disabled = false;
     elements.clearSelection.disabled = false;
+    elements.tablePageSize.disabled = false;
     document.querySelectorAll(".table-checkbox, .inline-action").forEach((control) => {
         control.disabled = false;
     });
     elements.comparisonMode.disabled = false;
     elements.batchSize.disabled = false;
+    renderTablePage();
     document.querySelector("[data-step='2']").classList.add("active");
     addLog("INFO", "Loaded representative Phase 1 table data for UI preview.");
     showToast("Table workspace unlocked with preview data.");
     document.querySelector("#tablesSection").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function visibleCheckboxes() {
+function matchingRows() {
+    const query = elements.tableSearch.value.trim().toLowerCase();
     return [...document.querySelectorAll("#tablesTable tbody tr")]
-        .filter((row) => !row.hidden)
-        .map((row) => row.querySelector(".table-checkbox"));
+        .filter((row) => row.dataset.name.includes(query));
+}
+
+function matchingCheckboxes() {
+    return matchingRows().map((row) => row.querySelector(".table-checkbox"));
+}
+
+function renderTablePage() {
+    const allRows = [...document.querySelectorAll("#tablesTable tbody tr")];
+    const rows = matchingRows();
+    const totalPages = Math.max(1, Math.ceil(rows.length / state.tablePageSize));
+    state.tablePage = Math.min(Math.max(1, state.tablePage), totalPages);
+
+    const startIndex = (state.tablePage - 1) * state.tablePageSize;
+    const endIndex = Math.min(startIndex + state.tablePageSize, rows.length);
+    const visibleRows = new Set(rows.slice(startIndex, endIndex));
+
+    allRows.forEach((row) => {
+        row.hidden = !visibleRows.has(row);
+    });
+
+    elements.tablePageRange.textContent = rows.length
+        ? `${startIndex + 1}–${endIndex} of ${rows.length} tables`
+        : "0 of 0 tables";
+    elements.tablePageStatus.textContent = `Page ${state.tablePage} of ${totalPages}`;
+    elements.previousTablePage.disabled = !state.tablesLoaded || state.tablePage === 1;
+    elements.nextTablePage.disabled = !state.tablesLoaded || state.tablePage === totalPages;
+    updateSelectionCount();
 }
 
 function updateSelectionCount() {
     const all = [...document.querySelectorAll(".table-checkbox")];
     const checked = all.filter((checkbox) => checkbox.checked);
+    const matching = matchingCheckboxes();
+    const checkedMatching = matching.filter((checkbox) => checkbox.checked);
     elements.selectionCount.textContent = `${checked.length} of ${all.length} selected`;
     elements.selectedSummary.textContent = String(checked.length);
     elements.startCompare.disabled = checked.length === 0;
-    elements.selectAllTables.checked = visibleCheckboxes().length > 0 && visibleCheckboxes().every((checkbox) => checkbox.checked);
-    elements.selectAllTables.indeterminate = checked.length > 0 && !elements.selectAllTables.checked;
+    elements.selectAllTables.checked = matching.length > 0 && checkedMatching.length === matching.length;
+    elements.selectAllTables.indeterminate = checkedMatching.length > 0 && checkedMatching.length < matching.length;
 }
 
 function activateTab(name) {
@@ -189,18 +227,34 @@ document.querySelectorAll(".password-toggle").forEach((button) => {
 elements.loadTablesButton.addEventListener("click", unlockTablePreview);
 
 elements.tableSearch.addEventListener("input", () => {
-    const query = elements.tableSearch.value.trim().toLowerCase();
-    document.querySelectorAll("#tablesTable tbody tr").forEach((row) => {
-        row.hidden = !row.dataset.name.includes(query);
+    state.tablePage = 1;
+    renderTablePage();
+});
+
+elements.selectAllTables.addEventListener("change", () => {
+    matchingCheckboxes().forEach((checkbox) => {
+        checkbox.checked = elements.selectAllTables.checked;
     });
     updateSelectionCount();
 });
 
-elements.selectAllTables.addEventListener("change", () => {
-    visibleCheckboxes().forEach((checkbox) => {
-        checkbox.checked = elements.selectAllTables.checked;
-    });
-    updateSelectionCount();
+elements.tablePageSize.addEventListener("change", () => {
+    state.tablePageSize = Number(elements.tablePageSize.value);
+    state.tablePage = 1;
+    renderTablePage();
+});
+
+elements.previousTablePage.addEventListener("click", () => {
+    if (state.tablePage <= 1) return;
+    state.tablePage -= 1;
+    renderTablePage();
+});
+
+elements.nextTablePage.addEventListener("click", () => {
+    const totalPages = Math.max(1, Math.ceil(matchingRows().length / state.tablePageSize));
+    if (state.tablePage >= totalPages) return;
+    state.tablePage += 1;
+    renderTablePage();
 });
 
 elements.clearSelection.addEventListener("click", () => {
@@ -244,3 +298,5 @@ document.addEventListener("keydown", (event) => {
     if (event.altKey && event.key === "1") activateTab("results");
     if (event.altKey && event.key === "2") activateTab("log");
 });
+
+renderTablePage();

@@ -106,21 +106,21 @@
                         <label>
                             <span>Authentication</span>
                             <select name="authentication" id="sqlAuthentication">
+                                <option value="credentials" selected>SQL Server Authentication</option>
                                 <option value="windows">Windows Authentication</option>
-                                <option value="credentials">SQL Server Authentication</option>
                             </select>
                         </label>
 
-                        <div class="credential-fields is-hidden" id="sqlCredentials">
+                        <div class="credential-fields" id="sqlCredentials">
                             <div class="field-row">
                                 <label>
                                     <span>Username <b aria-hidden="true">*</b></span>
-                                    <input type="text" name="username" placeholder="Database user" autocomplete="username">
+                                    <input type="text" name="username" placeholder="Database user" autocomplete="username" required>
                                 </label>
                                 <label>
                                     <span>Password <b aria-hidden="true">*</b></span>
                                     <span class="password-wrap">
-                                        <input type="password" name="password" placeholder="Enter password" autocomplete="current-password">
+                                        <input type="password" name="password" placeholder="Enter password" autocomplete="current-password" required>
                                         <button class="password-toggle" type="button" aria-label="Show password">Show</button>
                                     </span>
                                 </label>
@@ -307,6 +307,24 @@
                     <p>Table discovery and matching will become available after both connection tests pass.</p>
                 </div>
             </div>
+
+            <nav class="table-pagination" id="tablePagination" aria-label="Table list pagination">
+                <label class="page-size">
+                    <span>Rows per page</span>
+                    <select id="tablePageSize" disabled>
+                        <option value="5" selected>5</option>
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                </label>
+                <span class="page-range" id="tablePageRange" aria-live="polite">1–5 of 5 tables</span>
+                <div class="page-controls">
+                    <button class="page-button" id="previousTablePage" type="button" disabled aria-label="Previous table page">←</button>
+                    <span id="tablePageStatus">Page 1 of 1</span>
+                    <button class="page-button" id="nextTablePage" type="button" disabled aria-label="Next table page">→</button>
+                </div>
+            </nav>
         </section>
 
         <section class="section-block muted-section" id="compareSection" aria-labelledby="compare-title">
@@ -407,7 +425,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.2.0</b></span>
+        <span>DB Compare Studio <b>v0.2.1</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>
