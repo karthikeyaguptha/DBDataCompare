@@ -6,7 +6,7 @@ from typing import Any
 
 from flask import Blueprint, jsonify, render_template, request
 
-from .comparison import compare_table_schema
+from .comparison import compare_table_row_counts, compare_table_schema
 from .db import (
     DatabaseConfigurationError,
     DatabaseConnectionError,
@@ -34,7 +34,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.4.0-schema-comparison",
+            "phase": "v0.5.0-row-count-comparison",
         }
     )
 
@@ -141,6 +141,42 @@ def compare_schema():
         table["postgres"],
     )
     return jsonify({"status": "ready", "table_id": table_id, "result": result})
+
+
+@web.post("/api/counts/compare")
+def compare_counts():
+    payload = _json_body()
+    sqlserver_config = payload.get("sqlserver")
+    postgres_config = payload.get("postgres")
+    if not isinstance(sqlserver_config, dict) or not isinstance(postgres_config, dict):
+        raise DatabaseConfigurationError("Both database connections are required.")
+
+    table_id, table = _catalog_table_from_payload(payload)
+    result = compare_table_row_counts(
+        sqlserver_config,
+        postgres_config,
+        table["sqlserver"],
+        table["postgres"],
+    )
+    return jsonify({"status": "ready", "table_id": table_id, "result": result})
+
+
+def _catalog_table_from_payload(
+    payload: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    token = str(payload.get("catalog_token", "")).strip()
+    table_id = str(payload.get("table_id", "")).strip().casefold()
+    if not token or not table_id:
+        raise DatabaseConfigurationError("A loaded table catalog and table are required.")
+    rows = _get_table_catalog(token)
+    if rows is None:
+        raise DatabaseConfigurationError(
+            "The table catalog expired. Reload tables and try again."
+        )
+    table = next((row for row in rows if row["id"] == table_id), None)
+    if table is None:
+        raise DatabaseConfigurationError("The selected table is unavailable.")
+    return table_id, table
 
 
 def _store_table_catalog(rows: list[dict[str, Any]]) -> str:

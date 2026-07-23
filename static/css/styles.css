@@ -1196,7 +1196,12 @@ select:disabled {
 }
 
 .schema-results-table {
-    min-width: 880px;
+    min-width: 1160px;
+}
+
+.count-difference {
+    color: var(--warning) !important;
+    font-weight: 750;
 }
 
 .schema-result-row > td {

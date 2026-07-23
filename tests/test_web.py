@@ -14,7 +14,9 @@ def test_home_page_loads():
 
     assert response.status_code == 200
     assert b"DB Compare Studio" in response.data
-    assert b"Schema comparison" in response.data
+    assert b"Row-count comparison" in response.data
+    assert b'<option value="schema_and_counts" selected>Structure + row count</option>' in response.data
+    assert b"Rows SQL / PG" in response.data
     assert b'<option value="credentials" selected>SQL Server Authentication</option>' in response.data
     assert b'id="tablePagination"' in response.data
     assert b'id="tablesBody"' in response.data
@@ -23,12 +25,12 @@ def test_home_page_loads():
     assert b"Only in PostgreSQL" in response.data
 
 
-def test_health_endpoint_reports_phase_3():
+def test_health_endpoint_reports_phase_4():
     response = client().get("/api/health")
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.4.0-schema-comparison"
+    assert response.json["phase"] == "v0.5.0-row-count-comparison"
 
 
 @patch("db_compare.web.test_database_connection")
@@ -218,6 +220,63 @@ def test_schema_endpoint_uses_catalog_mapping(mock_load, mock_compare):
 def test_schema_endpoint_rejects_expired_catalog():
     response = client().post(
         "/api/schema/compare",
+        json={
+            "sqlserver": {},
+            "postgres": {},
+            "catalog_token": "expired-token",
+            "table_id": "customer",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "expired" in response.json["message"]
+
+
+@patch("db_compare.web.compare_table_row_counts")
+@patch("db_compare.web.load_table_names")
+def test_count_endpoint_uses_catalog_mapping(mock_load, mock_compare):
+    mock_load.return_value = (["Customer"], ["customer"])
+    mock_compare.return_value = {
+        "status": "different",
+        "summary": "2 row difference found.",
+        "sqlserver": 102,
+        "postgres": 100,
+        "difference": 2,
+    }
+    test_client = client()
+    catalog = test_client.post(
+        "/api/tables",
+        json={
+            "sqlserver": {"server": "source"},
+            "postgres": {"host": "target"},
+            "page": 1,
+            "page_size": 10,
+        },
+    )
+
+    response = test_client.post(
+        "/api/counts/compare",
+        json={
+            "sqlserver": {"server": "source"},
+            "postgres": {"host": "target"},
+            "catalog_token": catalog.json["catalog_token"],
+            "table_id": "customer",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json["result"]["difference"] == 2
+    mock_compare.assert_called_once_with(
+        {"server": "source"},
+        {"host": "target"},
+        "Customer",
+        "customer",
+    )
+
+
+def test_count_endpoint_rejects_expired_catalog():
+    response = client().post(
+        "/api/counts/compare",
         json={
             "sqlserver": {},
             "postgres": {},

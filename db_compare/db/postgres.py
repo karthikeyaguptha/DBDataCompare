@@ -142,6 +142,32 @@ def load_table_schema(config: dict[str, Any], table_name: str) -> dict[str, Any]
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
 
 
+def count_table_rows(config: dict[str, Any], table_name: str) -> int:
+    """Return an exact count without loading table rows into Python."""
+    schema = str(config.get("schema") or "public").strip()
+    try:
+        from psycopg import sql
+    except ImportError as exc:
+        raise DatabaseConnectionError(
+            "The PostgreSQL Python driver is not installed. Run setup.bat and try again."
+        ) from exc
+
+    try:
+        with closing(connect(config)) as connection:
+            with connection.cursor() as cursor:
+                query = sql.SQL("SELECT COUNT(*) FROM {}.{}").format(
+                    sql.Identifier(schema),
+                    sql.Identifier(table_name),
+                )
+                cursor.execute(query)
+                row = cursor.fetchone()
+                return int(row[0])
+    except DatabaseConnectionError:
+        raise
+    except Exception as exc:
+        raise DatabaseConnectionError(_friendly_error(exc)) from exc
+
+
 def _friendly_error(error: Exception) -> str:
     text = str(error).lower()
     if "password authentication failed" in text or "authentication failed" in text:

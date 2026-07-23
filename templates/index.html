@@ -37,8 +37,8 @@
                 <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
             </div>
             <div class="phase-pill">
-                <span>Phase 3</span>
-                Schema comparison
+                <span>Phase 4</span>
+                Row-count comparison
             </div>
         </section>
 
@@ -326,8 +326,8 @@
                     <span>Comparison mode</span>
                     <select id="comparisonMode" disabled>
                         <option disabled>Full comparison — Phase 5</option>
-                        <option disabled>Structure + row count — Phase 4</option>
-                        <option selected>Structure only</option>
+                        <option value="schema_and_counts" selected>Structure + row count</option>
+                        <option value="schema_only">Structure only</option>
                     </select>
                 </label>
                 <label>
@@ -344,7 +344,7 @@
                 </div>
                 <div class="run-summary">
                     <span>Estimated work</span>
-                    <strong>Waiting for tables</strong>
+                    <strong id="estimatedWork">Waiting for tables</strong>
                 </div>
             </div>
 
@@ -392,7 +392,9 @@
                             <tr>
                                 <th>Table</th>
                                 <th>Columns SQL / PG</th>
-                                <th>Differences</th>
+                                <th>Column differences</th>
+                                <th>Rows SQL / PG</th>
+                                <th>Row difference</th>
                                 <th>Comparison key</th>
                                 <th>Status</th>
                                 <th><span class="sr-only">Details</span></th>
@@ -419,7 +421,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.4.0</b></span>
+        <span>DB Compare Studio <b>v0.5.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

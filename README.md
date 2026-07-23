@@ -16,7 +16,7 @@ not sent to an external web server.
 - Progress, cancellation, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## Phase 3 status
+## Phase 4 status
 
 This checkpoint contains:
 
@@ -43,18 +43,24 @@ This checkpoint contains:
 - Automatic comparison-key matching when the same key exists on both sides
 - Table-by-table schema execution with progress and safe Stop behaviour
 - Expandable per-table column-difference results
+- Exact SQL Server counts through `COUNT_BIG(*)`
+- Exact PostgreSQL counts through `COUNT(*)`
+- Per-table SQL Server/PostgreSQL row totals and absolute count differences
+- Combined status covering both schema and row-count results
+- Structure-only and Structure + row count comparison modes
+- Live elapsed-time and completed-table progress
 - Comparison settings, progress, Start/Stop controls, and result states
 - Results and execution-log tabs
 - Windows setup and launch scripts
 - Environment and Git safety rules
 - Health endpoint and automated page checks
 
-Phase 3 retrieves table and column metadata only. Table-name metadata is read
+Table-name metadata is read
 once and retained in a short-lived in-memory catalog for fast search, filtering,
 pagination, and safe table mapping. When comparison starts, each selected table
 is processed separately so progress remains visible and Stop can take effect
-between metadata requests. No table business rows or row counts are loaded in
-Phase 3.
+after the current table query. Phase 4 retrieves exact counts directly in each
+database and does not load business rows into Python memory.
 
 ## Windows prerequisites
 
@@ -91,7 +97,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## Phase 3 workflow
+## Phase 4 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -101,9 +107,11 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
    database-only filter to investigate missing tables.
 6. Search or page through the cached table-name list.
 7. Select one or more tables.
-8. Click **Start comparison**.
-9. Review the result status and expand **View columns** for metadata differences.
-10. Use **Stop** to cancel before the next table begins.
+8. Keep **Structure + row count** selected, or choose **Structure only**.
+9. Click **Start comparison**.
+10. Review column counts, row counts, their differences, and the combined status.
+11. Expand **View columns** for metadata differences.
+12. Use **Stop** to finish the current table query and cancel remaining tables.
 
 For SQL Server ODBC Driver 18, encryption is enabled. Leave **Trust server
 certificate** off when the server has a certificate trusted by Windows. Enable
@@ -147,7 +155,12 @@ not map to the same columns. **Key required** means neither database exposes a
 usable primary or unique key; manual selection is planned for the scalable
 row-data comparison phase.
 
-Phase 4 will add exact row counts and row-count progress. Phase 5 will add
+Row counts are exact rather than estimates. `COUNT(*)`/`COUNT_BIG(*)` can take
+time on very large tables, and the source and target should remain stable while
+the comparison runs. A count difference proves that the table contents differ;
+matching counts do not prove that every row value matches.
+
+Phase 5 will add
 manual/composite key selection, batch-streamed row data comparison, and
 value-normalisation rules.
 
@@ -211,16 +224,16 @@ run.bat
 
 ## GitHub checkpoint
 
-The suggested Phase 3 commit is:
+The suggested Phase 4 commit is:
 
 ```text
-feat: add table and column schema comparison
+feat: add exact row-count comparison
 ```
 
-The suggested Phase 3 tag is:
+The suggested Phase 4 tag is:
 
 ```text
-v0.4.0-schema-comparison
+v0.5.0-row-count-comparison
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

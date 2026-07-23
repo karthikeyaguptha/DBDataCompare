@@ -178,6 +178,26 @@ def load_table_schema(config: dict[str, Any], table_name: str) -> dict[str, Any]
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
 
 
+def count_table_rows(config: dict[str, Any], table_name: str) -> int:
+    """Return an exact count without loading table rows into Python."""
+    schema = str(config.get("schema") or "dbo").strip()
+    qualified_table = f"{_quote_identifier(schema)}.{_quote_identifier(table_name)}"
+    try:
+        with closing(connect(config)) as connection:
+            with closing(connection.cursor()) as cursor:
+                cursor.execute(f"SELECT COUNT_BIG(*) FROM {qualified_table}")
+                row = cursor.fetchone()
+                return int(row[0])
+    except DatabaseConnectionError:
+        raise
+    except Exception as exc:
+        raise DatabaseConnectionError(_friendly_error(exc)) from exc
+
+
+def _quote_identifier(value: str) -> str:
+    return "[" + value.replace("]", "]]") + "]"
+
+
 def _friendly_error(error: Exception) -> str:
     text = str(error).lower()
     if (

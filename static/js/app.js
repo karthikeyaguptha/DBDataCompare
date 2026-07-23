@@ -20,6 +20,8 @@ const state = {
     comparing: false,
     stopRequested: false,
     compareController: null,
+    elapsedTimer: null,
+    comparisonStartedAt: null,
 };
 
 const elements = {
@@ -41,6 +43,7 @@ const elements = {
     previousTablePage: document.querySelector("#previousTablePage"),
     nextTablePage: document.querySelector("#nextTablePage"),
     selectedSummary: document.querySelector("#selectedSummary"),
+    estimatedWork: document.querySelector("#estimatedWork"),
     comparisonMode: document.querySelector("#comparisonMode"),
     batchSize: document.querySelector("#batchSize"),
     startCompare: document.querySelector("#startCompare"),
@@ -52,6 +55,7 @@ const elements = {
     progressTrack: document.querySelector(".progress-track"),
     currentTable: document.querySelector("#currentTable"),
     completedTables: document.querySelector("#completedTables"),
+    elapsedTime: document.querySelector("#elapsedTime"),
     resultsBody: document.querySelector("#schemaResultsBody"),
     resultsEmpty: document.querySelector("#resultsEmpty"),
     resultsTable: document.querySelector("#schemaResultsTable"),
@@ -231,7 +235,7 @@ function unlockTableWorkspace() {
     [elements.tableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
         .forEach((control) => { control.disabled = false; });
     elements.comparisonMode.disabled = false;
-    elements.batchSize.disabled = false;
+    elements.batchSize.disabled = true;
     document.querySelector("[data-step='2']").classList.add("complete");
     document.querySelector("[data-step='3']").classList.add("active");
 }
@@ -373,11 +377,22 @@ function updateSelectionCount() {
     );
     elements.selectionCount.textContent = `${selectedCount} selected`;
     elements.selectedSummary.textContent = String(selectedCount);
+    updateEstimatedWork();
     elements.startCompare.disabled = selectedCount === 0 || state.comparing;
     elements.selectAllTables.checked = state.currentMatchingIds.length > 0
         && selectedMatchingCount === state.currentMatchingIds.length;
     elements.selectAllTables.indeterminate = selectedMatchingCount > 0
         && selectedMatchingCount < state.currentMatchingIds.length;
+}
+
+function updateEstimatedWork() {
+    const selectedCount = state.selectedTables.size;
+    const includeCounts = elements.comparisonMode.value === "schema_and_counts";
+    elements.estimatedWork.textContent = selectedCount
+        ? includeCounts
+            ? `${selectedCount} schema + ${selectedCount} count check${selectedCount === 1 ? "" : "s"}`
+            : `${selectedCount} schema check${selectedCount === 1 ? "" : "s"}`
+        : "Waiting for tables";
 }
 
 function updatePagination() {
@@ -417,9 +432,12 @@ function setProgress(completed, total, title, status) {
 }
 
 function resultStatus(result) {
-    if (result.status === "match") return ["Schema match", "ready"];
-    if (result.status === "missing_table") return ["Table missing", "missing"];
-    if (result.status === "error") return ["Error", "missing"];
+    const status = result.overall_status || result.status;
+    if (status === "match") {
+        return [result.row_counts ? "Full match" : "Schema match", "ready"];
+    }
+    if (status === "missing_table") return ["Table missing", "missing"];
+    if (status === "error") return ["Error", "missing"];
     return ["Differences", "warning"];
 }
 
@@ -445,6 +463,20 @@ function appendSchemaResult(tableId, result) {
         ? result.summary
         : String((result.counts?.different || 0) + (result.counts?.missing || 0));
 
+    const rowCountsCell = document.createElement("td");
+    rowCountsCell.textContent = result.row_counts
+        ? `${formatCount(result.row_counts.sqlserver)} / ${formatCount(result.row_counts.postgres)}`
+        : "Not run";
+    if (!result.row_counts) rowCountsCell.classList.add("muted-value");
+
+    const rowDifferenceCell = document.createElement("td");
+    rowDifferenceCell.textContent = result.row_counts?.difference == null
+        ? "—"
+        : formatCount(result.row_counts.difference);
+    if (result.row_counts?.status === "different") {
+        rowDifferenceCell.classList.add("count-difference");
+    }
+
     const keyCell = document.createElement("td");
     keyCell.textContent = result.comparison_key?.join(", ")
         || ({
@@ -466,12 +498,21 @@ function appendSchemaResult(tableId, result) {
     detailButton.textContent = result.columns?.length ? "View columns" : "No details";
     detailButton.disabled = !result.columns?.length;
     actionCell.append(detailButton);
-    row.append(tableCell, columnsCell, differenceCell, keyCell, statusCell, actionCell);
+    row.append(
+        tableCell,
+        columnsCell,
+        differenceCell,
+        rowCountsCell,
+        rowDifferenceCell,
+        keyCell,
+        statusCell,
+        actionCell,
+    );
 
     const detailRow = document.createElement("tr");
     detailRow.className = "schema-detail-row is-hidden";
     const detailCell = document.createElement("td");
-    detailCell.colSpan = 6;
+    detailCell.colSpan = 8;
     detailCell.append(buildColumnDetails(result.columns || []));
     detailRow.append(detailCell);
     detailButton.addEventListener("click", () => {
@@ -512,6 +553,40 @@ function buildColumnDetails(columns) {
     return wrap;
 }
 
+function formatCount(value) {
+    return value == null ? "—" : Number(value).toLocaleString("en-IN");
+}
+
+function combinedResult(schemaResult, countResult) {
+    const overallStatus = schemaResult.status === "error"
+        ? "error"
+        : schemaResult.status === "missing_table"
+            ? "missing_table"
+            : schemaResult.status === "different" || countResult?.status === "different"
+                ? "different"
+                : "match";
+    return {
+        ...schemaResult,
+        overall_status: overallStatus,
+        row_counts: countResult || null,
+    };
+}
+
+function updateElapsedTime() {
+    if (!state.comparisonStartedAt) {
+        elements.elapsedTime.textContent = "00:00";
+        return;
+    }
+    const seconds = Math.max(
+        0,
+        Math.floor((Date.now() - state.comparisonStartedAt) / 1000),
+    );
+    const minutes = Math.floor(seconds / 60);
+    const remainder = seconds % 60;
+    elements.elapsedTime.textContent =
+        `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
 async function runSchemaComparison() {
     if (state.comparing || !state.selectedTables.size) return;
     const tableIds = [...state.selectedTables];
@@ -522,9 +597,24 @@ async function runSchemaComparison() {
     elements.startCompare.disabled = true;
     elements.stopCompare.disabled = false;
     elements.currentTable.textContent = "Preparing…";
-    setProgress(0, tableIds.length, "Comparing table schemas", "Reading column metadata and keys.");
+    state.comparisonStartedAt = Date.now();
+    window.clearInterval(state.elapsedTimer);
+    updateElapsedTime();
+    state.elapsedTimer = window.setInterval(updateElapsedTime, 1000);
+    const includeCounts = elements.comparisonMode.value === "schema_and_counts";
+    setProgress(
+        0,
+        tableIds.length,
+        includeCounts ? "Comparing schemas and row counts" : "Comparing table schemas",
+        includeCounts
+            ? "Reading column metadata, keys, and exact row counts."
+            : "Reading column metadata and keys.",
+    );
     activateTab("results");
-    addLog("INFO", `Schema comparison started for ${tableIds.length} table(s).`);
+    addLog(
+        "INFO",
+        `${includeCounts ? "Schema and row-count" : "Schema"} comparison started for ${tableIds.length} table(s).`,
+    );
 
     let completed = 0;
     for (const tableId of tableIds) {
@@ -533,7 +623,7 @@ async function runSchemaComparison() {
         elements.progressStatus.textContent = `Comparing ${tableId}`;
         state.compareController = new AbortController();
         try {
-            const response = await requestJson("/api/schema/compare", {
+            const schemaResponse = await requestJson("/api/schema/compare", {
                 method: "POST",
                 body: JSON.stringify({
                     sqlserver: connectionConfig("sql"),
@@ -543,10 +633,28 @@ async function runSchemaComparison() {
                 }),
                 signal: state.compareController.signal,
             });
-            state.schemaResults.set(tableId, response.result);
-            appendSchemaResult(tableId, response.result);
-            const logLevel = response.result.status === "match" ? "READY" : "WARN";
-            addLog(logLevel, `${tableId}: ${response.result.summary}`);
+            let countResult = null;
+            if (includeCounts && schemaResponse.result.status !== "error") {
+                elements.progressStatus.textContent =
+                    `Counting rows in ${tableId}. Exact counts can take longer for large tables.`;
+                const countResponse = await requestJson("/api/counts/compare", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        sqlserver: connectionConfig("sql"),
+                        postgres: connectionConfig("pg"),
+                        catalog_token: state.catalogToken,
+                        table_id: tableId,
+                    }),
+                    signal: state.compareController.signal,
+                });
+                countResult = countResponse.result;
+            }
+            const result = combinedResult(schemaResponse.result, countResult);
+            state.schemaResults.set(tableId, result);
+            appendSchemaResult(tableId, result);
+            const logLevel = result.overall_status === "match" ? "READY" : "WARN";
+            const countMessage = countResult ? ` ${countResult.summary}` : "";
+            addLog(logLevel, `${tableId}: ${schemaResponse.result.summary}${countMessage}`);
         } catch (error) {
             if (error.name === "AbortError" && state.stopRequested) break;
             const result = {
@@ -556,6 +664,8 @@ async function runSchemaComparison() {
                 postgres_table: tableId,
                 columns: [],
                 key_status: "not_available",
+                overall_status: "error",
+                row_counts: null,
             };
             state.schemaResults.set(tableId, result);
             appendSchemaResult(tableId, result);
@@ -565,7 +675,7 @@ async function runSchemaComparison() {
         setProgress(
             completed,
             tableIds.length,
-            "Comparing table schemas",
+            includeCounts ? "Comparing schemas and row counts" : "Comparing table schemas",
             `${completed} of ${tableIds.length} tables completed.`,
         );
     }
@@ -573,19 +683,41 @@ async function runSchemaComparison() {
     const stopped = state.stopRequested;
     state.comparing = false;
     state.compareController = null;
+    window.clearInterval(state.elapsedTimer);
+    state.elapsedTimer = null;
+    updateElapsedTime();
     elements.stopCompare.disabled = true;
     elements.startCompare.disabled = state.selectedTables.size === 0;
     elements.currentTable.textContent = "—";
     setProgress(
         completed,
         tableIds.length,
-        stopped ? "Comparison stopped" : "Schema comparison complete",
+        stopped
+            ? "Comparison stopped"
+            : includeCounts
+                ? "Schema and row-count comparison complete"
+                : "Schema comparison complete",
         stopped
             ? `Stopped safely after ${completed} of ${tableIds.length} tables.`
-            : `${completed} table schemas reviewed.`,
+            : includeCounts
+                ? `${completed} table schemas and row counts reviewed.`
+                : `${completed} table schemas reviewed.`,
     );
-    addLog(stopped ? "WARN" : "READY", stopped ? "Schema comparison stopped by user." : "Schema comparison completed.");
-    showToast(stopped ? "Comparison stopped safely." : "Schema comparison complete.");
+    addLog(
+        stopped ? "WARN" : "READY",
+        stopped
+            ? "Comparison stopped by user."
+            : includeCounts
+                ? "Schema and row-count comparison completed."
+                : "Schema comparison completed.",
+    );
+    showToast(
+        stopped
+            ? "Comparison stopped safely."
+            : includeCounts
+                ? "Schema and row-count comparison complete."
+                : "Schema comparison complete.",
+    );
     renderCurrentPageFromCache();
 }
 
@@ -681,14 +813,14 @@ elements.clearSelection.addEventListener("click", () => {
     currentCheckboxes().forEach((checkbox) => { checkbox.checked = false; });
     updateSelectionCount();
 });
+elements.comparisonMode.addEventListener("change", updateEstimatedWork);
 
 elements.startCompare.addEventListener("click", runSchemaComparison);
 elements.stopCompare.addEventListener("click", () => {
     if (!state.comparing) return;
     state.stopRequested = true;
-    state.compareController?.abort();
     elements.stopCompare.disabled = true;
-    elements.progressStatus.textContent = "Stopping safely after the current metadata request…";
+    elements.progressStatus.textContent = "Stopping safely after the current table query finishes…";
 });
 elements.resultsTab.addEventListener("click", () => activateTab("results"));
 elements.logTab.addEventListener("click", () => activateTab("log"));
@@ -701,7 +833,7 @@ document.querySelector("#copyLog").addEventListener("click", async () => {
     }
 });
 document.querySelector("#themeInfo").addEventListener("click", () => {
-    showToast("Phase 3 · Schema comparison · Local access only.");
+    showToast("Phase 4 · Schema and row-count comparison · Local access only.");
 });
 document.addEventListener("keydown", (event) => {
     if (event.altKey && event.key === "1") activateTab("results");
