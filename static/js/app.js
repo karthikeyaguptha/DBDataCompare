@@ -13,6 +13,7 @@ const state = {
     catalogToken: "",
     currentMatchingIds: [],
     selectedTables: new Set(),
+    manualKeys: new Map(),
     searchTimer: null,
     tableRequestController: null,
     tableRequestId: 0,
@@ -20,6 +21,7 @@ const state = {
     comparing: false,
     stopRequested: false,
     compareController: null,
+    activeDataJobId: null,
     elapsedTimer: null,
     comparisonStartedAt: null,
 };
@@ -46,6 +48,10 @@ const elements = {
     estimatedWork: document.querySelector("#estimatedWork"),
     comparisonMode: document.querySelector("#comparisonMode"),
     batchSize: document.querySelector("#batchSize"),
+    ignoreTrailingSpaces: document.querySelector("#ignoreTrailingSpaces"),
+    caseSensitiveText: document.querySelector("#caseSensitiveText"),
+    decimalTolerance: document.querySelector("#decimalTolerance"),
+    timestampTolerance: document.querySelector("#timestampTolerance"),
     startCompare: document.querySelector("#startCompare"),
     stopCompare: document.querySelector("#stopCompare"),
     progressTitle: document.querySelector("#progressTitle"),
@@ -220,6 +226,7 @@ function lockTables() {
     state.catalogToken = "";
     state.currentMatchingIds = [];
     state.selectedTables.clear();
+    state.manualKeys.clear();
     state.schemaResults.clear();
     resetSchemaResults();
     elements.tablesOverlay.classList.remove("is-hidden");
@@ -235,7 +242,7 @@ function unlockTableWorkspace() {
     [elements.tableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
         .forEach((control) => { control.disabled = false; });
     elements.comparisonMode.disabled = false;
-    elements.batchSize.disabled = true;
+    elements.batchSize.disabled = elements.comparisonMode.value !== "full";
     document.querySelector("[data-step='2']").classList.add("complete");
     document.querySelector("[data-step='3']").classList.add("active");
 }
@@ -327,14 +334,20 @@ function renderTableRows(rows) {
         const columnSummary = priorResult
             ? `${priorResult.sqlserver_column_count ?? 0} / ${priorResult.postgres_column_count ?? 0}`
             : "Not compared";
-        const keySummary = priorResult?.comparison_key?.join(", ")
-            || (priorResult?.key_status === "different" ? "Keys differ" : "Not checked");
+        const keySummary = state.manualKeys.get(table.id)?.join(", ")
+            || priorResult?.comparison_key?.join(", ")
+            || (priorResult?.key_status === "different" ? "Keys differ" : "");
         row.innerHTML = `
             <td><input class="table-checkbox" type="checkbox"></td>
             <td><strong></strong><small></small></td>
             <td><strong></strong><small></small></td>
             <td><span class="column-summary"></span></td>
-            <td><span class="key-summary"></span></td>
+            <td>
+                <input class="key-input" type="text" autocomplete="off"
+                    placeholder="Auto-detect or col1, col2"
+                    aria-label="Manual comparison key">
+                <small class="key-hint"></small>
+            </td>
             <td><span class="status-chip ${status[1]}">${status[0]}</span></td>`;
         const checkbox = row.querySelector(".table-checkbox");
         checkbox.setAttribute("aria-label", `Select ${sqlName !== "Not found" ? sqlName : pgName} table`);
@@ -355,10 +368,25 @@ function renderTableRows(rows) {
         if (!table.sqlserver) cells[1].querySelector("strong").classList.add("muted-value");
         if (!table.postgres) cells[2].querySelector("strong").classList.add("muted-value");
         cells[3].querySelector(".column-summary").textContent = columnSummary;
-        cells[4].querySelector(".key-summary").textContent = keySummary;
+        const keyInput = cells[4].querySelector(".key-input");
+        const keyHint = cells[4].querySelector(".key-hint");
+        keyInput.value = state.manualKeys.get(table.id)?.join(", ") || "";
+        keyHint.textContent = keySummary
+            ? `${state.manualKeys.has(table.id) ? "Manual" : "Detected"}: ${keySummary}`
+            : "Leave blank for automatic detection";
+        keyInput.addEventListener("change", () => {
+            const values = keyInput.value.split(",").map((value) => value.trim()).filter(Boolean);
+            if (values.length) state.manualKeys.set(table.id, values);
+            else state.manualKeys.delete(table.id);
+            keyHint.textContent = values.length
+                ? `Manual: ${values.join(", ")}`
+                : priorResult?.comparison_key?.length
+                    ? `Detected: ${priorResult.comparison_key.join(", ")}`
+                    : "Leave blank for automatic detection";
+        });
         if (!priorResult) {
             cells[3].firstElementChild.classList.add("muted-value");
-            cells[4].firstElementChild.classList.add("muted-value");
+            keyHint.classList.add("muted-value");
         }
         elements.tablesBody.append(row);
     });
@@ -387,11 +415,13 @@ function updateSelectionCount() {
 
 function updateEstimatedWork() {
     const selectedCount = state.selectedTables.size;
-    const includeCounts = elements.comparisonMode.value === "schema_and_counts";
+    const mode = elements.comparisonMode.value;
     elements.estimatedWork.textContent = selectedCount
-        ? includeCounts
-            ? `${selectedCount} schema + ${selectedCount} count check${selectedCount === 1 ? "" : "s"}`
-            : `${selectedCount} schema check${selectedCount === 1 ? "" : "s"}`
+        ? mode === "full"
+            ? `${selectedCount} complete table comparison${selectedCount === 1 ? "" : "s"}`
+            : mode === "schema_and_counts"
+                ? `${selectedCount} schema + ${selectedCount} count check${selectedCount === 1 ? "" : "s"}`
+                : `${selectedCount} schema check${selectedCount === 1 ? "" : "s"}`
         : "Waiting for tables";
 }
 
@@ -434,7 +464,7 @@ function setProgress(completed, total, title, status) {
 function resultStatus(result) {
     const status = result.overall_status || result.status;
     if (status === "match") {
-        return [result.row_counts ? "Full match" : "Schema match", "ready"];
+        return [result.data_result ? "Full match" : result.row_counts ? "Count match" : "Schema match", "ready"];
     }
     if (status === "missing_table") return ["Table missing", "missing"];
     if (status === "error") return ["Error", "missing"];
@@ -477,6 +507,19 @@ function appendSchemaResult(tableId, result) {
         rowDifferenceCell.classList.add("count-difference");
     }
 
+    const dataDifferenceCell = document.createElement("td");
+    if (result.data_result) {
+        dataDifferenceCell.textContent = result.data_result.status === "cancelled"
+            ? "Cancelled"
+            : formatCount(result.data_result.mismatch_total);
+        if (result.data_result.mismatch_total) {
+            dataDifferenceCell.classList.add("count-difference");
+        }
+    } else {
+        dataDifferenceCell.textContent = result.data_skipped || "Not run";
+        dataDifferenceCell.classList.add("muted-value");
+    }
+
     const keyCell = document.createElement("td");
     keyCell.textContent = result.comparison_key?.join(", ")
         || ({
@@ -495,8 +538,8 @@ function appendSchemaResult(tableId, result) {
     const detailButton = document.createElement("button");
     detailButton.type = "button";
     detailButton.className = "button ghost detail-button";
-    detailButton.textContent = result.columns?.length ? "View columns" : "No details";
-    detailButton.disabled = !result.columns?.length;
+    detailButton.textContent = result.columns?.length || result.data_result ? "View details" : "No details";
+    detailButton.disabled = !result.columns?.length && !result.data_result;
     actionCell.append(detailButton);
     row.append(
         tableCell,
@@ -504,6 +547,7 @@ function appendSchemaResult(tableId, result) {
         differenceCell,
         rowCountsCell,
         rowDifferenceCell,
+        dataDifferenceCell,
         keyCell,
         statusCell,
         actionCell,
@@ -512,16 +556,107 @@ function appendSchemaResult(tableId, result) {
     const detailRow = document.createElement("tr");
     detailRow.className = "schema-detail-row is-hidden";
     const detailCell = document.createElement("td");
-    detailCell.colSpan = 8;
-    detailCell.append(buildColumnDetails(result.columns || []));
+    detailCell.colSpan = 9;
+    detailCell.append(buildResultDetails(result));
     detailRow.append(detailCell);
     detailButton.addEventListener("click", () => {
         const opening = detailRow.classList.contains("is-hidden");
         detailRow.classList.toggle("is-hidden", !opening);
-        detailButton.textContent = opening ? "Hide columns" : "View columns";
+        detailButton.textContent = opening ? "Hide details" : "View details";
     });
     elements.resultsBody.append(row, detailRow);
     elements.resultsCount.textContent = String(state.schemaResults.size);
+}
+
+function buildResultDetails(result) {
+    const wrap = document.createElement("div");
+    wrap.className = "result-detail-stack";
+    if (result.columns?.length) {
+        const heading = document.createElement("h3");
+        heading.textContent = "Column comparison";
+        wrap.append(heading, buildColumnDetails(result.columns));
+    }
+    if (result.data_result) {
+        const heading = document.createElement("h3");
+        heading.textContent = "Row-data comparison";
+        wrap.append(heading, buildDataDetails(result.data_result));
+    } else if (result.data_skipped) {
+        const note = document.createElement("p");
+        note.className = "data-skip-note";
+        note.textContent = result.data_skipped;
+        wrap.append(note);
+    }
+    return wrap;
+}
+
+function buildDataDetails(dataResult) {
+    const wrap = document.createElement("div");
+    wrap.className = "data-detail-wrap";
+    const counts = dataResult.counts || {};
+    const summary = document.createElement("div");
+    summary.className = "data-summary-grid";
+    [
+        ["Matched", counts.matched || 0],
+        ["Value mismatch", counts.different || 0],
+        ["SQL Server only", counts.sql_only || 0],
+        ["PostgreSQL only", counts.postgres_only || 0],
+        ["Processed", dataResult.processed || 0],
+    ].forEach(([label, value]) => {
+        const item = document.createElement("div");
+        const title = document.createElement("span");
+        const count = document.createElement("strong");
+        title.textContent = label;
+        count.textContent = formatCount(value);
+        item.append(title, count);
+        summary.append(item);
+    });
+    wrap.append(summary);
+
+    if (!dataResult.preview?.length) {
+        const note = document.createElement("p");
+        note.className = "data-skip-note";
+        note.textContent = dataResult.status === "match"
+            ? "Every compared row and value matched."
+            : "No mismatch preview is available.";
+        wrap.append(note);
+        return wrap;
+    }
+
+    const table = document.createElement("table");
+    table.className = "column-detail-table data-detail-table";
+    table.innerHTML = "<thead><tr><th>Type</th><th>Key</th><th>Details</th></tr></thead><tbody></tbody>";
+    const body = table.querySelector("tbody");
+    dataResult.preview.forEach((item) => {
+        const row = document.createElement("tr");
+        const kind = {
+            different: "Value mismatch",
+            sql_only: "SQL Server only",
+            postgres_only: "PostgreSQL only",
+        }[item.kind] || item.kind;
+        const details = item.differences?.map((difference) =>
+            `${difference.column}: SQL=${displayValue(difference.sqlserver)} · PG=${displayValue(difference.postgres)}`
+        ).join(" | ") || "Row is missing from the other database.";
+        [kind, JSON.stringify(item.key), details].forEach((value) => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.append(cell);
+        });
+        body.append(row);
+    });
+    wrap.append(table);
+    if (dataResult.preview_limited) {
+        const note = document.createElement("p");
+        note.className = "preview-limit-note";
+        note.textContent = "Showing the first 200 differences. Complete export is added in Phase 6.";
+        wrap.append(note);
+    }
+    return wrap;
+}
+
+function displayValue(value) {
+    if (value === null) return "NULL";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
 }
 
 function buildColumnDetails(columns) {
@@ -557,18 +692,22 @@ function formatCount(value) {
     return value == null ? "—" : Number(value).toLocaleString("en-IN");
 }
 
-function combinedResult(schemaResult, countResult) {
+function combinedResult(schemaResult, countResult, dataResult = null, dataSkipped = "") {
     const overallStatus = schemaResult.status === "error"
         ? "error"
         : schemaResult.status === "missing_table"
             ? "missing_table"
-            : schemaResult.status === "different" || countResult?.status === "different"
+            : schemaResult.status === "different"
+                || countResult?.status === "different"
+                || dataResult?.status === "different"
                 ? "different"
                 : "match";
     return {
         ...schemaResult,
         overall_status: overallStatus,
         row_counts: countResult || null,
+        data_result: dataResult,
+        data_skipped: dataSkipped,
     };
 }
 
@@ -587,6 +726,41 @@ function updateElapsedTime() {
         `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
 }
 
+function comparisonOptions() {
+    return {
+        ignore_trailing_spaces: elements.ignoreTrailingSpaces.checked,
+        case_sensitive: elements.caseSensitiveText.checked,
+        decimal_tolerance: elements.decimalTolerance.value || "0",
+        timestamp_tolerance_ms: elements.timestampTolerance.value || "0",
+    };
+}
+
+async function waitForDataComparison(jobId, tableId) {
+    state.activeDataJobId = jobId;
+    while (true) {
+        if (state.stopRequested) {
+            await requestJson(`/api/data/compare/${jobId}/cancel`, {
+                method: "POST",
+                body: "{}",
+            }).catch(() => {});
+        }
+        const response = await requestJson(`/api/data/compare/${jobId}`, {
+            method: "GET",
+        });
+        elements.progressStatus.textContent =
+            `Comparing ${tableId}: ${formatCount(response.processed)} row positions processed.`;
+        if (response.status === "complete" || response.status === "cancelled") {
+            state.activeDataJobId = null;
+            return response.result;
+        }
+        if (response.status === "error") {
+            state.activeDataJobId = null;
+            throw new Error(response.message || "Data comparison failed.");
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 450));
+    }
+}
+
 async function runSchemaComparison() {
     if (state.comparing || !state.selectedTables.size) return;
     const tableIds = [...state.selectedTables];
@@ -601,19 +775,28 @@ async function runSchemaComparison() {
     window.clearInterval(state.elapsedTimer);
     updateElapsedTime();
     state.elapsedTimer = window.setInterval(updateElapsedTime, 1000);
-    const includeCounts = elements.comparisonMode.value === "schema_and_counts";
+    const mode = elements.comparisonMode.value;
+    const includeCounts = mode !== "schema_only";
+    const includeData = mode === "full";
+    const runTitle = includeData
+        ? "Running full comparison"
+        : includeCounts
+            ? "Comparing schemas and row counts"
+            : "Comparing table schemas";
     setProgress(
         0,
         tableIds.length,
-        includeCounts ? "Comparing schemas and row counts" : "Comparing table schemas",
-        includeCounts
-            ? "Reading column metadata, keys, and exact row counts."
+        runTitle,
+        includeData
+            ? "Reading metadata, counts, and row values in bounded batches."
+            : includeCounts
+                ? "Reading column metadata, keys, and exact row counts."
             : "Reading column metadata and keys.",
     );
     activateTab("results");
     addLog(
         "INFO",
-        `${includeCounts ? "Schema and row-count" : "Schema"} comparison started for ${tableIds.length} table(s).`,
+        `${includeData ? "Full" : includeCounts ? "Schema and row-count" : "Schema"} comparison started for ${tableIds.length} table(s).`,
     );
 
     let completed = 0;
@@ -649,12 +832,55 @@ async function runSchemaComparison() {
                 });
                 countResult = countResponse.result;
             }
-            const result = combinedResult(schemaResponse.result, countResult);
+            let dataResult = null;
+            let dataSkipped = "";
+            const manualKey = state.manualKeys.get(tableId) || [];
+            const comparisonKey = manualKey.length
+                ? manualKey
+                : schemaResponse.result.comparison_key || [];
+            if (manualKey.length) {
+                schemaResponse.result.comparison_key = manualKey;
+                schemaResponse.result.key_status = "manual";
+            }
+            if (includeData) {
+                if (schemaResponse.result.status === "missing_table") {
+                    dataSkipped = "Data comparison requires the table in both databases.";
+                } else if (!comparisonKey.length) {
+                    dataSkipped = "Manual comparison key required. Enter column names in Step 2 and run again.";
+                    addLog("WARN", `${tableId}: ${dataSkipped}`);
+                } else {
+                    elements.progressStatus.textContent =
+                        `Starting batch data comparison for ${tableId}.`;
+                    const startResponse = await requestJson("/api/data/compare/start", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            sqlserver: connectionConfig("sql"),
+                            postgres: connectionConfig("pg"),
+                            catalog_token: state.catalogToken,
+                            table_id: tableId,
+                            comparison_key: manualKey,
+                            batch_size: Number(elements.batchSize.value),
+                            options: comparisonOptions(),
+                        }),
+                    });
+                    dataResult = await waitForDataComparison(startResponse.job_id, tableId);
+                    if (dataResult?.status === "cancelled") {
+                        state.stopRequested = true;
+                    }
+                }
+            }
+            const result = combinedResult(
+                schemaResponse.result,
+                countResult,
+                dataResult,
+                dataSkipped,
+            );
             state.schemaResults.set(tableId, result);
             appendSchemaResult(tableId, result);
             const logLevel = result.overall_status === "match" ? "READY" : "WARN";
             const countMessage = countResult ? ` ${countResult.summary}` : "";
-            addLog(logLevel, `${tableId}: ${schemaResponse.result.summary}${countMessage}`);
+            const dataMessage = dataResult ? ` ${dataResult.summary}` : dataSkipped ? ` ${dataSkipped}` : "";
+            addLog(logLevel, `${tableId}: ${schemaResponse.result.summary}${countMessage}${dataMessage}`);
         } catch (error) {
             if (error.name === "AbortError" && state.stopRequested) break;
             const result = {
@@ -666,6 +892,8 @@ async function runSchemaComparison() {
                 key_status: "not_available",
                 overall_status: "error",
                 row_counts: null,
+                data_result: null,
+                data_skipped: "",
             };
             state.schemaResults.set(tableId, result);
             appendSchemaResult(tableId, result);
@@ -675,7 +903,7 @@ async function runSchemaComparison() {
         setProgress(
             completed,
             tableIds.length,
-            includeCounts ? "Comparing schemas and row counts" : "Comparing table schemas",
+            runTitle,
             `${completed} of ${tableIds.length} tables completed.`,
         );
     }
@@ -694,12 +922,16 @@ async function runSchemaComparison() {
         tableIds.length,
         stopped
             ? "Comparison stopped"
-            : includeCounts
+            : includeData
+                ? "Full comparison complete"
+                : includeCounts
                 ? "Schema and row-count comparison complete"
                 : "Schema comparison complete",
         stopped
             ? `Stopped safely after ${completed} of ${tableIds.length} tables.`
-            : includeCounts
+            : includeData
+                ? `${completed} table structures, counts, and data sets reviewed.`
+                : includeCounts
                 ? `${completed} table schemas and row counts reviewed.`
                 : `${completed} table schemas reviewed.`,
     );
@@ -707,14 +939,18 @@ async function runSchemaComparison() {
         stopped ? "WARN" : "READY",
         stopped
             ? "Comparison stopped by user."
-            : includeCounts
+            : includeData
+                ? "Full data comparison completed."
+                : includeCounts
                 ? "Schema and row-count comparison completed."
                 : "Schema comparison completed.",
     );
     showToast(
         stopped
             ? "Comparison stopped safely."
-            : includeCounts
+            : includeData
+                ? "Full data comparison complete."
+                : includeCounts
                 ? "Schema and row-count comparison complete."
                 : "Schema comparison complete.",
     );
@@ -728,9 +964,16 @@ function renderCurrentPageFromCache() {
         if (!result) return;
         row.querySelector(".column-summary").textContent =
             `${result.sqlserver_column_count ?? 0} / ${result.postgres_column_count ?? 0}`;
-        row.querySelector(".key-summary").textContent =
-            result.comparison_key?.join(", ")
-            || (result.key_status === "different" ? "Keys differ" : "Key required");
+        const keyHint = row.querySelector(".key-hint");
+        if (keyHint) {
+            keyHint.textContent = state.manualKeys.has(row.dataset.id)
+                ? `Manual: ${state.manualKeys.get(row.dataset.id).join(", ")}`
+                : result.comparison_key?.length
+                    ? `Detected: ${result.comparison_key.join(", ")}`
+                    : result.key_status === "different"
+                        ? "Keys differ — enter a manual key"
+                        : "Key required — enter column names";
+        }
     });
 }
 
@@ -813,14 +1056,25 @@ elements.clearSelection.addEventListener("click", () => {
     currentCheckboxes().forEach((checkbox) => { checkbox.checked = false; });
     updateSelectionCount();
 });
-elements.comparisonMode.addEventListener("change", updateEstimatedWork);
+elements.comparisonMode.addEventListener("change", () => {
+    elements.batchSize.disabled = elements.comparisonMode.value !== "full";
+    updateEstimatedWork();
+});
 
 elements.startCompare.addEventListener("click", runSchemaComparison);
 elements.stopCompare.addEventListener("click", () => {
     if (!state.comparing) return;
     state.stopRequested = true;
     elements.stopCompare.disabled = true;
-    elements.progressStatus.textContent = "Stopping safely after the current table query finishes…";
+    elements.progressStatus.textContent = state.activeDataJobId
+        ? "Stopping safely after the current data batch finishes…"
+        : "Stopping safely after the current database query finishes…";
+    if (state.activeDataJobId) {
+        requestJson(`/api/data/compare/${state.activeDataJobId}/cancel`, {
+            method: "POST",
+            body: "{}",
+        }).catch(() => {});
+    }
 });
 elements.resultsTab.addEventListener("click", () => activateTab("results"));
 elements.logTab.addEventListener("click", () => activateTab("log"));
@@ -833,7 +1087,7 @@ document.querySelector("#copyLog").addEventListener("click", async () => {
     }
 });
 document.querySelector("#themeInfo").addEventListener("click", () => {
-    showToast("Phase 4 · Schema and row-count comparison · Local access only.");
+    showToast("Phase 5 · Scalable row-data comparison · Local access only.");
 });
 document.addEventListener("keydown", (event) => {
     if (event.altKey && event.key === "1") activateTab("results");

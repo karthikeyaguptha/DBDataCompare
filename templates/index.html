@@ -37,8 +37,8 @@
                 <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
             </div>
             <div class="phase-pill">
-                <span>Phase 4</span>
-                Row-count comparison
+                <span>Phase 5</span>
+                Scalable data comparison
             </div>
         </section>
 
@@ -232,7 +232,7 @@
                 <div>
                     <p class="section-kicker">Step 2</p>
                     <h2 id="tables-title">Select tables</h2>
-                    <p>Search, select, and confirm the key used to match corresponding rows.</p>
+                    <p>Search, select, and optionally override the key used to match corresponding rows.</p>
                 </div>
                 <span class="selection-count" id="selectionCount">0 of 0 selected</span>
             </div>
@@ -325,17 +325,17 @@
                 <label>
                     <span>Comparison mode</span>
                     <select id="comparisonMode" disabled>
-                        <option disabled>Full comparison — Phase 5</option>
-                        <option value="schema_and_counts" selected>Structure + row count</option>
+                        <option value="full" selected>Full comparison</option>
+                        <option value="schema_and_counts">Structure + row count</option>
                         <option value="schema_only">Structure only</option>
                     </select>
                 </label>
                 <label>
                     <span>Batch size</span>
                     <select id="batchSize" disabled>
-                        <option>5,000 rows</option>
-                        <option>2,000 rows</option>
-                        <option>10,000 rows</option>
+                        <option value="5000" selected>5,000 rows</option>
+                        <option value="2000">2,000 rows</option>
+                        <option value="10000">10,000 rows</option>
                     </select>
                 </label>
                 <div class="run-summary">
@@ -347,6 +347,29 @@
                     <strong id="estimatedWork">Waiting for tables</strong>
                 </div>
             </div>
+
+            <details class="comparison-rules">
+                <summary>Comparison rules</summary>
+                <div class="rules-grid">
+                    <label class="check-label">
+                        <input type="checkbox" id="ignoreTrailingSpaces">
+                        <span>Ignore trailing spaces</span>
+                    </label>
+                    <label class="check-label">
+                        <input type="checkbox" id="caseSensitiveText" checked>
+                        <span>Case-sensitive text</span>
+                    </label>
+                    <label>
+                        <span>Decimal tolerance</span>
+                        <input type="number" id="decimalTolerance" value="0" min="0" step="any">
+                    </label>
+                    <label>
+                        <span>Timestamp tolerance (ms)</span>
+                        <input type="number" id="timestampTolerance" value="0" min="0" step="1">
+                    </label>
+                </div>
+                <p>Strict comparison is the default. Compatible numbers, timestamps, UUIDs, binary values, booleans, and nulls are normalized before comparison.</p>
+            </details>
 
             <div class="progress-panel">
                 <div class="progress-copy">
@@ -395,6 +418,7 @@
                                 <th>Column differences</th>
                                 <th>Rows SQL / PG</th>
                                 <th>Row difference</th>
+                                <th>Data differences</th>
                                 <th>Comparison key</th>
                                 <th>Status</th>
                                 <th><span class="sr-only">Details</span></th>
@@ -421,7 +445,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.5.0</b></span>
+        <span>DB Compare Studio <b>v0.6.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

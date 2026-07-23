@@ -16,7 +16,7 @@ not sent to an external web server.
 - Progress, cancellation, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## Phase 4 status
+## Phase 5 status
 
 This checkpoint contains:
 
@@ -48,6 +48,18 @@ This checkpoint contains:
 - Per-table SQL Server/PostgreSQL row totals and absolute count differences
 - Combined status covering both schema and row-count results
 - Structure-only and Structure + row count comparison modes
+- Full comparison mode selected by default
+- Automatic primary/unique keys and comma-separated manual key overrides
+- Composite detected and manual key support
+- SQL Server `fetchmany()` and PostgreSQL server-side cursor streaming
+- Configurable 2,000, 5,000, or 10,000 row batches
+- Background data jobs with lightweight browser progress polling
+- Backend cancellation checked between row batches
+- Matched, changed, SQL Server-only, and PostgreSQL-only row detection
+- Bounded 200-row mismatch preview to protect browser and Python memory
+- Normalisation for nulls, numbers, timestamps/time zones, UUIDs, booleans,
+  binary values, JSON-like values, and Unicode text
+- Strict defaults with optional trailing-space, case, decimal, and timestamp rules
 - Live elapsed-time and completed-table progress
 - Comparison settings, progress, Start/Stop controls, and result states
 - Results and execution-log tabs
@@ -59,8 +71,10 @@ Table-name metadata is read
 once and retained in a short-lived in-memory catalog for fast search, filtering,
 pagination, and safe table mapping. When comparison starts, each selected table
 is processed separately so progress remains visible and Stop can take effect
-after the current table query. Phase 4 retrieves exact counts directly in each
-database and does not load business rows into Python memory.
+after the current table query. Phase 5 retrieves exact counts directly in each
+database, then streams ordered business rows using the selected comparison key.
+Only the current driver batch and a bounded mismatch preview are retained in
+memory.
 
 ## Windows prerequisites
 
@@ -97,7 +111,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## Phase 4 workflow
+## Phase 5 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -107,11 +121,14 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
    database-only filter to investigate missing tables.
 6. Search or page through the cached table-name list.
 7. Select one or more tables.
-8. Keep **Structure + row count** selected, or choose **Structure only**.
-9. Click **Start comparison**.
-10. Review column counts, row counts, their differences, and the combined status.
-11. Expand **View columns** for metadata differences.
-12. Use **Stop** to finish the current table query and cancel remaining tables.
+8. Keep **Full comparison** selected. If automatic key detection is unavailable,
+   enter one or more comma-separated key columns beside the table.
+9. Choose a batch size. `5,000` is the recommended default.
+10. Optionally expand **Comparison rules**. Strict comparison is the default.
+11. Click **Start comparison**.
+12. Review schema, row-count, and row-data differences in the combined result.
+13. Expand **View details** for column differences and the mismatch preview.
+14. Use **Stop** to cancel safely after the current query or data batch.
 
 For SQL Server ODBC Driver 18, encryption is enabled. Leave **Trust server
 certificate** off when the server has a certificate trusted by Windows. Enable
@@ -152,17 +169,22 @@ precision/scale, timestamp precision, and nullability must also agree.
 The comparison key is selected automatically when matching primary or unique
 keys exist on both databases. **Keys differ** means keys were discovered but do
 not map to the same columns. **Key required** means neither database exposes a
-usable primary or unique key; manual selection is planned for the scalable
-row-data comparison phase.
+matching key. Enter a manual key as `CustomerId` or a composite key such as
+`CustomerId, AddressType`. Every manual key column must exist on both sides.
 
 Row counts are exact rather than estimates. `COUNT(*)`/`COUNT_BIG(*)` can take
 time on very large tables, and the source and target should remain stable while
 the comparison runs. A count difference proves that the table contents differ;
 matching counts do not prove that every row value matches.
 
-Phase 5 will add
-manual/composite key selection, batch-streamed row data comparison, and
-value-normalisation rules.
+Row comparison reads each table ordered by its key. For best performance and
+stable results, the key should be unique and indexed, and both databases should
+remain unchanged during the run. Text-key collations should use compatible
+ordering rules across the two databases.
+
+The Results view intentionally keeps only the first 200 differences so very
+large migrations do not overload the browser. Phase 6 adds JSONL/CSV exports
+for complete mismatch reporting and saved comparison profiles.
 
 ## Development commands
 
@@ -224,16 +246,16 @@ run.bat
 
 ## GitHub checkpoint
 
-The suggested Phase 4 commit is:
+The suggested Phase 5 commit is:
 
 ```text
-feat: add exact row-count comparison
+feat: add scalable key-based data comparison
 ```
 
-The suggested Phase 4 tag is:
+The suggested Phase 5 tag is:
 
 ```text
-v0.5.0-row-count-comparison
+v0.6.0-data-comparison
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

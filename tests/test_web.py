@@ -1,3 +1,4 @@
+import time
 from unittest.mock import patch
 
 from db_compare import create_app
@@ -14,8 +15,8 @@ def test_home_page_loads():
 
     assert response.status_code == 200
     assert b"DB Compare Studio" in response.data
-    assert b"Row-count comparison" in response.data
-    assert b'<option value="schema_and_counts" selected>Structure + row count</option>' in response.data
+    assert b"Scalable data comparison" in response.data
+    assert b'<option value="full" selected>Full comparison</option>' in response.data
     assert b"Rows SQL / PG" in response.data
     assert b'<option value="credentials" selected>SQL Server Authentication</option>' in response.data
     assert b'id="tablePagination"' in response.data
@@ -25,12 +26,12 @@ def test_home_page_loads():
     assert b"Only in PostgreSQL" in response.data
 
 
-def test_health_endpoint_reports_phase_4():
+def test_health_endpoint_reports_phase_5():
     response = client().get("/api/health")
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.5.0-row-count-comparison"
+    assert response.json["phase"] == "v0.6.0-data-comparison"
 
 
 @patch("db_compare.web.test_database_connection")
@@ -287,3 +288,95 @@ def test_count_endpoint_rejects_expired_catalog():
 
     assert response.status_code == 400
     assert "expired" in response.json["message"]
+
+
+@patch("db_compare.web.compare_table_data")
+@patch("db_compare.web.compare_table_schema")
+@patch("db_compare.web.load_table_names")
+def test_data_job_starts_and_returns_completed_result(
+    mock_load, mock_schema, mock_data
+):
+    mock_load.return_value = (["Customer"], ["customer"])
+    mock_schema.return_value = {
+        "status": "match",
+        "comparison_key": ["Id"],
+        "columns": [],
+    }
+    mock_data.return_value = {
+        "status": "match",
+        "summary": "Row data matches.",
+        "processed": 20,
+        "counts": {
+            "matched": 20,
+            "different": 0,
+            "sql_only": 0,
+            "postgres_only": 0,
+        },
+        "mismatch_total": 0,
+        "preview": [],
+        "preview_limited": False,
+    }
+    test_client = client()
+    catalog = test_client.post(
+        "/api/tables",
+        json={
+            "sqlserver": {"server": "source"},
+            "postgres": {"host": "target"},
+            "page": 1,
+            "page_size": 10,
+        },
+    )
+
+    started = test_client.post(
+        "/api/data/compare/start",
+        json={
+            "sqlserver": {"server": "source"},
+            "postgres": {"host": "target"},
+            "catalog_token": catalog.json["catalog_token"],
+            "table_id": "customer",
+            "batch_size": 5000,
+            "comparison_key": [],
+            "options": {},
+        },
+    )
+
+    assert started.status_code == 202
+    for _ in range(20):
+        status = test_client.get(
+            f'/api/data/compare/{started.json["job_id"]}'
+        )
+        if status.json["status"] == "complete":
+            break
+        time.sleep(0.01)
+    assert status.json["status"] == "complete"
+    assert status.json["result"]["processed"] == 20
+    mock_data.assert_called_once()
+
+
+@patch("db_compare.web.load_table_names")
+def test_data_job_rejects_unsupported_batch_size(mock_load):
+    mock_load.return_value = (["Customer"], ["customer"])
+    test_client = client()
+    catalog = test_client.post(
+        "/api/tables",
+        json={
+            "sqlserver": {},
+            "postgres": {},
+            "page": 1,
+            "page_size": 10,
+        },
+    )
+
+    response = test_client.post(
+        "/api/data/compare/start",
+        json={
+            "sqlserver": {},
+            "postgres": {},
+            "catalog_token": catalog.json["catalog_token"],
+            "table_id": "customer",
+            "batch_size": 123,
+        },
+    )
+
+    assert response.status_code == 400
+    assert "batch size" in response.json["message"].lower()

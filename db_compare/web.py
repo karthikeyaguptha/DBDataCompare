@@ -1,12 +1,12 @@
 from math import ceil
 from secrets import token_urlsafe
-from threading import Lock
+from threading import Event, Lock, Thread
 from time import monotonic
 from typing import Any
 
 from flask import Blueprint, jsonify, render_template, request
 
-from .comparison import compare_table_row_counts, compare_table_schema
+from .comparison import compare_table_data, compare_table_row_counts, compare_table_schema
 from .db import (
     DatabaseConfigurationError,
     DatabaseConnectionError,
@@ -21,6 +21,10 @@ _TABLE_CATALOG_TTL_SECONDS = 30 * 60
 _TABLE_CATALOG_LIMIT = 8
 _TABLE_CATALOGS: dict[str, dict[str, Any]] = {}
 _TABLE_CATALOG_LOCK = Lock()
+_DATA_JOB_TTL_SECONDS = 30 * 60
+_DATA_JOB_LIMIT = 4
+_DATA_JOBS: dict[str, dict[str, Any]] = {}
+_DATA_JOB_LOCK = Lock()
 
 
 @web.get("/")
@@ -34,7 +38,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.5.0-row-count-comparison",
+            "phase": "v0.6.0-data-comparison",
         }
     )
 
@@ -161,6 +165,100 @@ def compare_counts():
     return jsonify({"status": "ready", "table_id": table_id, "result": result})
 
 
+@web.post("/api/data/compare/start")
+def start_data_compare():
+    payload = _json_body()
+    sqlserver_config = payload.get("sqlserver")
+    postgres_config = payload.get("postgres")
+    if not isinstance(sqlserver_config, dict) or not isinstance(postgres_config, dict):
+        raise DatabaseConfigurationError("Both database connections are required.")
+    table_id, table = _catalog_table_from_payload(payload)
+    if not table["sqlserver"] or not table["postgres"]:
+        raise DatabaseConfigurationError(
+            "Row data comparison requires the table in both databases."
+        )
+    try:
+        batch_size = int(payload.get("batch_size", 5000))
+    except (TypeError, ValueError) as exc:
+        raise DatabaseConfigurationError("Batch size must be a valid number.") from exc
+    if batch_size not in {2000, 5000, 10000}:
+        raise DatabaseConfigurationError("Choose a supported batch size.")
+    manual_key = payload.get("comparison_key") or []
+    if not isinstance(manual_key, list) or any(
+        not isinstance(value, str) or not value.strip() for value in manual_key
+    ):
+        raise DatabaseConfigurationError("Comparison key columns must be a valid list.")
+    comparison_options = payload.get("options") or {}
+    if not isinstance(comparison_options, dict):
+        raise DatabaseConfigurationError("Comparison options must be valid.")
+
+    job_id = token_urlsafe(24)
+    cancel_event = Event()
+    now = monotonic()
+    job = {
+        "id": job_id,
+        "table_id": table_id,
+        "status": "queued",
+        "processed": 0,
+        "result": None,
+        "error": None,
+        "cancel": cancel_event,
+        "last_accessed": now,
+    }
+    with _DATA_JOB_LOCK:
+        _remove_expired_jobs(now)
+        active_jobs = sum(
+            item["status"] in {"queued", "running"} for item in _DATA_JOBS.values()
+        )
+        if active_jobs >= _DATA_JOB_LIMIT:
+            raise DatabaseConfigurationError(
+                "Too many data comparisons are already running. Wait for one to finish."
+            )
+        _DATA_JOBS[job_id] = job
+
+    worker = Thread(
+        target=_run_data_job,
+        args=(
+            job_id,
+            sqlserver_config,
+            postgres_config,
+            table,
+            [value.strip() for value in manual_key],
+            batch_size,
+            comparison_options,
+        ),
+        daemon=True,
+        name=f"data-compare-{table_id[:24]}",
+    )
+    worker.start()
+    return jsonify({"status": "started", "job_id": job_id, "table_id": table_id}), 202
+
+
+@web.get("/api/data/compare/<job_id>")
+def data_compare_status(job_id: str):
+    job = _get_data_job(job_id)
+    if job is None:
+        raise DatabaseConfigurationError("The data comparison job expired or is unavailable.")
+    return jsonify(
+        {
+            "status": job["status"],
+            "table_id": job["table_id"],
+            "processed": job["processed"],
+            "result": job["result"],
+            "message": job["error"],
+        }
+    )
+
+
+@web.post("/api/data/compare/<job_id>/cancel")
+def cancel_data_compare(job_id: str):
+    job = _get_data_job(job_id)
+    if job is None:
+        raise DatabaseConfigurationError("The data comparison job expired or is unavailable.")
+    job["cancel"].set()
+    return jsonify({"status": "cancelling", "table_id": job["table_id"]})
+
+
 def _catalog_table_from_payload(
     payload: dict[str, Any],
 ) -> tuple[str, dict[str, Any]]:
@@ -216,6 +314,86 @@ def _remove_expired_catalogs(now: float) -> None:
     ]
     for token in expired:
         del _TABLE_CATALOGS[token]
+
+
+def _run_data_job(
+    job_id: str,
+    sqlserver_config: dict[str, Any],
+    postgres_config: dict[str, Any],
+    table: dict[str, Any],
+    manual_key: list[str],
+    batch_size: int,
+    options: dict[str, Any],
+) -> None:
+    job = _get_data_job(job_id)
+    if job is None:
+        return
+    job["status"] = "running"
+
+    def report_progress(processed: int) -> None:
+        current = _get_data_job(job_id)
+        if current is not None:
+            current["processed"] = processed
+
+    try:
+        schema_result = compare_table_schema(
+            sqlserver_config,
+            postgres_config,
+            table["sqlserver"],
+            table["postgres"],
+        )
+        comparison_key = manual_key or schema_result.get("comparison_key") or []
+        if not comparison_key:
+            raise DatabaseConfigurationError(
+                "No matching primary or unique key was found. Enter a manual comparison key."
+            )
+        result = compare_table_data(
+            sqlserver_config,
+            postgres_config,
+            table["sqlserver"],
+            table["postgres"],
+            schema_result,
+            comparison_key,
+            batch_size=batch_size,
+            options=options,
+            cancel_requested=job["cancel"].is_set,
+            progress=report_progress,
+        )
+        job["result"] = result
+        job["processed"] = result["processed"]
+        job["status"] = "cancelled" if result["status"] == "cancelled" else "complete"
+    except (DatabaseConfigurationError, DatabaseConnectionError) as exc:
+        job["error"] = str(exc)
+        job["status"] = "error"
+    except Exception:
+        job["error"] = (
+            "Data comparison failed unexpectedly. Review the database availability "
+            "and comparison key, then try again."
+        )
+        job["status"] = "error"
+    finally:
+        job["last_accessed"] = monotonic()
+
+
+def _get_data_job(job_id: str) -> dict[str, Any] | None:
+    now = monotonic()
+    with _DATA_JOB_LOCK:
+        _remove_expired_jobs(now)
+        job = _DATA_JOBS.get(job_id)
+        if job is not None:
+            job["last_accessed"] = now
+        return job
+
+
+def _remove_expired_jobs(now: float) -> None:
+    expired = [
+        job_id
+        for job_id, job in _DATA_JOBS.items()
+        if job["status"] not in {"queued", "running"}
+        and now - job["last_accessed"] > _DATA_JOB_TTL_SECONDS
+    ]
+    for job_id in expired:
+        del _DATA_JOBS[job_id]
 
 
 def _merge_table_names(sql_names: list[str], pg_names: list[str]) -> list[dict[str, Any]]:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import closing
-from typing import Any
+from typing import Any, Iterator
 
 from .errors import DatabaseConfigurationError, DatabaseConnectionError
 
@@ -166,6 +166,50 @@ def count_table_rows(config: dict[str, Any], table_name: str) -> int:
         raise
     except Exception as exc:
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
+
+
+def iter_table_rows(
+    config: dict[str, Any],
+    table_name: str,
+    columns: list[str],
+    key_columns: list[str],
+    batch_size: int,
+) -> Iterator[tuple[Any, ...]]:
+    """Yield ordered rows through a PostgreSQL server-side cursor."""
+    if not columns or not key_columns:
+        raise DatabaseConfigurationError("Columns and comparison keys are required.")
+    schema = str(config.get("schema") or "public").strip()
+    try:
+        from psycopg import sql
+    except ImportError as exc:
+        raise DatabaseConnectionError(
+            "The PostgreSQL Python driver is not installed. Run setup.bat and try again."
+        ) from exc
+
+    connection = connect(config)
+    cursor = connection.cursor(name="db_compare_stream")
+    cursor.itersize = batch_size
+    try:
+        query = sql.SQL("SELECT {} FROM {}.{} ORDER BY {}").format(
+            sql.SQL(", ").join(sql.Identifier(value) for value in columns),
+            sql.Identifier(schema),
+            sql.Identifier(table_name),
+            sql.SQL(", ").join(sql.Identifier(value) for value in key_columns),
+        )
+        cursor.execute(query)
+        while True:
+            rows = cursor.fetchmany(batch_size)
+            if not rows:
+                break
+            for row in rows:
+                yield tuple(row)
+    except DatabaseConnectionError:
+        raise
+    except Exception as exc:
+        raise DatabaseConnectionError(_friendly_error(exc)) from exc
+    finally:
+        cursor.close()
+        connection.close()
 
 
 def _friendly_error(error: Exception) -> str:

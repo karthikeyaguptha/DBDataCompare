@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import closing
-from typing import Any
+from typing import Any, Iterator
 
 from .errors import DatabaseConfigurationError, DatabaseConnectionError
 
@@ -192,6 +192,41 @@ def count_table_rows(config: dict[str, Any], table_name: str) -> int:
         raise
     except Exception as exc:
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
+
+
+def iter_table_rows(
+    config: dict[str, Any],
+    table_name: str,
+    columns: list[str],
+    key_columns: list[str],
+    batch_size: int,
+) -> Iterator[tuple[Any, ...]]:
+    """Yield ordered rows without retaining the full table in memory."""
+    if not columns or not key_columns:
+        raise DatabaseConfigurationError("Columns and comparison keys are required.")
+    schema = str(config.get("schema") or "dbo").strip()
+    qualified_table = f"{_quote_identifier(schema)}.{_quote_identifier(table_name)}"
+    select_columns = ", ".join(_quote_identifier(value) for value in columns)
+    order_columns = ", ".join(_quote_identifier(value) for value in key_columns)
+    connection = connect(config)
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            f"SELECT {select_columns} FROM {qualified_table} ORDER BY {order_columns}"
+        )
+        while True:
+            rows = cursor.fetchmany(batch_size)
+            if not rows:
+                break
+            for row in rows:
+                yield tuple(row)
+    except DatabaseConnectionError:
+        raise
+    except Exception as exc:
+        raise DatabaseConnectionError(_friendly_error(exc)) from exc
+    finally:
+        cursor.close()
+        connection.close()
 
 
 def _quote_identifier(value: str) -> str:
