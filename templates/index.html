@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>DB Compare Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header class="app-header">
+        <div>
+            <p class="eyebrow">SQL Server ↔ PostgreSQL</p>
+            <h1>DB Compare Studio</h1>
+            <p class="subtitle">Local, read-only database comparison for Windows.</p>
+        </div>
+        <span class="phase-badge">Phase 0 · Project setup</span>
+    </header>
+
+    <main>
+        <section class="status-card" aria-labelledby="setup-title">
+            <div class="status-icon" aria-hidden="true">✓</div>
+            <div>
+                <h2 id="setup-title">Foundation is ready</h2>
+                <p>
+                    The local Flask service and browser interface are running.
+                    Connection controls arrive in the next milestone.
+                </p>
+            </div>
+        </section>
+
+        <section class="connection-grid" aria-label="Planned database connections">
+            <article class="connection-card">
+                <div class="card-heading">
+                    <span class="database-mark sql-mark" aria-hidden="true">S</span>
+                    <div>
+                        <h2>SQL Server</h2>
+                        <p>Source database</p>
+                    </div>
+                </div>
+                <div class="placeholder-field"></div>
+                <div class="placeholder-field short"></div>
+                <button type="button" disabled>Test Connection</button>
+            </article>
+
+            <article class="connection-card">
+                <div class="card-heading">
+                    <span class="database-mark pg-mark" aria-hidden="true">P</span>
+                    <div>
+                        <h2>PostgreSQL</h2>
+                        <p>Target database</p>
+                    </div>
+                </div>
+                <div class="placeholder-field"></div>
+                <div class="placeholder-field short"></div>
+                <button type="button" disabled>Test Connection</button>
+            </article>
+        </section>
+
+        <section class="roadmap" aria-labelledby="roadmap-title">
+            <div>
+                <p class="eyebrow">Next checkpoint</p>
+                <h2 id="roadmap-title">Modern connection workspace</h2>
+            </div>
+            <p>
+                Phase 1 will add connection forms, table selection, progress,
+                results, and execution-log areas using one consistent visual system.
+            </p>
+        </section>
+    </main>
+
+    <footer>
+        Runs only on <code>127.0.0.1</code> · No credentials are stored in this phase
+    </footer>
+</body>
+</html>
+
