@@ -37,8 +37,8 @@
                 <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
             </div>
             <div class="phase-pill">
-                <span>Phase 5</span>
-                Scalable data comparison
+                <span>Phase 6</span>
+                Reports and saved profiles
             </div>
         </section>
 
@@ -66,7 +66,17 @@
                     <h2 id="connections-title">Database connections</h2>
                     <p>Credentials stay in memory for this local session and are never stored by the UI.</p>
                 </div>
-                <span class="read-only-badge">Read-only recommended</span>
+                <div class="profile-tools" aria-label="Saved comparison profiles">
+                    <label>
+                        <span class="sr-only">Saved profile</span>
+                        <select id="profileSelect" aria-label="Saved profile">
+                            <option value="">No saved profile</option>
+                        </select>
+                    </label>
+                    <button class="button ghost" id="loadProfile" type="button" disabled>Load</button>
+                    <button class="button ghost" id="saveProfile" type="button">Save profile</button>
+                    <button class="icon-button delete-profile" id="deleteProfile" type="button" disabled aria-label="Delete selected profile" title="Delete selected profile">×</button>
+                </div>
             </div>
 
             <div class="connection-grid">
@@ -399,7 +409,16 @@
                     Execution log <span class="live-indicator" aria-hidden="true"></span>
                 </button>
                 <div class="tab-actions">
-                    <button class="button ghost" type="button" disabled>Export report</button>
+                    <label class="export-choice">
+                        <span class="sr-only">Report format</span>
+                        <select id="reportType" disabled aria-label="Report format">
+                            <option value="summary">JSON summary</option>
+                            <option value="mismatches">JSONL mismatches</option>
+                            <option value="csv">CSV summary</option>
+                            <option value="log">Execution log</option>
+                        </select>
+                    </label>
+                    <button class="button ghost" id="exportReport" type="button" disabled>Export</button>
                 </div>
             </div>
 
@@ -432,7 +451,10 @@
             <div class="tab-panel is-hidden" id="logPanel" role="tabpanel" aria-labelledby="logTab">
                 <div class="log-toolbar">
                     <span>Session log</span>
-                    <button class="button ghost" id="copyLog" type="button">Copy log</button>
+                    <div class="log-actions">
+                        <button class="button ghost" id="copyLog" type="button">Copy log</button>
+                        <button class="button ghost" id="exportLog" type="button" disabled>Export log</button>
+                    </div>
                 </div>
                 <div class="log-window" id="logWindow" role="log" aria-live="polite">
                     <div><time>00:00:00</time><span class="log-level info">INFO</span><span>DB Compare Studio UI initialized.</span></div>
@@ -445,7 +467,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.6.0</b></span>
+        <span>DB Compare Studio <b>v0.7.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

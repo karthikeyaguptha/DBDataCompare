@@ -24,6 +24,13 @@ const state = {
     activeDataJobId: null,
     elapsedTimer: null,
     comparisonStartedAt: null,
+    reportRunId: "",
+    reportStartedAt: "",
+    reportFiles: {},
+    lastRunDurationSeconds: 0,
+    profiles: [],
+    currentProfileId: "",
+    pendingProfileSelection: new Set(),
 };
 
 const elements = {
@@ -71,6 +78,13 @@ const elements = {
     resultsPanel: document.querySelector("#resultsPanel"),
     logPanel: document.querySelector("#logPanel"),
     logWindow: document.querySelector("#logWindow"),
+    profileSelect: document.querySelector("#profileSelect"),
+    loadProfile: document.querySelector("#loadProfile"),
+    saveProfile: document.querySelector("#saveProfile"),
+    deleteProfile: document.querySelector("#deleteProfile"),
+    reportType: document.querySelector("#reportType"),
+    exportReport: document.querySelector("#exportReport"),
+    exportLog: document.querySelector("#exportLog"),
     toast: document.querySelector("#toast"),
 };
 
@@ -120,6 +134,98 @@ function safeSignature(config) {
 
 function connectionConfig(prefix) {
     return formData(prefix === "sql" ? elements.sqlForm : elements.pgForm);
+}
+
+function connectionConfigWithoutPassword(prefix) {
+    const config = connectionConfig(prefix);
+    delete config.password;
+    return config;
+}
+
+function fillForm(form, values) {
+    Object.entries(values || {}).forEach(([name, value]) => {
+        const field = form.elements[name];
+        if (!field || name === "password") return;
+        if (field.type === "checkbox") field.checked = Boolean(value);
+        else field.value = value ?? "";
+    });
+    if (form.elements.password) form.elements.password.value = "";
+}
+
+function profilePayload(name, id = "") {
+    return {
+        id,
+        name,
+        sqlserver: connectionConfigWithoutPassword("sql"),
+        postgres: connectionConfigWithoutPassword("pg"),
+        selected_tables: [...state.selectedTables],
+        manual_keys: Object.fromEntries(state.manualKeys),
+        statuses: activeTableStatuses(),
+        comparison_mode: elements.comparisonMode.value,
+        batch_size: Number(elements.batchSize.value),
+        options: comparisonOptions(),
+    };
+}
+
+async function refreshProfiles(selectId = "") {
+    try {
+        const result = await requestJson("/api/profiles", { method: "GET" });
+        state.profiles = result.profiles || [];
+        elements.profileSelect.replaceChildren(new Option("No saved profile", ""));
+        state.profiles.forEach((profile) => {
+            elements.profileSelect.add(new Option(profile.name, profile.id));
+        });
+        elements.profileSelect.value = selectId
+            && state.profiles.some((profile) => profile.id === selectId)
+            ? selectId
+            : "";
+        updateProfileButtons();
+    } catch (error) {
+        addLog("WARN", error.message);
+    }
+}
+
+function updateProfileButtons() {
+    const selected = Boolean(elements.profileSelect.value);
+    elements.loadProfile.disabled = !selected || state.comparing;
+    elements.deleteProfile.disabled = !selected || state.comparing;
+    elements.saveProfile.disabled = state.comparing;
+}
+
+function applyProfile(profile) {
+    const savedManualKeys = new Map(Object.entries(profile.manual_keys || {}));
+    fillForm(elements.sqlForm, profile.sqlserver);
+    fillForm(elements.pgForm, profile.postgres);
+    elements.sqlAuthentication.dispatchEvent(new Event("change"));
+    elements.tableStatusFilters.forEach((checkbox) => {
+        checkbox.checked = (profile.statuses || ["available"]).includes(checkbox.value);
+    });
+    elements.comparisonMode.value = profile.comparison_mode || "full";
+    elements.batchSize.value = String(profile.batch_size || 5000);
+    elements.ignoreTrailingSpaces.checked = Boolean(profile.options?.ignore_trailing_spaces);
+    elements.caseSensitiveText.checked = profile.options?.case_sensitive !== false;
+    elements.decimalTolerance.value = profile.options?.decimal_tolerance || "0";
+    elements.timestampTolerance.value = profile.options?.timestamp_tolerance_ms || "0";
+    state.pendingProfileSelection = new Set(profile.selected_tables || []);
+    state.currentProfileId = profile.id;
+    state.sqlValidated = false;
+    state.pgValidated = false;
+    state.sqlSignature = "";
+    state.pgSignature = "";
+    ["sql", "pg"].forEach((prefix) => {
+        const badge = document.querySelector(`#${prefix}State`);
+        const feedback = document.querySelector(`#${prefix}Feedback`);
+        badge.textContent = "Not tested";
+        badge.className = "connection-state neutral";
+        feedback.textContent = "Enter the password, then test this connection.";
+        feedback.style.color = "var(--ink-faint)";
+    });
+    elements.loadTablesButton.disabled = true;
+    lockTables();
+    state.manualKeys = savedManualKeys;
+    updateEstimatedWork();
+    addLog("INFO", `Loaded profile "${profile.name}". Passwords must be entered again.`);
+    showToast(`Profile loaded. Enter passwords and retest both connections.`);
 }
 
 function clearInvalid(form) {
@@ -288,6 +394,12 @@ async function loadTables({ resetPage = false, scroll = false, refreshCatalog = 
         if (requestId !== state.tableRequestId) return;
         state.catalogToken = result.catalog_token;
         state.currentMatchingIds = result.matching_ids;
+        if (state.pendingProfileSelection.size) {
+            state.selectedTables = new Set(
+                result.matching_ids.filter((id) => state.pendingProfileSelection.has(id)),
+            );
+            state.pendingProfileSelection.clear();
+        }
         state.tablePage = result.pagination.page;
         state.tableTotal = result.pagination.total;
         state.tableTotalPages = result.pagination.total_pages;
@@ -647,7 +759,7 @@ function buildDataDetails(dataResult) {
     if (dataResult.preview_limited) {
         const note = document.createElement("p");
         note.className = "preview-limit-note";
-        note.textContent = "Showing the first 200 differences. Complete export is added in Phase 6.";
+        note.textContent = "Showing the first 200 differences. Export JSONL for the complete mismatch list.";
         wrap.append(note);
     }
     return wrap;
@@ -711,6 +823,90 @@ function combinedResult(schemaResult, countResult, dataResult = null, dataSkippe
     };
 }
 
+function reportTableSummaries() {
+    return [...state.schemaResults.entries()].map(([tableId, result]) => {
+        const columnCounts = result.counts || {};
+        const dataCounts = result.data_result?.counts || {};
+        return {
+            table_id: tableId,
+            sqlserver_table: result.sqlserver_table || "",
+            postgres_table: result.postgres_table || "",
+            status: result.data_result?.status === "cancelled"
+                ? "cancelled"
+                : result.overall_status || result.status,
+            summary: [
+                result.summary,
+                result.row_counts?.summary,
+                result.data_result?.summary,
+                result.data_skipped,
+            ].filter(Boolean).join(" "),
+            sqlserver_columns: result.sqlserver_column_count || 0,
+            postgres_columns: result.postgres_column_count || 0,
+            column_differences: (columnCounts.different || 0) + (columnCounts.missing || 0),
+            row_counts: result.row_counts || {},
+            comparison_key: result.comparison_key || [],
+            data_counts: dataCounts,
+            processed_rows: result.data_result?.processed || 0,
+            data_skipped: result.data_skipped || "",
+        };
+    });
+}
+
+function collectLogEntries() {
+    return [...elements.logWindow.children].map((row) => ({
+        timestamp: row.querySelector("time")?.textContent || "",
+        level: row.querySelector(".log-level")?.textContent || "",
+        message: row.lastElementChild?.textContent || "",
+    }));
+}
+
+function setReportExports(files = {}) {
+    state.reportFiles = files;
+    const available = Object.keys(files).length > 0;
+    elements.reportType.disabled = !available;
+    elements.exportReport.disabled = !available;
+    elements.exportLog.disabled = !files.log;
+}
+
+function downloadReport(kind) {
+    const url = state.reportFiles[kind];
+    if (!url) {
+        showToast("Complete a comparison before exporting reports.");
+        return;
+    }
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "";
+    document.body.append(link);
+    link.click();
+    link.remove();
+}
+
+async function finalizeCurrentReport(cancelled) {
+    if (!state.reportRunId) return;
+    const result = await requestJson(
+        `/api/reports/${state.reportRunId}/finalize`,
+        {
+            method: "POST",
+            body: JSON.stringify({
+                started_at: state.reportStartedAt,
+                duration_seconds: state.lastRunDurationSeconds,
+                comparison_mode: elements.comparisonMode.value,
+                batch_size: Number(elements.batchSize.value),
+                comparison_options: comparisonOptions(),
+                cancelled,
+                tables: reportTableSummaries(),
+                log_entries: collectLogEntries(),
+            }),
+        },
+    );
+    setReportExports(result.files || {});
+    addLog(
+        result.status === "cancelled" ? "WARN" : "READY",
+        `Report files saved for run ${result.run_id}.`,
+    );
+}
+
 function updateElapsedTime() {
     if (!state.comparisonStartedAt) {
         elements.elapsedTime.textContent = "00:00";
@@ -764,7 +960,25 @@ async function waitForDataComparison(jobId, tableId) {
 async function runSchemaComparison() {
     if (state.comparing || !state.selectedTables.size) return;
     const tableIds = [...state.selectedTables];
+    const mode = elements.comparisonMode.value;
+    try {
+        const report = await requestJson("/api/reports/runs", {
+            method: "POST",
+            body: JSON.stringify({
+                comparison_mode: mode,
+                selected_tables: tableIds,
+            }),
+        });
+        state.reportRunId = report.run_id;
+        state.reportStartedAt = report.started_at;
+        setReportExports();
+    } catch (error) {
+        addLog("WARN", error.message);
+        showToast("The report run could not be created. Comparison was not started.");
+        return;
+    }
     state.comparing = true;
+    updateProfileButtons();
     state.stopRequested = false;
     state.schemaResults.clear();
     resetSchemaResults();
@@ -775,7 +989,6 @@ async function runSchemaComparison() {
     window.clearInterval(state.elapsedTimer);
     updateElapsedTime();
     state.elapsedTimer = window.setInterval(updateElapsedTime, 1000);
-    const mode = elements.comparisonMode.value;
     const includeCounts = mode !== "schema_only";
     const includeData = mode === "full";
     const runTitle = includeData
@@ -861,6 +1074,7 @@ async function runSchemaComparison() {
                             comparison_key: manualKey,
                             batch_size: Number(elements.batchSize.value),
                             options: comparisonOptions(),
+                            report_run_id: state.reportRunId,
                         }),
                     });
                     dataResult = await waitForDataComparison(startResponse.job_id, tableId);
@@ -910,10 +1124,14 @@ async function runSchemaComparison() {
 
     const stopped = state.stopRequested;
     state.comparing = false;
+    updateProfileButtons();
     state.compareController = null;
     window.clearInterval(state.elapsedTimer);
     state.elapsedTimer = null;
     updateElapsedTime();
+    state.lastRunDurationSeconds = state.comparisonStartedAt
+        ? Math.max(0, (Date.now() - state.comparisonStartedAt) / 1000)
+        : 0;
     elements.stopCompare.disabled = true;
     elements.startCompare.disabled = state.selectedTables.size === 0;
     elements.currentTable.textContent = "—";
@@ -945,6 +1163,12 @@ async function runSchemaComparison() {
                 ? "Schema and row-count comparison completed."
                 : "Schema comparison completed.",
     );
+    try {
+        await finalizeCurrentReport(stopped);
+    } catch (error) {
+        addLog("WARN", `Report finalization failed: ${error.message}`);
+        showToast("Comparison completed, but report files could not be finalized.");
+    }
     showToast(
         stopped
             ? "Comparison stopped safely."
@@ -1078,6 +1302,47 @@ elements.stopCompare.addEventListener("click", () => {
 });
 elements.resultsTab.addEventListener("click", () => activateTab("results"));
 elements.logTab.addEventListener("click", () => activateTab("log"));
+elements.profileSelect.addEventListener("change", updateProfileButtons);
+elements.loadProfile.addEventListener("click", () => {
+    const profile = state.profiles.find((item) => item.id === elements.profileSelect.value);
+    if (profile) applyProfile(profile);
+});
+elements.saveProfile.addEventListener("click", async () => {
+    const existing = state.profiles.find((item) => item.id === elements.profileSelect.value);
+    const name = window.prompt("Profile name", existing?.name || "");
+    if (name === null) return;
+    try {
+        const result = await requestJson("/api/profiles", {
+            method: "POST",
+            body: JSON.stringify(profilePayload(name.trim(), existing?.id || "")),
+        });
+        state.currentProfileId = result.profile.id;
+        await refreshProfiles(result.profile.id);
+        addLog("READY", result.message);
+        showToast(result.message);
+    } catch (error) {
+        addLog("WARN", error.message);
+        showToast(error.message);
+    }
+});
+elements.deleteProfile.addEventListener("click", async () => {
+    const profile = state.profiles.find((item) => item.id === elements.profileSelect.value);
+    if (!profile || !window.confirm(`Delete saved profile "${profile.name}"?`)) return;
+    try {
+        const result = await requestJson(`/api/profiles/${profile.id}`, {
+            method: "DELETE",
+        });
+        state.currentProfileId = "";
+        await refreshProfiles();
+        addLog("INFO", result.message);
+        showToast(result.message);
+    } catch (error) {
+        addLog("WARN", error.message);
+        showToast(error.message);
+    }
+});
+elements.exportReport.addEventListener("click", () => downloadReport(elements.reportType.value));
+elements.exportLog.addEventListener("click", () => downloadReport("log"));
 document.querySelector("#copyLog").addEventListener("click", async () => {
     try {
         await navigator.clipboard.writeText(elements.logWindow.innerText);
@@ -1087,7 +1352,7 @@ document.querySelector("#copyLog").addEventListener("click", async () => {
     }
 });
 document.querySelector("#themeInfo").addEventListener("click", () => {
-    showToast("Phase 5 · Scalable row-data comparison · Local access only.");
+    showToast("Phase 6 · Reports and saved profiles · Local access only.");
 });
 document.addEventListener("keydown", (event) => {
     if (event.altKey && event.key === "1") activateTab("results");
@@ -1095,3 +1360,5 @@ document.addEventListener("keydown", (event) => {
 });
 
 updatePagination();
+setReportExports();
+refreshProfiles();

@@ -152,6 +152,31 @@ select:disabled {
     gap: 10px;
 }
 
+.profile-tools,
+.tab-actions,
+.log-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.profile-tools select {
+    width: 210px;
+    min-height: 36px;
+}
+
+.profile-tools .button {
+    min-height: 36px;
+    padding: 8px 11px;
+}
+
+.delete-profile {
+    width: 36px;
+    height: 36px;
+    color: var(--danger);
+    font-size: 19px;
+}
+
 .local-badge,
 .phase-pill,
 .read-only-badge,
@@ -1200,7 +1225,16 @@ select:disabled {
 }
 
 .tab-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
     margin-left: auto;
+}
+
+.export-choice select {
+    min-width: 158px;
+    min-height: 34px;
+    padding-block: 6px;
 }
 
 .tab-panel {
@@ -1540,6 +1574,16 @@ select:disabled {
     .read-only-badge,
     .selection-count {
         align-self: flex-start;
+    }
+
+    .profile-tools {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .profile-tools label,
+    .profile-tools select {
+        width: 100%;
     }
 
     .section-block {

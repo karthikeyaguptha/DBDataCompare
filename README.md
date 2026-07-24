@@ -7,7 +7,7 @@ The user interface opens in a browser, while a Python/Flask process runs locally
 and performs read-only database comparisons. Database credentials and data are
 not sent to an external web server.
 
-## Planned comparison scope
+## Comparison scope
 
 - Table names
 - Column names and metadata
@@ -16,7 +16,7 @@ not sent to an external web server.
 - Progress, cancellation, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## Phase 5 status
+## Phase 6 status
 
 This checkpoint contains:
 
@@ -57,6 +57,12 @@ This checkpoint contains:
 - Backend cancellation checked between row batches
 - Matched, changed, SQL Server-only, and PostgreSQL-only row detection
 - Bounded 200-row mismatch preview to protect browser and Python memory
+- Complete JSONL mismatch output written incrementally during full comparison
+- Downloadable JSON run summary and UTF-8 CSV table summary
+- Downloadable execution log for completed and cancelled runs
+- Password-free saved profiles for connection preferences, table selections,
+  manual keys, filters, mode, batch size, and comparison rules
+- Spreadsheet-formula protection for exported CSV text
 - Normalisation for nulls, numbers, timestamps/time zones, UUIDs, booleans,
   binary values, JSON-like values, and Unicode text
 - Strict defaults with optional trailing-space, case, decimal, and timestamp rules
@@ -71,10 +77,12 @@ Table-name metadata is read
 once and retained in a short-lived in-memory catalog for fast search, filtering,
 pagination, and safe table mapping. When comparison starts, each selected table
 is processed separately so progress remains visible and Stop can take effect
-after the current table query. Phase 5 retrieves exact counts directly in each
+after the current table query. Phase 6 retains the Phase 5 engine and retrieves
+exact counts directly in each
 database, then streams ordered business rows using the selected comparison key.
 Only the current driver batch and a bounded mismatch preview are retained in
-memory.
+memory. Every mismatch is written immediately to JSONL, so the complete export
+does not depend on the browser preview limit.
 
 ## Windows prerequisites
 
@@ -111,7 +119,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## Phase 5 workflow
+## Phase 6 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -129,6 +137,44 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
 12. Review schema, row-count, and row-data differences in the combined result.
 13. Expand **View details** for column differences and the mismatch preview.
 14. Use **Stop** to cancel safely after the current query or data batch.
+15. After completion or cancellation, choose JSON summary, JSONL mismatch
+    details, CSV summary, or execution log and click **Export**.
+
+### Saved profiles
+
+Use **Save profile** to store a reusable comparison setup. Profiles include
+connection preferences, selected tables, manual/composite keys, filters,
+comparison mode, batch size, and value-comparison rules.
+
+Passwords are never saved. After loading a profile, enter both passwords again,
+test both connections, and reload tables. Saved table selections are then
+restored wherever those tables remain available under the saved filters.
+
+Profiles are stored only on the local computer in `config/profiles.json`.
+
+### Report files
+
+Every run creates a separate local folder:
+
+```text
+reports/
+  <run-id>/
+    run-summary.json
+    mismatches.jsonl
+    comparison-summary.csv
+    execution.log
+    manifest.json
+```
+
+- `run-summary.json` contains run settings, totals, and per-table summaries.
+- `mismatches.jsonl` contains one complete mismatch record per line.
+- `comparison-summary.csv` is a spreadsheet-friendly table summary.
+- `execution.log` contains the visible session log captured at finalization.
+- `manifest.json` records the run identity and complete/cancelled state.
+
+Structure-only and Structure + row-count runs produce an empty mismatch JSONL
+because they do not compare row values. Reports, logs, and saved profiles are
+local runtime files and are excluded from Git.
 
 For SQL Server ODBC Driver 18, encryption is enabled. Leave **Trust server
 certificate** off when the server has a certificate trusted by Windows. Enable
@@ -183,8 +229,8 @@ remain unchanged during the run. Text-key collations should use compatible
 ordering rules across the two databases.
 
 The Results view intentionally keeps only the first 200 differences so very
-large migrations do not overload the browser. Phase 6 adds JSONL/CSV exports
-for complete mismatch reporting and saved comparison profiles.
+large migrations do not overload the browser. Export JSONL to review the
+complete mismatch set.
 
 ## Development commands
 
@@ -219,6 +265,8 @@ db_compare/
   web.py
   db/
   comparison/
+  reporting.py
+  profiles.py
 templates/
 static/
 config/
@@ -246,16 +294,16 @@ run.bat
 
 ## GitHub checkpoint
 
-The suggested Phase 5 commit is:
+The suggested Phase 6 commit is:
 
 ```text
-feat: add scalable key-based data comparison
+feat: add reports and saved comparison profiles
 ```
 
-The suggested Phase 5 tag is:
+The suggested Phase 6 tag is:
 
 ```text
-v0.6.0-data-comparison
+v0.7.0-reporting
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

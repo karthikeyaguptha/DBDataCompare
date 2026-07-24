@@ -1,10 +1,11 @@
 from math import ceil
+from pathlib import Path
 from secrets import token_urlsafe
 from threading import Event, Lock, Thread
 from time import monotonic
 from typing import Any
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request, send_file
 
 from .comparison import compare_table_data, compare_table_row_counts, compare_table_schema
 from .db import (
@@ -12,6 +13,13 @@ from .db import (
     DatabaseConnectionError,
     load_table_names,
     test_database_connection,
+)
+from .profiles import delete_profile, list_profiles, save_profile
+from .reporting import (
+    create_report_run,
+    finalize_report_run,
+    mismatch_writer,
+    report_file,
 )
 
 
@@ -38,9 +46,72 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.6.0-data-comparison",
+            "phase": "v0.7.0-reporting",
         }
     )
+
+
+@web.get("/api/profiles")
+def profiles():
+    return jsonify(
+        {
+            "status": "ready",
+            "profiles": list_profiles(Path(current_app.config["PROFILES_FILE"])),
+        }
+    )
+
+
+@web.post("/api/profiles")
+def store_profile():
+    profile = save_profile(
+        Path(current_app.config["PROFILES_FILE"]),
+        _json_body(),
+    )
+    return jsonify(
+        {
+            "status": "saved",
+            "message": f'Profile "{profile["name"]}" saved without passwords.',
+            "profile": profile,
+        }
+    )
+
+
+@web.delete("/api/profiles/<profile_id>")
+def remove_profile(profile_id: str):
+    delete_profile(Path(current_app.config["PROFILES_FILE"]), profile_id)
+    return jsonify({"status": "deleted", "message": "Saved profile deleted."})
+
+
+@web.post("/api/reports/runs")
+def begin_report_run():
+    payload = _json_body()
+    selected_tables = payload.get("selected_tables")
+    if not isinstance(selected_tables, list) or any(
+        not isinstance(item, str) for item in selected_tables
+    ):
+        raise DatabaseConfigurationError("Selected report tables must be a valid list.")
+    run = create_report_run(
+        Path(current_app.config["REPORTS_DIR"]),
+        mode=str(payload.get("comparison_mode", "full")),
+        selected_tables=selected_tables,
+    )
+    return jsonify({"status": "started", **run}), 201
+
+
+@web.post("/api/reports/<run_id>/finalize")
+def finalize_report(run_id: str):
+    result = finalize_report_run(
+        Path(current_app.config["REPORTS_DIR"]),
+        run_id,
+        _json_body(),
+    )
+    return jsonify(result)
+
+
+@web.get("/api/reports/<run_id>/<kind>")
+def download_report(run_id: str, kind: str):
+    path = report_file(Path(current_app.config["REPORTS_DIR"]), run_id, kind)
+    return send_file(path, as_attachment=True, download_name=path.name)
 
 
 @web.post("/api/connections/test")
@@ -191,6 +262,19 @@ def start_data_compare():
     comparison_options = payload.get("options") or {}
     if not isinstance(comparison_options, dict):
         raise DatabaseConfigurationError("Comparison options must be valid.")
+    report_run_id = str(payload.get("report_run_id", "")).strip()
+    reports_root = Path(current_app.config["REPORTS_DIR"])
+    writer = (
+        mismatch_writer(
+            reports_root,
+            report_run_id,
+            table_id,
+            str(table["sqlserver"]),
+            str(table["postgres"]),
+        )
+        if report_run_id
+        else None
+    )
 
     job_id = token_urlsafe(24)
     cancel_event = Event()
@@ -226,6 +310,7 @@ def start_data_compare():
             [value.strip() for value in manual_key],
             batch_size,
             comparison_options,
+            writer,
         ),
         daemon=True,
         name=f"data-compare-{table_id[:24]}",
@@ -324,6 +409,7 @@ def _run_data_job(
     manual_key: list[str],
     batch_size: int,
     options: dict[str, Any],
+    writer,
 ) -> None:
     job = _get_data_job(job_id)
     if job is None:
@@ -358,6 +444,7 @@ def _run_data_job(
             options=options,
             cancel_requested=job["cancel"].is_set,
             progress=report_progress,
+            mismatch_sink=writer,
         )
         job["result"] = result
         job["processed"] = result["processed"]

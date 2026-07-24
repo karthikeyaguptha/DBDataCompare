@@ -15,7 +15,7 @@ def test_home_page_loads():
 
     assert response.status_code == 200
     assert b"DB Compare Studio" in response.data
-    assert b"Scalable data comparison" in response.data
+    assert b"Reports and saved profiles" in response.data
     assert b'<option value="full" selected>Full comparison</option>' in response.data
     assert b"Rows SQL / PG" in response.data
     assert b'<option value="credentials" selected>SQL Server Authentication</option>' in response.data
@@ -24,14 +24,16 @@ def test_home_page_loads():
     assert b'value="available" checked disabled' in response.data
     assert b"Only in SQL Server" in response.data
     assert b"Only in PostgreSQL" in response.data
+    assert b'id="profileSelect"' in response.data
+    assert b'id="exportReport"' in response.data
 
 
-def test_health_endpoint_reports_phase_5():
+def test_health_endpoint_reports_phase_6():
     response = client().get("/api/health")
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.6.0-data-comparison"
+    assert response.json["phase"] == "v0.7.0-reporting"
 
 
 @patch("db_compare.web.test_database_connection")

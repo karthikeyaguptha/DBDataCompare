@@ -29,10 +29,11 @@ def compare_table_data(
     options: dict[str, Any] | None = None,
     cancel_requested: Callable[[], bool] | None = None,
     progress: Callable[[int], None] | None = None,
+    mismatch_sink: Callable[[dict[str, Any]], None] | None = None,
     sql_rows: Iterable[tuple[Any, ...]] | None = None,
     pg_rows: Iterable[tuple[Any, ...]] | None = None,
 ) -> dict[str, Any]:
-    """Compare ordered streams and retain only a bounded mismatch preview."""
+    """Compare ordered streams, export every mismatch, and retain a bounded preview."""
     if batch_size not in {2000, 5000, 10000}:
         raise DatabaseConfigurationError("Choose a supported batch size.")
     if not comparison_key:
@@ -80,20 +81,52 @@ def compare_table_data(
             return _result("cancelled", counts, preview, processed, comparison_key)
 
         if sql_row is _MISSING:
-            _record_missing("postgres_only", pg_row, len(key_pairs), pg_columns, counts, preview)
+            _record_missing(
+                "postgres_only",
+                pg_row,
+                len(key_pairs),
+                pg_columns,
+                counts,
+                preview,
+                mismatch_sink,
+            )
             pg_row = next(pg_stream, _MISSING)
         elif pg_row is _MISSING:
-            _record_missing("sql_only", sql_row, len(key_pairs), sql_columns, counts, preview)
+            _record_missing(
+                "sql_only",
+                sql_row,
+                len(key_pairs),
+                sql_columns,
+                counts,
+                preview,
+                mismatch_sink,
+            )
             sql_row = next(sql_stream, _MISSING)
         else:
             sql_key = _key_value(sql_row, len(key_pairs), rules)
             pg_key = _key_value(pg_row, len(key_pairs), rules)
             relation = _compare_keys(sql_key, pg_key)
             if relation < 0:
-                _record_missing("sql_only", sql_row, len(key_pairs), sql_columns, counts, preview)
+                _record_missing(
+                    "sql_only",
+                    sql_row,
+                    len(key_pairs),
+                    sql_columns,
+                    counts,
+                    preview,
+                    mismatch_sink,
+                )
                 sql_row = next(sql_stream, _MISSING)
             elif relation > 0:
-                _record_missing("postgres_only", pg_row, len(key_pairs), pg_columns, counts, preview)
+                _record_missing(
+                    "postgres_only",
+                    pg_row,
+                    len(key_pairs),
+                    pg_columns,
+                    counts,
+                    preview,
+                    mismatch_sink,
+                )
                 pg_row = next(pg_stream, _MISSING)
             else:
                 differences = _row_differences(
@@ -101,14 +134,15 @@ def compare_table_data(
                 )
                 if differences:
                     counts["different"] += 1
+                    item = {
+                        "kind": "different",
+                        "key": _display_key(sql_row[: len(key_pairs)], comparison_key),
+                        "differences": differences,
+                    }
+                    if mismatch_sink:
+                        mismatch_sink(item)
                     if len(preview) < _PREVIEW_LIMIT:
-                        preview.append(
-                            {
-                                "kind": "different",
-                                "key": _display_key(sql_row[: len(key_pairs)], comparison_key),
-                                "differences": differences,
-                            }
-                        )
+                        preview.append(item)
                 else:
                     counts["matched"] += 1
                 sql_row = next(sql_stream, _MISSING)
@@ -239,19 +273,21 @@ def _record_missing(
     columns: list[str],
     counts: dict[str, int],
     preview: list[dict[str, Any]],
+    mismatch_sink: Callable[[dict[str, Any]], None] | None = None,
 ) -> None:
     counts[kind] += 1
+    item = {
+        "kind": kind,
+        "key": _display_key(row[:key_count], columns[:key_count]),
+        "values": {
+            name: _json_value(value)
+            for name, value in zip(columns, row)
+        },
+    }
+    if mismatch_sink:
+        mismatch_sink(item)
     if len(preview) < _PREVIEW_LIMIT:
-        preview.append(
-            {
-                "kind": kind,
-                "key": _display_key(row[:key_count], columns[:key_count]),
-                "values": {
-                    name: _json_value(value)
-                    for name, value in zip(columns, row)
-                },
-            }
-        )
+        preview.append(item)
 
 
 def _display_key(values: tuple[Any, ...], names: list[str]) -> dict[str, Any]:
