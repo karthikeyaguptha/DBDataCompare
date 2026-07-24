@@ -32,6 +32,8 @@ const state = {
     lastRunDurationSeconds: 0,
     profiles: [],
     currentProfileId: "",
+    profileDirty: false,
+    applyingProfile: false,
     pendingProfileSelection: new Set(),
     backendOffline: false,
     runProcessedRows: 0,
@@ -92,7 +94,6 @@ const elements = {
     logPanel: document.querySelector("#logPanel"),
     logWindow: document.querySelector("#logWindow"),
     profileSelect: document.querySelector("#profileSelect"),
-    loadProfile: document.querySelector("#loadProfile"),
     saveProfile: document.querySelector("#saveProfile"),
     deleteProfile: document.querySelector("#deleteProfile"),
     reportType: document.querySelector("#reportType"),
@@ -150,7 +151,6 @@ function setAccordion(step, expanded, { scroll = false } = {}) {
     panel.classList.toggle("is-collapsed", !expanded);
     toggle.setAttribute("aria-expanded", String(expanded));
     toggle.querySelector(".accordion-label").textContent = expanded ? "Collapse" : "Expand";
-    toggle.querySelector(".accordion-chevron").textContent = expanded ? "⌃" : "⌄";
     if (expanded && scroll) {
         panel.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -365,12 +365,21 @@ async function refreshProfiles(selectId = "") {
 
 function updateProfileButtons() {
     const selected = Boolean(elements.profileSelect.value);
-    elements.loadProfile.disabled = !selected || state.comparing;
     elements.deleteProfile.disabled = !selected || state.comparing;
     elements.saveProfile.disabled = state.comparing;
+    elements.saveProfile.classList.toggle("is-dirty", selected && state.profileDirty);
+    const profileName = elements.profileSelect.selectedOptions[0]?.text || "profile";
+    elements.saveProfile.setAttribute(
+        "aria-label",
+        selected ? `Save changes to ${profileName}` : "Save new profile",
+    );
+    elements.saveProfile.title = selected
+        ? (state.profileDirty ? "Save profile changes" : "Save current profile")
+        : "Save as a new profile";
 }
 
 function applyProfile(profile) {
+    state.applyingProfile = true;
     const savedManualKeys = new Map(Object.entries(profile.manual_keys || {}));
     fillForm(elements.sqlForm, profile.sqlserver);
     fillForm(elements.pgForm, profile.postgres);
@@ -386,6 +395,7 @@ function applyProfile(profile) {
     elements.timestampTolerance.value = profile.options?.timestamp_tolerance_ms || "0";
     state.pendingProfileSelection = new Set(profile.selected_tables || []);
     state.currentProfileId = profile.id;
+    state.profileDirty = false;
     state.sqlValidated = false;
     state.pgValidated = false;
     state.sqlSignature = "";
@@ -401,6 +411,8 @@ function applyProfile(profile) {
     elements.loadTablesButton.disabled = true;
     lockTables();
     state.manualKeys = savedManualKeys;
+    state.applyingProfile = false;
+    updateProfileButtons();
     updateEstimatedWork();
     addLog("INFO", `Loaded profile "${profile.name}". Passwords must be entered again.`);
     showToast(`Profile loaded. Enter passwords and retest both connections.`);
@@ -483,7 +495,9 @@ async function testConnection(form, prefix, databaseType) {
     } finally {
         button.disabled = false;
         button.classList.remove("is-loading");
-        button.lastChild.textContent = prefix === "sql" ? " Test SQL Server" : " Test PostgreSQL";
+        button.lastChild.textContent = prefix === "sql"
+            ? " Test SQL Connection"
+            : " Test PGSQL Connection";
     }
 }
 
@@ -682,6 +696,7 @@ function renderTableRows(rows) {
             } else {
                 state.selectedTables.delete(table.id);
             }
+            markProfileDirty();
             updateSelectionCount();
         });
         const cells = row.querySelectorAll("td");
@@ -702,6 +717,7 @@ function renderTableRows(rows) {
             const values = keyInput.value.split(",").map((value) => value.trim()).filter(Boolean);
             if (values.length) state.manualKeys.set(table.id, values);
             else state.manualKeys.delete(table.id);
+            markProfileDirty();
             keyHint.textContent = values.length
                 ? `Manual: ${values.join(", ")}`
                 : priorResult?.comparison_key?.length
@@ -1633,6 +1649,7 @@ elements.selectAllTables.addEventListener("change", () => {
     currentCheckboxes().forEach((checkbox) => {
         checkbox.checked = elements.selectAllTables.checked;
     });
+    markProfileDirty();
     updateSelectionCount();
 });
 elements.tablePageSize.addEventListener("change", () => {
@@ -1656,6 +1673,7 @@ elements.tablePageInput.addEventListener("keydown", (event) => {
 elements.clearSelection.addEventListener("click", () => {
     state.selectedTables.clear();
     currentCheckboxes().forEach((checkbox) => { checkbox.checked = false; });
+    markProfileDirty();
     updateSelectionCount();
 });
 elements.comparisonMode.addEventListener("change", () => {
@@ -1721,21 +1739,31 @@ elements.stopNow.addEventListener("click", async () => {
 });
 elements.resultsTab.addEventListener("click", () => activateTab("results"));
 elements.logTab.addEventListener("click", () => activateTab("log"));
-elements.profileSelect.addEventListener("change", updateProfileButtons);
-elements.loadProfile.addEventListener("click", () => {
+elements.profileSelect.addEventListener("change", () => {
     const profile = state.profiles.find((item) => item.id === elements.profileSelect.value);
-    if (profile) applyProfile(profile);
+    if (profile) {
+        applyProfile(profile);
+        return;
+    }
+    state.currentProfileId = "";
+    state.profileDirty = false;
+    updateProfileButtons();
 });
 elements.saveProfile.addEventListener("click", async () => {
     const existing = state.profiles.find((item) => item.id === elements.profileSelect.value);
-    const name = window.prompt("Profile name", existing?.name || "");
+    const name = existing?.name || window.prompt("Profile name", "");
     if (name === null) return;
+    if (!name.trim()) {
+        showToast("Enter a profile name before saving.");
+        return;
+    }
     try {
         const result = await requestJson("/api/profiles", {
             method: "POST",
             body: JSON.stringify(profilePayload(name.trim(), existing?.id || "")),
         });
         state.currentProfileId = result.profile.id;
+        state.profileDirty = false;
         await refreshProfiles(result.profile.id);
         addLog("READY", result.message);
         showToast(result.message);
@@ -1752,6 +1780,7 @@ elements.deleteProfile.addEventListener("click", async () => {
             method: "DELETE",
         });
         state.currentProfileId = "";
+        state.profileDirty = false;
         await refreshProfiles();
         addLog("INFO", result.message);
         showToast(result.message);
@@ -1759,6 +1788,28 @@ elements.deleteProfile.addEventListener("click", async () => {
         addLog("WARN", error.message);
         showToast(error.message);
     }
+});
+
+function markProfileDirty(event) {
+    if (state.applyingProfile || !elements.profileSelect.value) return;
+    if (event?.target?.name === "password") return;
+    state.profileDirty = true;
+    updateProfileButtons();
+}
+
+[
+    elements.sqlForm,
+    elements.pgForm,
+    elements.comparisonMode,
+    elements.batchSize,
+    elements.ignoreTrailingSpaces,
+    elements.caseSensitiveText,
+    elements.decimalTolerance,
+    elements.timestampTolerance,
+    ...elements.tableStatusFilters,
+].forEach((control) => {
+    control.addEventListener("input", markProfileDirty);
+    control.addEventListener("change", markProfileDirty);
 });
 elements.exportReport.addEventListener("click", () => downloadReport(elements.reportType.value));
 elements.exportLog.addEventListener("click", () => downloadReport("log"));

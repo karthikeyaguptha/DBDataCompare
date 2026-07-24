@@ -33,7 +33,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.7.7" in response.data
+    assert b"v0.7.8" in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
     assert b"connection-options-row" in response.data
@@ -54,7 +54,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.7-header-layout-polish"
+    assert response.json["phase"] == "v0.7.8-connection-card-simplification"
 
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():
@@ -172,11 +172,45 @@ def test_profile_actions_and_accordion_headers_use_aligned_controls():
     )
 
     assert template.count('class="section-heading-actions"') == 3
+    assert 'id="loadProfile"' not in template
+    assert 'class="profile-choice"' in template
+    assert 'class="icon-button save-profile"' in template
     assert 'class="icon-button delete-profile"' in template
     assert 'viewBox="0 0 24 24" aria-hidden="true"' in template
     assert ".section-heading-actions" in stylesheet
     assert "height: 40px;" in stylesheet
     assert ".delete-profile svg" in stylesheet
+
+
+def test_connection_cards_hide_defaults_under_more_options():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert template.count('class="connection-more-options"') == 2
+    assert template.count("<summary>More options</summary>") == 2
+    assert template.index('id="sqlAuthentication"') > template.index(
+        "<summary>More options</summary>"
+    )
+    assert "Test SQL Connection" in template
+    assert "Test PGSQL Connection" in template
+    assert template.count('class="test-tube-icon"') == 2
+
+
+def test_accordion_controls_are_text_only_and_profiles_auto_load():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "accordion-chevron" not in template
+    assert 'elements.profileSelect.addEventListener("change", () =>' in javascript
+    assert "applyProfile(profile);" in javascript
+    assert 'existing?.name || window.prompt("Profile name", "")' in javascript
 
 
 def test_pagination_supports_first_last_and_direct_page_jump():

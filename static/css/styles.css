@@ -345,15 +345,22 @@ select:disabled {
 
 .profile-tools {
     display: grid;
-    grid-template-columns: minmax(210px, 1fr) auto auto auto;
-    align-items: center;
+    grid-template-columns: minmax(210px, 1fr) 40px 40px;
+    align-items: end;
     gap: 8px;
 }
 
 .profile-tools label {
     display: block;
     min-width: 0;
-    height: 40px;
+}
+
+.profile-choice > span {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 700;
 }
 
 .profile-tools select {
@@ -363,16 +370,26 @@ select:disabled {
     margin: 0;
 }
 
-.profile-tools .button {
-    height: 40px;
-    min-height: 40px;
-    padding: 8px 11px;
-    white-space: nowrap;
-}
-
+.save-profile,
 .delete-profile {
     width: 40px;
     height: 40px;
+}
+
+.save-profile {
+    border-color: var(--line);
+    background: var(--surface);
+    color: var(--ink-soft);
+}
+
+.save-profile:hover:not(:disabled),
+.save-profile.is-dirty {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.delete-profile {
     border-color: color-mix(in srgb, var(--danger) 42%, var(--line));
     background: var(--danger-soft);
     color: var(--danger);
@@ -391,6 +408,7 @@ select:disabled {
     opacity: 0.62;
 }
 
+.save-profile svg,
 .delete-profile svg {
     width: 17px;
     height: 17px;
@@ -619,7 +637,6 @@ select:disabled {
     display: inline-flex;
     min-height: 32px;
     align-items: center;
-    gap: 6px;
     padding: 5px 9px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -633,14 +650,6 @@ select:disabled {
     border-color: var(--primary);
     background: var(--primary-soft);
     color: var(--primary);
-}
-
-.accordion-chevron {
-    min-width: 12px;
-    color: var(--primary);
-    font-size: 14px;
-    line-height: 1;
-    text-align: center;
 }
 
 .workflow-step.is-collapsed .step-content,
@@ -870,8 +879,45 @@ select:disabled {
     opacity: 0;
 }
 
-.field-spacer {
-    min-height: 1px;
+.connection-more-options {
+    margin: 0 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+}
+
+.connection-more-options summary {
+    padding: 9px 11px;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 750;
+    list-style: none;
+}
+
+.connection-more-options summary::-webkit-details-marker {
+    display: none;
+}
+
+.connection-more-options summary::after {
+    content: "+";
+    float: right;
+    color: var(--ink-faint);
+    font-size: 16px;
+    line-height: 1;
+}
+
+.connection-more-options[open] summary::after {
+    content: "−";
+}
+
+.more-options-content {
+    padding: 2px 11px 0;
+    border-top: 1px solid var(--line);
+}
+
+.more-options-content select {
+    margin-bottom: 11px;
 }
 
 .form-feedback {
@@ -1037,8 +1083,14 @@ select:disabled {
     opacity: 0.78;
 }
 
-.button-icon {
-    font-size: 14px;
+.test-tube-icon {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .connection-options-row {
@@ -2092,7 +2144,7 @@ select:disabled {
     }
 
     .profile-tools {
-        grid-template-columns: minmax(190px, 1fr) auto auto auto;
+        grid-template-columns: minmax(190px, 1fr) 40px 40px;
         width: 100%;
     }
 
@@ -2171,15 +2223,7 @@ select:disabled {
 
     .profile-tools {
         width: 100%;
-        grid-template-columns: 1fr 1fr 40px;
-    }
-
-    .profile-tools label {
-        grid-column: 1 / -1;
-    }
-
-    .profile-tools .button {
-        width: 100%;
+        grid-template-columns: minmax(0, 1fr) 40px 40px;
     }
 
     .section-block {

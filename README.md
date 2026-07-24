@@ -156,7 +156,8 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
 
 ### Saved profiles
 
-Use **Save profile** to store a reusable comparison setup. Profiles include
+Use the **save icon** to store a reusable comparison setup. Selecting a saved
+profile loads it automatically. Profiles include
 connection preferences, selected tables, manual/composite keys, filters,
 comparison mode, batch size, and value-comparison rules. The header theme control
 follows the operating-system preference initially and remembers Light/Dark choices
@@ -313,20 +314,21 @@ run.bat
 | v0.7.5 | Theme-safe contrast for the locked Step 2 table-discovery state |
 | v0.7.6 | Workflow accordions, three-layer result badges, comparison-volume progress, fixed table viewport, direct pagination, and local-service recovery |
 | v0.7.7 | Compact local-service status, aligned profile actions, red delete icon, and consistent accordion header controls |
+| v0.7.8 | Simplified connection cards, advanced options, automatic profile loading, and icon-only profile actions |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.7.7 commit is:
+The suggested v0.7.8 commit is:
 
 ```text
-fix: align workflow headers and local service controls
+feat: simplify connection cards and profile controls
 ```
 
-The suggested v0.7.7 tag is:
+The suggested v0.7.8 tag is:
 
 ```text
-v0.7.7-header-layout-polish
+v0.7.8-connection-card-simplification
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

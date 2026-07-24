@@ -93,17 +93,22 @@
                             data-accordion-step="1" aria-expanded="true"
                             aria-controls="connectionsContent">
                         <span class="accordion-label">Collapse</span>
-                        <span class="accordion-chevron" aria-hidden="true">⌃</span>
                     </button>
                     <div class="profile-tools" aria-label="Saved comparison profiles">
-                        <label>
-                            <span class="sr-only">Saved profile</span>
+                        <label class="profile-choice">
+                            <span>Profile</span>
                             <select id="profileSelect" aria-label="Saved profile">
                                 <option value="">No saved profile</option>
                             </select>
                         </label>
-                        <button class="button ghost" id="loadProfile" type="button" disabled>Load</button>
-                        <button class="button ghost" id="saveProfile" type="button">Save profile</button>
+                        <button class="icon-button save-profile" id="saveProfile" type="button"
+                            aria-label="Save profile" title="Save profile">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5 4h12l2 2v14H5z"/>
+                                <path d="M8 4v6h8V4"/>
+                                <path d="M8 20v-6h8v6"/>
+                            </svg>
+                        </button>
                         <button class="icon-button delete-profile" id="deleteProfile" type="button" disabled
                             aria-label="Delete selected profile" title="Delete selected profile">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -154,14 +159,6 @@
                             </label>
                         </div>
 
-                        <label>
-                            <span>Authentication</span>
-                            <select name="authentication" id="sqlAuthentication">
-                                <option value="credentials" selected>SQL Server Authentication</option>
-                                <option value="windows">Windows Authentication</option>
-                            </select>
-                        </label>
-
                         <div class="credential-fields" id="sqlCredentials">
                             <div class="field-row">
                                 <label>
@@ -178,24 +175,41 @@
                             </div>
                         </div>
 
-                        <div class="field-row connection-options-row">
-                            <label class="driver-field">
-                                <span>ODBC driver</span>
-                                <select name="driver">
-                                    <option>ODBC Driver 18 for SQL Server</option>
-                                    <option>ODBC Driver 17 for SQL Server</option>
-                                </select>
-                            </label>
-                            <label class="check-label trust-certificate">
-                                <input type="checkbox" name="trust_server_certificate">
-                                <span>Trust server certificate</span>
-                            </label>
-                        </div>
+                        <details class="connection-more-options">
+                            <summary>More options</summary>
+                            <div class="more-options-content">
+                                <label>
+                                    <span>Authentication</span>
+                                    <select name="authentication" id="sqlAuthentication">
+                                        <option value="credentials" selected>SQL Server Authentication</option>
+                                        <option value="windows">Windows Authentication</option>
+                                    </select>
+                                </label>
+                                <div class="field-row connection-options-row">
+                                    <label class="driver-field">
+                                        <span>ODBC driver</span>
+                                        <select name="driver">
+                                            <option>ODBC Driver 18 for SQL Server</option>
+                                            <option>ODBC Driver 17 for SQL Server</option>
+                                        </select>
+                                    </label>
+                                    <label class="check-label trust-certificate">
+                                        <input type="checkbox" name="trust_server_certificate">
+                                        <span>Trust server certificate</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </details>
 
                         <div class="form-feedback neutral" id="sqlFeedback" aria-live="polite"></div>
                         <button class="button secondary test-button" type="submit">
-                            <span class="button-icon" aria-hidden="true">↗</span>
-                            Test SQL Server
+                            <svg class="test-tube-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M9 3h6"/>
+                                <path d="M10 3v6.2l-4.7 7.4A2.8 2.8 0 0 0 7.7 21h8.6a2.8 2.8 0 0 0 2.4-4.4L14 9.2V3"/>
+                                <path d="M8.3 15h7.4"/>
+                                <path d="m10.2 17.4.01 0M13.7 18.2l.01 0"/>
+                            </svg>
+                            Test SQL Connection
                         </button>
                     </form>
                 </article>
@@ -249,22 +263,29 @@
                             </label>
                         </div>
 
-                        <div class="field-row">
-                            <label>
-                                <span>SSL mode</span>
-                                <select name="sslmode">
-                                    <option value="prefer">Prefer</option>
-                                    <option value="require">Require</option>
-                                    <option value="disable">Disable</option>
-                                </select>
-                            </label>
-                            <div class="field-spacer" aria-hidden="true"></div>
-                        </div>
+                        <details class="connection-more-options">
+                            <summary>More options</summary>
+                            <div class="more-options-content">
+                                <label>
+                                    <span>SSL mode</span>
+                                    <select name="sslmode">
+                                        <option value="prefer">Prefer</option>
+                                        <option value="require">Require</option>
+                                        <option value="disable">Disable</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </details>
 
                         <div class="form-feedback neutral" id="pgFeedback" aria-live="polite"></div>
                         <button class="button secondary test-button" type="submit">
-                            <span class="button-icon" aria-hidden="true">↗</span>
-                            Test PostgreSQL
+                            <svg class="test-tube-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M9 3h6"/>
+                                <path d="M10 3v6.2l-4.7 7.4A2.8 2.8 0 0 0 7.7 21h8.6a2.8 2.8 0 0 0 2.4-4.4L14 9.2V3"/>
+                                <path d="M8.3 15h7.4"/>
+                                <path d="m10.2 17.4.01 0M13.7 18.2l.01 0"/>
+                            </svg>
+                            Test PGSQL Connection
                         </button>
                     </form>
                 </article>
@@ -295,7 +316,6 @@
                             data-accordion-step="2" aria-expanded="true"
                             aria-controls="tablesContent">
                         <span class="accordion-label">Collapse</span>
-                        <span class="accordion-chevron" aria-hidden="true">⌃</span>
                     </button>
                     <span class="selection-count" id="selectionCount">0 of 0 selected</span>
                 </div>
@@ -407,7 +427,6 @@
                             data-accordion-step="3" aria-expanded="true"
                             aria-controls="compareContent">
                         <span class="accordion-label">Collapse</span>
-                        <span class="accordion-chevron" aria-hidden="true">⌃</span>
                     </button>
                     <div class="compare-buttons">
                         <button class="button warning" id="stopCompare" type="button" disabled
@@ -578,7 +597,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.7.7</b></span>
+        <span>DB Compare Studio <b>v0.7.8</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>
