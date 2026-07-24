@@ -21,6 +21,9 @@
     --warning-soft: #fff5dd;
     --danger: #c74550;
     --danger-soft: #fff0f1;
+    --toast-bg: #182033;
+    --toast-ink: #ffffff;
+    --toast-line: #303a50;
     --topbar: rgba(255, 255, 255, 0.96);
     --detail-surface: #f8fafc;
     --progress-track: #dfe3ec;
@@ -55,6 +58,9 @@
     --warning-soft: #3b2d14;
     --danger: #ff8490;
     --danger-soft: #431f27;
+    --toast-bg: #252b39;
+    --toast-ink: #f7f9fd;
+    --toast-line: #4b566d;
     --topbar: rgba(23, 27, 37, 0.94);
     --detail-surface: #141923;
     --progress-track: #303747;
@@ -1625,12 +1631,13 @@ select:disabled {
     bottom: 24px;
     max-width: 360px;
     padding: 12px 15px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--toast-line);
     border-radius: 11px;
-    background: var(--ink);
-    color: #fff;
+    background: var(--toast-bg);
+    color: var(--toast-ink);
     box-shadow: var(--shadow-lg);
     font-size: 12px;
+    font-weight: 650;
     line-height: 1.45;
     opacity: 0;
     pointer-events: none;

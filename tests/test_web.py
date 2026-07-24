@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 from unittest.mock import patch
 
 from db_compare import create_app
@@ -32,6 +33,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
+    assert b"v0.7.3" in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
     assert b"Local session" not in response.data
@@ -42,7 +44,32 @@ def test_health_endpoint_reports_usability_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.2-usability-controls"
+    assert response.json["phase"] == "v0.7.3-result-feedback-fix"
+
+
+def test_result_status_ui_describes_each_matching_layer():
+    project_root = Path(__file__).resolve().parents[1]
+    with (project_root / "static" / "js" / "app.js").open(encoding="utf-8") as handle:
+        source = handle.read()
+
+    assert '{ name: "Schema", ran: true' in source
+    assert 'name: "count"' in source
+    assert 'name: "data"' in source
+    assert "matchedResultLabel(result)" in source
+    assert 'complete ? "ready" : "warning"' in source
+
+
+def test_toast_has_theme_safe_contrast_tokens():
+    project_root = Path(__file__).resolve().parents[1]
+    with (project_root / "static" / "css" / "styles.css").open(
+        encoding="utf-8"
+    ) as handle:
+        source = handle.read()
+
+    assert source.count("--toast-bg:") == 2
+    assert source.count("--toast-ink:") == 2
+    assert "background: var(--toast-bg);" in source
+    assert "color: var(--toast-ink);" in source
 
 
 def test_cancel_unknown_operation_is_safe():

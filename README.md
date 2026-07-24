@@ -301,20 +301,21 @@ run.bat
 | v0.7.0 | Reporting and profiles |
 | v0.7.1 | Pre-release UI polish |
 | v0.7.2 | Theme, navigation, and dual stop controls |
+| v0.7.3 | Notification contrast and precise partial-match statuses |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.7.2 commit is:
+The suggested v0.7.3 commit is:
 
 ```text
-feat: add theme navigation and dual stop controls
+fix: improve notification contrast and result match statuses
 ```
 
-The suggested v0.7.2 tag is:
+The suggested v0.7.3 tag is:
 
 ```text
-v0.7.2-usability-controls
+v0.7.3-result-feedback-fix
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

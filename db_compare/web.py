@@ -49,7 +49,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.7.2-usability-controls",
+            "phase": "v0.7.3-result-feedback-fix",
         }
     )
 

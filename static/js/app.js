@@ -603,15 +603,41 @@ function setProgress(completed, total, title, status) {
     elements.completedTables.textContent = `${completed} / ${total}`;
 }
 
+function matchedResultLabel(result) {
+    const checks = [
+        { name: "Schema", ran: true, matched: result.status === "match" },
+        {
+            name: "count",
+            ran: Boolean(result.row_counts),
+            matched: result.row_counts?.status === "match",
+        },
+        {
+            name: "data",
+            ran: Boolean(result.data_result),
+            matched: result.data_result?.status === "match",
+        },
+    ].filter((check) => check.ran);
+    const matched = checks.filter((check) => check.matched);
+    if (!matched.length) return null;
+
+    const names = matched.map((check) => check.name);
+    const label = names.length === 1
+        ? `${names[0]} match`
+        : `${names.slice(0, -1).join(", ")} and ${names.at(-1)} match`;
+    const displayLabel = label.charAt(0).toUpperCase() + label.slice(1);
+    const everyCompletedCheckMatched = matched.length === checks.length;
+    const complete = everyCompletedCheckMatched && !result.data_skipped;
+    return [displayLabel, complete ? "ready" : "warning"];
+}
+
 function resultStatus(result) {
     const status = result.overall_status || result.status;
-    if (status === "match") {
-        return [result.data_result ? "Full match" : result.row_counts ? "Count match" : "Schema match", "ready"];
-    }
     if (status === "missing_table") return ["Table missing", "missing"];
     if (status === "error") return ["Error", "missing"];
     if (status === "stopped_immediately") return ["Stopped now", "missing"];
     if (status === "cancelled") return ["Safe stop", "warning"];
+    const matched = matchedResultLabel(result);
+    if (matched) return matched;
     return ["Differences", "warning"];
 }
 
