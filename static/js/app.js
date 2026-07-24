@@ -42,6 +42,7 @@ const elements = {
     tablesOverlay: document.querySelector("#tablesOverlay"),
     tablesBody: document.querySelector("#tablesBody"),
     tableSearch: document.querySelector("#tableSearch"),
+    clearTableSearch: document.querySelector("#clearTableSearch"),
     tableStatusFilters: [...document.querySelectorAll(".table-status-filter")],
     selectAllTables: document.querySelector("#selectAllTables"),
     clearSelection: document.querySelector("#clearSelection"),
@@ -336,7 +337,7 @@ function lockTables() {
     state.schemaResults.clear();
     resetSchemaResults();
     elements.tablesOverlay.classList.remove("is-hidden");
-    [elements.tableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
+    [elements.tableSearch, elements.clearTableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
         .forEach((control) => { control.disabled = true; });
     elements.tablesBody.replaceChildren();
     updateSelectionCount();
@@ -345,7 +346,7 @@ function lockTables() {
 function unlockTableWorkspace() {
     state.tablesLoaded = true;
     elements.tablesOverlay.classList.add("is-hidden");
-    [elements.tableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
+    [elements.tableSearch, elements.clearTableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
         .forEach((control) => { control.disabled = false; });
     elements.comparisonMode.disabled = false;
     elements.batchSize.disabled = elements.comparisonMode.value !== "full";
@@ -1141,7 +1142,7 @@ async function runSchemaComparison() {
         stopped
             ? "Comparison stopped"
             : includeData
-                ? "Full comparison complete"
+                ? "Schema, row count, and data comparison complete"
                 : includeCounts
                 ? "Schema and row-count comparison complete"
                 : "Schema comparison complete",
@@ -1242,6 +1243,15 @@ elements.tableSearch.addEventListener("input", () => {
     state.searchTimer = window.setTimeout(() => {
         loadTables({ resetPage: true });
     }, 180);
+});
+elements.clearTableSearch.addEventListener("click", () => {
+    const hadSearch = Boolean(elements.tableSearch.value);
+    elements.tableSearch.value = "";
+    elements.tableSearch.focus();
+    if (hadSearch) {
+        window.clearTimeout(state.searchTimer);
+        loadTables({ resetPage: true });
+    }
 });
 elements.tableStatusFilters.forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
@@ -1350,9 +1360,6 @@ document.querySelector("#copyLog").addEventListener("click", async () => {
     } catch {
         showToast("Clipboard access is unavailable in this browser.");
     }
-});
-document.querySelector("#themeInfo").addEventListener("click", () => {
-    showToast("Phase 6 · Reports and saved profiles · Local access only.");
 });
 document.addEventListener("keydown", (event) => {
     if (event.altKey && event.key === "1") activateTab("results");

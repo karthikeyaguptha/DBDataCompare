@@ -47,8 +47,12 @@ This checkpoint contains:
 - Exact PostgreSQL counts through `COUNT(*)`
 - Per-table SQL Server/PostgreSQL row totals and absolute count differences
 - Combined status covering both schema and row-count results
-- Structure-only and Structure + row count comparison modes
-- Full comparison mode selected by default
+- **Schema Only** and **Schema + Row Count** comparison modes
+- **Schema + Row Count + Data** selected by default
+- Responsive, wrapped table grids that keep result actions inside the viewport
+- Header-level bulk selection for all currently filtered Step 2 tables
+- Persistent search-clear control and aligned profile/report action groups
+- SQL Server and PostgreSQL product icons in the connection cards
 - Automatic primary/unique keys and comma-separated manual key overrides
 - Composite detected and manual key support
 - SQL Server `fetchmany()` and PostgreSQL server-side cursor streaming
@@ -129,7 +133,7 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
    database-only filter to investigate missing tables.
 6. Search or page through the cached table-name list.
 7. Select one or more tables.
-8. Keep **Full comparison** selected. If automatic key detection is unavailable,
+8. Keep **Schema + Row Count + Data** selected. If automatic key detection is unavailable,
    enter one or more comma-separated key columns beside the table.
 9. Choose a batch size. `5,000` is the recommended default.
 10. Optionally expand **Comparison rules**. Strict comparison is the default.
@@ -137,8 +141,9 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
 12. Review schema, row-count, and row-data differences in the combined result.
 13. Expand **View details** for column differences and the mismatch preview.
 14. Use **Stop** to cancel safely after the current query or data batch.
-15. After completion or cancellation, choose JSON summary, JSONL mismatch
-    details, CSV summary, or execution log and click **Export**.
+15. After completion or cancellation, choose **Mismatch Report**,
+    **JSON Run Summary**, **CSV Run Summary**, or **Execution Log** and click
+    **Export**.
 
 ### Saved profiles
 
@@ -172,7 +177,7 @@ reports/
 - `execution.log` contains the visible session log captured at finalization.
 - `manifest.json` records the run identity and complete/cancelled state.
 
-Structure-only and Structure + row-count runs produce an empty mismatch JSONL
+**Schema Only** and **Schema + Row Count** runs produce an empty mismatch JSONL
 because they do not compare row values. Reports, logs, and saved profiles are
 local runtime files and are excluded from Git.
 
@@ -290,6 +295,7 @@ run.bat
 | v0.5.0 | Row-count comparison |
 | v0.6.0 | Scalable data comparison |
 | v0.7.0 | Reporting and profiles |
+| v0.7.1 | Pre-release UI polish |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint

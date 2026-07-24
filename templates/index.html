@@ -23,10 +23,6 @@
             </div>
         </div>
 
-        <div class="topbar-actions">
-            <span class="local-badge"><span class="status-dot"></span> Local session</span>
-            <button class="icon-button" type="button" id="themeInfo" aria-label="About this version" title="About this version">i</button>
-        </div>
     </header>
 
     <main class="workspace" id="workspace">
@@ -35,10 +31,6 @@
                 <p class="eyebrow">Database migration assurance</p>
                 <h2 id="page-title">Compare with confidence.</h2>
                 <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
-            </div>
-            <div class="phase-pill">
-                <span>Phase 6</span>
-                Reports and saved profiles
             </div>
         </section>
 
@@ -82,7 +74,9 @@
             <div class="connection-grid">
                 <article class="connection-card sql-card" data-connection="sql">
                     <div class="card-heading">
-                        <span class="database-mark sql-mark" aria-hidden="true">MS</span>
+                        <span class="database-mark sql-mark" aria-hidden="true">
+                            <img src="{{ url_for('static', filename='img/microsoftsqlserver-original.svg') }}" alt="">
+                        </span>
                         <div>
                             <h3>SQL Server</h3>
                             <p>Source database</p>
@@ -160,7 +154,9 @@
 
                 <article class="connection-card pg-card" data-connection="pg">
                     <div class="card-heading">
-                        <span class="database-mark pg-mark" aria-hidden="true">PG</span>
+                        <span class="database-mark pg-mark" aria-hidden="true">
+                            <img src="{{ url_for('static', filename='img/postgresql-original.svg') }}" alt="">
+                        </span>
                         <div>
                             <h3>PostgreSQL</h3>
                             <p>Target database</p>
@@ -249,9 +245,10 @@
 
             <div class="table-toolbar">
                 <label class="search-box">
-                    <span aria-hidden="true">⌕</span>
                     <span class="sr-only">Search tables</span>
                     <input id="tableSearch" type="search" placeholder="Search table names" disabled>
+                    <button class="search-clear" id="clearTableSearch" type="button"
+                        aria-label="Clear table search" title="Clear search" disabled>×</button>
                 </label>
                 <div class="status-filters" role="group" aria-label="Filter tables by availability">
                     <label class="filter-check common">
@@ -267,18 +264,27 @@
                         <span>Only in PostgreSQL</span>
                     </label>
                 </div>
-                <label class="check-label compare-all">
-                    <input type="checkbox" id="selectAllTables" disabled>
-                    <span>Select all filtered tables</span>
-                </label>
                 <button class="button ghost" id="clearSelection" type="button" disabled>Clear selection</button>
             </div>
 
             <div class="data-table-wrap" tabindex="0" aria-label="Table selection preview">
                 <table class="data-table" id="tablesTable">
+                    <colgroup>
+                        <col class="selection-col">
+                        <col class="table-name-col">
+                        <col class="table-name-col">
+                        <col class="column-count-col">
+                        <col class="comparison-key-col">
+                        <col class="availability-col">
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th class="check-column"><span class="sr-only">Select</span></th>
+                            <th class="check-column">
+                                <input class="table-checkbox master-checkbox" type="checkbox"
+                                    id="selectAllTables" disabled
+                                    aria-label="Select or clear all filtered tables"
+                                    title="Select or clear all filtered tables">
+                            </th>
                             <th>SQL Server table</th>
                             <th>PostgreSQL table</th>
                             <th>Columns</th>
@@ -335,9 +341,9 @@
                 <label>
                     <span>Comparison mode</span>
                     <select id="comparisonMode" disabled>
-                        <option value="full" selected>Full comparison</option>
-                        <option value="schema_and_counts">Structure + row count</option>
-                        <option value="schema_only">Structure only</option>
+                        <option value="full" selected>Schema + Row Count + Data</option>
+                        <option value="schema_and_counts">Schema + Row Count</option>
+                        <option value="schema_only">Schema Only</option>
                     </select>
                 </label>
                 <label>
@@ -406,16 +412,16 @@
                     Results <span class="tab-count" id="resultsCount">0</span>
                 </button>
                 <button class="tab-button" id="logTab" type="button" role="tab" aria-selected="false" aria-controls="logPanel">
-                    Execution log <span class="live-indicator" aria-hidden="true"></span>
+                    Execution Log <span class="live-indicator" aria-hidden="true"></span>
                 </button>
                 <div class="tab-actions">
                     <label class="export-choice">
                         <span class="sr-only">Report format</span>
                         <select id="reportType" disabled aria-label="Report format">
-                            <option value="summary">JSON summary</option>
-                            <option value="mismatches">JSONL mismatches</option>
-                            <option value="csv">CSV summary</option>
-                            <option value="log">Execution log</option>
+                            <option value="mismatches" selected>Mismatch Report</option>
+                            <option value="summary">JSON Run Summary</option>
+                            <option value="csv">CSV Run Summary</option>
+                            <option value="log">Execution Log</option>
                         </select>
                     </label>
                     <button class="button ghost" id="exportReport" type="button" disabled>Export</button>
@@ -430,6 +436,17 @@
                 </div>
                 <div class="schema-results-table-wrap is-hidden" id="schemaResultsTable">
                     <table class="data-table schema-results-table">
+                        <colgroup>
+                            <col class="result-table-col">
+                            <col class="result-columns-col">
+                            <col class="result-column-diff-col">
+                            <col class="result-rows-col">
+                            <col class="result-row-diff-col">
+                            <col class="result-data-diff-col">
+                            <col class="result-key-col">
+                            <col class="result-status-col">
+                            <col class="result-action-col">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Table</th>
@@ -467,7 +484,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.7.0</b></span>
+        <span>DB Compare Studio <b>v0.7.1</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

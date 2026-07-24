@@ -15,8 +15,7 @@ def test_home_page_loads():
 
     assert response.status_code == 200
     assert b"DB Compare Studio" in response.data
-    assert b"Reports and saved profiles" in response.data
-    assert b'<option value="full" selected>Full comparison</option>' in response.data
+    assert b'<option value="full" selected>Schema + Row Count + Data</option>' in response.data
     assert b"Rows SQL / PG" in response.data
     assert b'<option value="credentials" selected>SQL Server Authentication</option>' in response.data
     assert b'id="tablePagination"' in response.data
@@ -26,14 +25,20 @@ def test_home_page_loads():
     assert b"Only in PostgreSQL" in response.data
     assert b'id="profileSelect"' in response.data
     assert b'id="exportReport"' in response.data
+    assert b'id="clearTableSearch"' in response.data
+    assert b'id="selectAllTables"' in response.data
+    assert b'<option value="mismatches" selected>Mismatch Report</option>' in response.data
+    assert b"microsoftsqlserver-original.svg" in response.data
+    assert b"postgresql-original.svg" in response.data
+    assert b"Local session" not in response.data
 
 
-def test_health_endpoint_reports_phase_6():
+def test_health_endpoint_reports_ui_polish_checkpoint():
     response = client().get("/api/health")
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.0-reporting"
+    assert response.json["phase"] == "v0.7.1-ui-polish"
 
 
 @patch("db_compare.web.test_database_connection")
