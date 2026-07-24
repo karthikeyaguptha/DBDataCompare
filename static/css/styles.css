@@ -476,6 +476,8 @@ select:disabled {
 }
 
 .connection-card {
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     padding: 22px;
     border: 1px solid var(--line);
@@ -486,6 +488,12 @@ select:disabled {
 .connection-card:focus-within {
     border-color: #b8c0f7;
     box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.connection-card form {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
 }
 
 .sql-card {
@@ -662,10 +670,81 @@ select:disabled {
 }
 
 .form-feedback {
-    min-height: 18px;
-    margin: 0 0 5px;
-    color: var(--danger);
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 9px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
     font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.form-feedback:empty {
+    min-height: 18px;
+    padding: 0;
+}
+
+.form-feedback::before {
+    display: grid;
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.form-feedback.success {
+    border-color: color-mix(in srgb, var(--success) 28%, transparent);
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.form-feedback.success::before {
+    content: "✓";
+    background: var(--success);
+    color: var(--surface);
+}
+
+.form-feedback.error {
+    border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.form-feedback.error::before {
+    content: "!";
+    background: var(--danger);
+    color: var(--surface);
+}
+
+.form-feedback.warning {
+    border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.form-feedback.warning::before {
+    content: "!";
+    background: var(--warning);
+    color: var(--surface);
+}
+
+.form-feedback.neutral:not(:empty) {
+    border-color: var(--line);
+    background: var(--surface-muted);
+    color: var(--ink-soft);
+}
+
+.form-feedback.neutral:not(:empty)::before {
+    content: "i";
+    background: var(--surface-strong);
+    color: var(--ink-soft);
 }
 
 .button {
@@ -745,6 +824,7 @@ select:disabled {
 
 .test-button {
     width: 100%;
+    margin-top: auto;
 }
 
 .button.is-loading {
@@ -756,8 +836,21 @@ select:disabled {
     font-size: 14px;
 }
 
+.connection-options-row {
+    align-items: end;
+}
+
+.connection-options-row select {
+    margin-bottom: 13px;
+}
+
 .trust-certificate {
-    margin: -2px 0 13px;
+    min-height: 40px;
+    margin: 0 0 13px;
+    padding: 9px 11px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
 }
 
 .connection-actions {
@@ -1754,6 +1847,16 @@ select:disabled {
 
     .export-choice select {
         width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .connection-options-row {
+        grid-template-columns: 1fr;
+    }
+
+    .trust-certificate {
+        margin-top: -4px;
     }
 }
 

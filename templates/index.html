@@ -145,20 +145,21 @@
                             </div>
                         </div>
 
-                        <label class="driver-field">
-                            <span>ODBC driver</span>
-                            <select name="driver">
-                                <option>ODBC Driver 18 for SQL Server</option>
-                                <option>ODBC Driver 17 for SQL Server</option>
-                            </select>
-                        </label>
+                        <div class="field-row connection-options-row">
+                            <label class="driver-field">
+                                <span>ODBC driver</span>
+                                <select name="driver">
+                                    <option>ODBC Driver 18 for SQL Server</option>
+                                    <option>ODBC Driver 17 for SQL Server</option>
+                                </select>
+                            </label>
+                            <label class="check-label trust-certificate">
+                                <input type="checkbox" name="trust_server_certificate">
+                                <span>Trust server certificate</span>
+                            </label>
+                        </div>
 
-                        <label class="check-label trust-certificate">
-                            <input type="checkbox" name="trust_server_certificate">
-                            <span>Trust server certificate</span>
-                        </label>
-
-                        <div class="form-feedback" id="sqlFeedback" aria-live="polite"></div>
+                        <div class="form-feedback neutral" id="sqlFeedback" aria-live="polite"></div>
                         <button class="button secondary test-button" type="submit">
                             <span class="button-icon" aria-hidden="true">↗</span>
                             Test SQL Server
@@ -227,7 +228,7 @@
                             <div class="field-spacer" aria-hidden="true"></div>
                         </div>
 
-                        <div class="form-feedback" id="pgFeedback" aria-live="polite"></div>
+                        <div class="form-feedback neutral" id="pgFeedback" aria-live="polite"></div>
                         <button class="button secondary test-button" type="submit">
                             <span class="button-icon" aria-hidden="true">↗</span>
                             Test PostgreSQL
@@ -505,7 +506,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.7.3</b></span>
+        <span>DB Compare Studio <b>v0.7.4</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

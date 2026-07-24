@@ -33,18 +33,41 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.7.3" in response.data
+    assert b"v0.7.4" in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
+    assert b"connection-options-row" in response.data
     assert b"Local session" not in response.data
 
 
-def test_health_endpoint_reports_usability_checkpoint():
+def test_health_endpoint_reports_connection_card_checkpoint():
     response = client().get("/api/health")
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.3-result-feedback-fix"
+    assert response.json["phase"] == "v0.7.4-connection-card-polish"
+
+
+def test_database_icons_are_bundled_static_assets():
+    test_client = client()
+    sql_icon = test_client.get("/static/img/microsoftsqlserver-original.svg")
+    pg_icon = test_client.get("/static/img/postgresql-original.svg")
+
+    assert sql_icon.status_code == 200
+    assert pg_icon.status_code == 200
+    assert sql_icon.mimetype == "image/svg+xml"
+    assert pg_icon.mimetype == "image/svg+xml"
+
+
+def test_connection_feedback_has_persistent_success_treatment():
+    project_root = Path(__file__).resolve().parents[1]
+    javascript = (project_root / "static" / "js" / "app.js").read_text(encoding="utf-8")
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(encoding="utf-8")
+
+    assert "SQL Server connection verified successfully." in javascript
+    assert "PostgreSQL connection verified successfully." in javascript
+    assert 'feedback.className = `form-feedback ${kind}`' in javascript
+    assert ".form-feedback.success::before" in stylesheet
 
 
 def test_result_status_ui_describes_each_matching_layer():

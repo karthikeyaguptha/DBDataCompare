@@ -144,7 +144,7 @@ function showFeedback(prefix, message, kind = "error") {
     const feedback = document.querySelector(`#${prefix}Feedback`);
     const badge = document.querySelector(`#${prefix}State`);
     feedback.textContent = message;
-    feedback.style.color = kind === "success" ? "var(--success)" : "var(--danger)";
+    feedback.className = `form-feedback ${kind}`;
     badge.textContent = kind === "success" ? "Connected" : "Connection failed";
     badge.className = `connection-state ${kind}`;
 }
@@ -248,7 +248,7 @@ function applyProfile(profile) {
         badge.textContent = "Not tested";
         badge.className = "connection-state neutral";
         feedback.textContent = "Enter the password, then test this connection.";
-        feedback.style.color = "var(--ink-faint)";
+        feedback.className = "form-feedback neutral";
     });
     elements.loadTablesButton.disabled = true;
     lockTables();
@@ -310,7 +310,10 @@ async function testConnection(form, prefix, databaseType) {
         });
         state[`${prefix}Validated`] = true;
         state[`${prefix}Signature`] = safeSignature(config);
-        showFeedback(prefix, result.message, "success");
+        const successMessage = prefix === "sql"
+            ? "SQL Server connection verified successfully."
+            : "PostgreSQL connection verified successfully.";
+        showFeedback(prefix, successMessage, "success");
         addLog("READY", result.message);
         updateConnectionState();
     } catch (error) {
@@ -347,7 +350,7 @@ function markFormChanged(prefix) {
     const feedback = document.querySelector(`#${prefix}Feedback`);
     const badge = document.querySelector(`#${prefix}State`);
     feedback.textContent = "Details changed. Test this connection again.";
-    feedback.style.color = "var(--warning)";
+    feedback.className = "form-feedback warning";
     badge.textContent = "Changed";
     badge.className = "connection-state neutral";
     elements.loadTablesButton.disabled = true;

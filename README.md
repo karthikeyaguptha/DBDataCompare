@@ -302,20 +302,21 @@ run.bat
 | v0.7.1 | Pre-release UI polish |
 | v0.7.2 | Theme, navigation, and dual stop controls |
 | v0.7.3 | Notification contrast and precise partial-match statuses |
+| v0.7.4 | Persistent connection success panels, aligned connection options, and offline-safe bundled database icons |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.7.3 commit is:
+The suggested v0.7.4 commit is:
 
 ```text
-fix: improve notification contrast and result match statuses
+feat: polish connection cards and offline icons
 ```
 
-The suggested v0.7.3 tag is:
+The suggested v0.7.4 tag is:
 
 ```text
-v0.7.3-result-feedback-fix
+v0.7.4-connection-card-polish
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,
