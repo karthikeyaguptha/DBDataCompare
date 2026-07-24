@@ -49,7 +49,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.7.5-locked-state-contrast",
+            "phase": "v0.7.6-workflow-results-refinement",
         }
     )
 

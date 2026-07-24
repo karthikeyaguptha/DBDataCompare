@@ -39,6 +39,14 @@
         </div>
     </header>
 
+    <aside class="service-banner is-hidden" id="serviceBanner" role="alert" aria-live="assertive">
+        <div>
+            <strong id="serviceBannerTitle">Local service is unavailable</strong>
+            <span id="serviceBannerMessage">Start run.bat, then retest both database connections.</span>
+        </div>
+        <button class="button ghost" id="retryService" type="button">Check again</button>
+    </aside>
+
     <main class="workspace" id="workspace">
         <section class="intro" aria-labelledby="page-title">
             <div>
@@ -65,11 +73,20 @@
             </div>
         </nav>
 
-        <section class="section-block" aria-labelledby="connections-title">
+        <section class="section-block workflow-step" id="connectionsSection"
+            data-step-panel="1" aria-labelledby="connections-title">
             <div class="section-heading">
                 <div>
                     <p class="section-kicker">Step 1</p>
-                    <h2 id="connections-title">Database connections</h2>
+                    <div class="accordion-title-row">
+                        <h2 id="connections-title">Database connections</h2>
+                        <button class="accordion-toggle" type="button"
+                            data-accordion-step="1" aria-expanded="true"
+                            aria-controls="connectionsContent">
+                            <span class="accordion-label">Collapse</span>
+                            <span class="accordion-chevron" aria-hidden="true">⌃</span>
+                        </button>
+                    </div>
                     <p>Credentials stay in memory for this local session and are never stored by the UI.</p>
                 </div>
                 <div class="profile-tools" aria-label="Saved comparison profiles">
@@ -85,6 +102,7 @@
                 </div>
             </div>
 
+            <div class="step-content" id="connectionsContent">
             <div class="connection-grid">
                 <article class="connection-card sql-card" data-connection="sql">
                     <div class="card-heading">
@@ -246,18 +264,29 @@
                     Load tables <span aria-hidden="true">→</span>
                 </button>
             </div>
+            </div>
         </section>
 
-        <section class="section-block muted-section" id="tablesSection" aria-labelledby="tables-title">
+        <section class="section-block muted-section workflow-step" id="tablesSection"
+            data-step-panel="2" aria-labelledby="tables-title">
             <div class="section-heading">
                 <div>
                     <p class="section-kicker">Step 2</p>
-                    <h2 id="tables-title">Select tables</h2>
+                    <div class="accordion-title-row">
+                        <h2 id="tables-title">Select tables</h2>
+                        <button class="accordion-toggle" type="button"
+                            data-accordion-step="2" aria-expanded="true"
+                            aria-controls="tablesContent">
+                            <span class="accordion-label">Collapse</span>
+                            <span class="accordion-chevron" aria-hidden="true">⌃</span>
+                        </button>
+                    </div>
                     <p>Search, select, and optionally override the key used to match corresponding rows.</p>
                 </div>
                 <span class="selection-count" id="selectionCount">0 of 0 selected</span>
             </div>
 
+            <div class="step-content" id="tablesContent">
             <div class="table-toolbar">
                 <label class="search-box">
                     <span class="sr-only">Search tables</span>
@@ -312,8 +341,8 @@
 
                 <div class="locked-overlay" id="tablesOverlay">
                     <span class="lock-mark" aria-hidden="true">2</span>
-                    <strong>Connect both databases to load tables</strong>
-                    <p>Live table discovery becomes available after both connection tests pass.</p>
+                    <strong id="tablesOverlayTitle">Connect both databases to load tables</strong>
+                    <p id="tablesOverlayMessage">Live table discovery becomes available after both connection tests pass.</p>
                 </div>
             </div>
 
@@ -330,18 +359,40 @@
                 </label>
                 <span class="page-range" id="tablePageRange" aria-live="polite">0 of 0 tables</span>
                 <div class="page-controls">
-                    <button class="page-button" id="previousTablePage" type="button" disabled aria-label="Previous table page">←</button>
-                    <span id="tablePageStatus">Page 1 of 1</span>
-                    <button class="page-button" id="nextTablePage" type="button" disabled aria-label="Next table page">→</button>
+                    <button class="page-button" id="firstTablePage" type="button" disabled
+                        aria-label="First table page" title="First page">«</button>
+                    <button class="page-button" id="previousTablePage" type="button" disabled
+                        aria-label="Previous table page" title="Previous page">‹</button>
+                    <label class="page-jump">
+                        <span>Page</span>
+                        <input id="tablePageInput" type="number" min="1" value="1"
+                            inputmode="numeric" aria-label="Desired table page" disabled>
+                        <span id="tablePageStatus">of 1</span>
+                    </label>
+                    <button class="page-go" id="goTablePage" type="button" disabled>Go</button>
+                    <button class="page-button" id="nextTablePage" type="button" disabled
+                        aria-label="Next table page" title="Next page">›</button>
+                    <button class="page-button" id="lastTablePage" type="button" disabled
+                        aria-label="Last table page" title="Last page">»</button>
                 </div>
             </nav>
+            </div>
         </section>
 
-        <section class="section-block muted-section" id="compareSection" aria-labelledby="compare-title">
+        <section class="section-block muted-section workflow-step" id="compareSection"
+            data-step-panel="3" aria-labelledby="compare-title">
             <div class="section-heading">
                 <div>
                     <p class="section-kicker">Step 3</p>
-                    <h2 id="compare-title">Run comparison</h2>
+                    <div class="accordion-title-row">
+                        <h2 id="compare-title">Run comparison</h2>
+                        <button class="accordion-toggle" type="button"
+                            data-accordion-step="3" aria-expanded="true"
+                            aria-controls="compareContent">
+                            <span class="accordion-label">Collapse</span>
+                            <span class="accordion-chevron" aria-hidden="true">⌃</span>
+                        </button>
+                    </div>
                     <p>Review scope, track progress, and choose safe or immediate cancellation.</p>
                 </div>
                 <div class="compare-buttons">
@@ -355,6 +406,7 @@
                 </div>
             </div>
 
+            <div class="step-content" id="compareContent">
             <div class="run-settings">
                 <label>
                     <span>Comparison mode</span>
@@ -377,8 +429,12 @@
                     <strong id="selectedSummary">0</strong>
                 </div>
                 <div class="run-summary">
-                    <span>Estimated work</span>
+                    <span>Planned checks</span>
                     <strong id="estimatedWork">Waiting for tables</strong>
+                </div>
+                <div class="run-summary">
+                    <span>Data volume</span>
+                    <strong id="comparisonVolume">Not calculated</strong>
                 </div>
             </div>
 
@@ -421,6 +477,7 @@
                     <span>Elapsed: <strong id="elapsedTime">00:00</strong></span>
                     <span>Completed: <strong id="completedTables">0 / 0</strong></span>
                 </div>
+            </div>
             </div>
         </section>
 
@@ -506,7 +563,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.7.5</b></span>
+        <span>DB Compare Studio <b>v0.7.6</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

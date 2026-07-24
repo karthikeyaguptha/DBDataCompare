@@ -35,6 +35,8 @@ This checkpoint contains:
 - Cached backend table search and pagination; only the current page is sent to the browser
 - Password visibility controls
 - Paginated table selection with fast search, filtered select-all, and page size
+- Fixed-height Step 2 table viewport with a sticky header, stable sparse-page layout,
+  First/Previous/Next/Last controls, and direct page entry
 - Live SQL Server and PostgreSQL column-metadata retrieval
 - Case-insensitive column matching with compatible cross-database type families
 - Column type, length, precision, scale, timestamp precision, and nullability checks
@@ -46,7 +48,8 @@ This checkpoint contains:
 - Exact SQL Server counts through `COUNT_BIG(*)`
 - Exact PostgreSQL counts through `COUNT(*)`
 - Per-table SQL Server/PostgreSQL row totals and absolute count differences
-- Combined status covering both schema and row-count results
+- Independent vertical Schema, Count, and Data result badges; each match is
+  green and each difference, skip, stop, or not-run state is amber
 - **Schema Only** and **Schema + Row Count** comparison modes
 - **Schema + Row Count + Data** selected by default
 - Responsive, wrapped table grids that keep result actions inside the viewport
@@ -71,6 +74,10 @@ This checkpoint contains:
   binary values, JSON-like values, and Unicode text
 - Strict defaults with optional trailing-space, case, decimal, and timestamp rules
 - Live elapsed-time and completed-table progress
+- Planned-check summary plus cumulative discovered and processed row positions
+- Accessible Step 1/2/3 accordions with workflow-aware automatic transitions
+- Local-service watchdog that invalidates stale connection cards and explains
+  how to restart `run.bat` without discarding already-rendered results
 - Comparison settings, progress, Safe Stop/Stop Now controls, and result states
 - Results and execution-log tabs
 - Windows setup and launch scripts
@@ -304,20 +311,21 @@ run.bat
 | v0.7.3 | Notification contrast and precise partial-match statuses |
 | v0.7.4 | Persistent connection success panels, aligned connection options, and offline-safe bundled database icons |
 | v0.7.5 | Theme-safe contrast for the locked Step 2 table-discovery state |
+| v0.7.6 | Workflow accordions, three-layer result badges, comparison-volume progress, fixed table viewport, direct pagination, and local-service recovery |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.7.5 commit is:
+The suggested v0.7.6 commit is:
 
 ```text
-fix: improve locked table panel contrast
+feat: refine workflow results and table navigation
 ```
 
-The suggested v0.7.5 tag is:
+The suggested v0.7.6 tag is:
 
 ```text
-v0.7.5-locked-state-contrast
+v0.7.6-workflow-results-refinement
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

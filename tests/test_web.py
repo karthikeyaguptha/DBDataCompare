@@ -33,19 +33,28 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.7.5" in response.data
+    assert b"v0.7.6" in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
     assert b"connection-options-row" in response.data
+    assert b'id="serviceBanner"' in response.data
+    assert b'data-accordion-step="1"' in response.data
+    assert b'data-accordion-step="2"' in response.data
+    assert b'data-accordion-step="3"' in response.data
+    assert b'id="firstTablePage"' in response.data
+    assert b'id="lastTablePage"' in response.data
+    assert b'id="tablePageInput"' in response.data
+    assert b'id="goTablePage"' in response.data
+    assert b'id="comparisonVolume"' in response.data
     assert b"Local session" not in response.data
 
 
-def test_health_endpoint_reports_locked_state_contrast_checkpoint():
+def test_health_endpoint_reports_workflow_results_checkpoint():
     response = client().get("/api/health")
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.5-locked-state-contrast"
+    assert response.json["phase"] == "v0.7.6-workflow-results-refinement"
 
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():
@@ -94,6 +103,83 @@ def test_result_status_ui_describes_each_matching_layer():
     assert 'name: "data"' in source
     assert "matchedResultLabel(result)" in source
     assert 'complete ? "ready" : "warning"' in source
+
+
+def test_result_ui_renders_three_independent_vertical_badges():
+    project_root = Path(__file__).resolve().parents[1]
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "function resultCheckBadges(result)" in javascript
+    assert '["Schema match", "ready"]' in javascript
+    assert '["Count match", "ready"]' in javascript
+    assert '["Data match", "ready"]' in javascript
+    assert '["Count not run", "warning"]' in javascript
+    assert '["Data not run", "warning"]' in javascript
+    assert 'statusStack.className = "result-status-stack"' in javascript
+    assert "flex-direction: column;" in stylesheet
+    assert ".result-check-badge" in stylesheet
+
+
+def test_workflow_accordions_and_fixed_table_viewport_are_present():
+    project_root = Path(__file__).resolve().parents[1]
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "function setAccordion(step, expanded" in javascript
+    assert "openWorkflowStep(2, { collapseEarlier: true, scroll })" in javascript
+    assert "openWorkflowStep(3, { collapseEarlier: true, scroll: true })" in javascript
+    assert "height: clamp(420px, 56vh, 610px);" in stylesheet
+    assert ".workflow-step.is-collapsed .step-content" in stylesheet
+    assert "position: sticky;" in stylesheet
+
+
+def test_pagination_supports_first_last_and_direct_page_jump():
+    project_root = Path(__file__).resolve().parents[1]
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "function goToTablePage(page)" in javascript
+    assert 'elements.firstTablePage.addEventListener("click"' in javascript
+    assert 'elements.lastTablePage.addEventListener("click"' in javascript
+    assert 'elements.goTablePage.addEventListener("click"' in javascript
+    assert 'event.key !== "Enter"' in javascript
+
+
+def test_backend_offline_state_invalidates_stale_connections():
+    project_root = Path(__file__).resolve().parents[1]
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "function markBackendOffline()" in javascript
+    assert "state.sqlValidated = false;" in javascript
+    assert "state.pgValidated = false;" in javascript
+    assert 'badge.textContent = "Service offline";' in javascript
+    assert "Start run.bat" in javascript
+    assert "window.setInterval" in javascript
+    assert "checkBackendHealth" in javascript
+
+
+def test_comparison_volume_tracks_discovered_and_processed_rows():
+    project_root = Path(__file__).resolve().parents[1]
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "function updateComparisonVolume()" in javascript
+    assert "state.discoveredRowPositions += Math.max(" in javascript
+    assert "state.currentTableProcessedRows = Number(response.processed || 0);" in javascript
+    assert "state.runProcessedRows + state.currentTableProcessedRows" in javascript
 
 
 def test_toast_has_theme_safe_contrast_tokens():

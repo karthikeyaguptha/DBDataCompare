@@ -33,6 +33,10 @@ const state = {
     profiles: [],
     currentProfileId: "",
     pendingProfileSelection: new Set(),
+    backendOffline: false,
+    runProcessedRows: 0,
+    currentTableProcessedRows: 0,
+    discoveredRowPositions: 0,
 };
 
 const elements = {
@@ -52,10 +56,15 @@ const elements = {
     tablePageSize: document.querySelector("#tablePageSize"),
     tablePageRange: document.querySelector("#tablePageRange"),
     tablePageStatus: document.querySelector("#tablePageStatus"),
+    firstTablePage: document.querySelector("#firstTablePage"),
     previousTablePage: document.querySelector("#previousTablePage"),
     nextTablePage: document.querySelector("#nextTablePage"),
+    lastTablePage: document.querySelector("#lastTablePage"),
+    tablePageInput: document.querySelector("#tablePageInput"),
+    goTablePage: document.querySelector("#goTablePage"),
     selectedSummary: document.querySelector("#selectedSummary"),
     estimatedWork: document.querySelector("#estimatedWork"),
+    comparisonVolume: document.querySelector("#comparisonVolume"),
     comparisonMode: document.querySelector("#comparisonMode"),
     batchSize: document.querySelector("#batchSize"),
     ignoreTrailingSpaces: document.querySelector("#ignoreTrailingSpaces"),
@@ -92,6 +101,13 @@ const elements = {
     toast: document.querySelector("#toast"),
     themeToggle: document.querySelector("#themeToggle"),
     backToTop: document.querySelector("#backToTop"),
+    serviceBanner: document.querySelector("#serviceBanner"),
+    serviceBannerTitle: document.querySelector("#serviceBannerTitle"),
+    serviceBannerMessage: document.querySelector("#serviceBannerMessage"),
+    retryService: document.querySelector("#retryService"),
+    tablesOverlayTitle: document.querySelector("#tablesOverlayTitle"),
+    tablesOverlayMessage: document.querySelector("#tablesOverlayMessage"),
+    accordionToggles: [...document.querySelectorAll(".accordion-toggle")],
 };
 
 let toastTimer;
@@ -127,8 +143,124 @@ function showToast(message) {
     toastTimer = window.setTimeout(() => elements.toast.classList.remove("show"), 3600);
 }
 
+function setAccordion(step, expanded, { scroll = false } = {}) {
+    const panel = document.querySelector(`[data-step-panel="${step}"]`);
+    const toggle = document.querySelector(`[data-accordion-step="${step}"]`);
+    if (!panel || !toggle) return;
+    panel.classList.toggle("is-collapsed", !expanded);
+    toggle.setAttribute("aria-expanded", String(expanded));
+    toggle.querySelector(".accordion-label").textContent = expanded ? "Collapse" : "Expand";
+    toggle.querySelector(".accordion-chevron").textContent = expanded ? "⌃" : "⌄";
+    if (expanded && scroll) {
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+
+function openWorkflowStep(step, { collapseEarlier = false, scroll = false } = {}) {
+    if (collapseEarlier) {
+        for (let prior = 1; prior < step; prior += 1) setAccordion(prior, false);
+    }
+    setAccordion(step, true, { scroll });
+}
+
 function timestamp() {
     return new Date().toLocaleTimeString("en-GB", { hour12: false });
+}
+
+function showServiceBanner(kind, title, message) {
+    elements.serviceBanner.classList.remove("is-hidden", "offline", "restored");
+    elements.serviceBanner.classList.add(kind);
+    elements.serviceBannerTitle.textContent = title;
+    elements.serviceBannerMessage.textContent = message;
+}
+
+function markBackendOffline() {
+    if (state.backendOffline) return;
+    state.backendOffline = true;
+    state.sqlValidated = false;
+    state.pgValidated = false;
+    state.sqlSignature = "";
+    state.pgSignature = "";
+    state.catalogToken = "";
+    state.tablesLoaded = false;
+    state.currentMatchingIds = [];
+    state.selectedTables.clear();
+    state.manualKeys.clear();
+    state.tableRequestController?.abort();
+    state.compareController?.abort();
+    state.comparing = false;
+    state.stopRequested = true;
+    state.stopMode = "immediate";
+    state.activeDataJobId = null;
+    state.activeOperationId = "";
+    window.clearInterval(state.elapsedTimer);
+    state.elapsedTimer = null;
+    [
+        elements.loadTablesButton,
+        elements.startCompare,
+        elements.stopCompare,
+        elements.stopNow,
+        elements.tableSearch,
+        elements.clearTableSearch,
+        ...elements.tableStatusFilters,
+        elements.selectAllTables,
+        elements.clearSelection,
+        elements.tablePageSize,
+    ].forEach((control) => { control.disabled = true; });
+    ["sql", "pg"].forEach((prefix) => {
+        const feedback = document.querySelector(`#${prefix}Feedback`);
+        const badge = document.querySelector(`#${prefix}State`);
+        feedback.textContent = "Local service stopped. Restart run.bat and test this connection again.";
+        feedback.className = "form-feedback error";
+        badge.textContent = "Service offline";
+        badge.className = "connection-state error";
+    });
+    elements.tablesOverlay.classList.remove("is-hidden");
+    elements.tablesOverlayTitle.textContent = "Local service is unavailable";
+    elements.tablesOverlayMessage.textContent =
+        "Restart run.bat, confirm the service is restored, then retest both connections.";
+    elements.progressTitle.textContent = "Comparison service stopped";
+    elements.progressStatus.textContent =
+        "Completed results remain visible. Restart run.bat before starting another operation.";
+    showServiceBanner(
+        "offline",
+        "Local service is unavailable",
+        "run.bat may have been closed. Start it again, then check the service and retest both connections.",
+    );
+    updateSelectionCount();
+    updatePagination();
+    addLog("WARN", "Local application service became unavailable. Connection states were invalidated.");
+}
+
+function markBackendReachable() {
+    if (!state.backendOffline) return;
+    state.backendOffline = false;
+    showServiceBanner(
+        "restored",
+        "Local service is running again",
+        "Retest SQL Server and PostgreSQL before reloading tables.",
+    );
+    elements.tablesOverlayTitle.textContent = "Retest both database connections";
+    elements.tablesOverlayMessage.textContent =
+        "Connection verification is required after the local service restarts.";
+}
+
+async function checkBackendHealth() {
+    elements.retryService.disabled = true;
+    try {
+        await requestJson("/api/health", { method: "GET" });
+        if (!state.sqlValidated || !state.pgValidated) {
+            showServiceBanner(
+                "restored",
+                "Local service is running",
+                "Test both database connections again before reloading tables.",
+            );
+        }
+    } catch {
+        // requestJson displays the persistent offline recovery state.
+    } finally {
+        elements.retryService.disabled = false;
+    }
 }
 
 function addLog(level, message) {
@@ -281,10 +413,20 @@ function validateConnectionForm(form, prefix) {
 }
 
 async function requestJson(url, options) {
-    const response = await fetch(url, {
-        ...options,
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    });
+    let response;
+    try {
+        response = await fetch(url, {
+            ...options,
+            headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        });
+    } catch (error) {
+        if (error.name === "AbortError") throw error;
+        markBackendOffline();
+        throw new Error(
+            "The local application service is unavailable. Start run.bat, then retest both connections.",
+        );
+    }
+    markBackendReachable();
     const payload = await response.json().catch(() => ({
         status: "error",
         message: "The local application returned an unreadable response.",
@@ -335,6 +477,7 @@ function updateConnectionState() {
     if (bothValidated) {
         document.querySelector("[data-step='1']").classList.add("complete");
         document.querySelector("[data-step='2']").classList.add("active");
+        elements.serviceBanner.classList.add("is-hidden");
         showToast("Both database connections succeeded. You can now load tables.");
     } else {
         document.querySelector("[data-step='1']").classList.remove("complete");
@@ -369,16 +512,38 @@ function lockTables() {
     state.schemaResults.clear();
     resetSchemaResults();
     elements.tablesOverlay.classList.remove("is-hidden");
-    [elements.tableSearch, elements.clearTableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
+    elements.tablesOverlayTitle.textContent = "Connect both databases to load tables";
+    elements.tablesOverlayMessage.textContent =
+        "Live table discovery becomes available after both connection tests pass.";
+    [
+        elements.tableSearch,
+        elements.clearTableSearch,
+        ...elements.tableStatusFilters,
+        elements.selectAllTables,
+        elements.clearSelection,
+        elements.tablePageSize,
+        elements.tablePageInput,
+        elements.goTablePage,
+    ]
         .forEach((control) => { control.disabled = true; });
     elements.tablesBody.replaceChildren();
     updateSelectionCount();
+    updatePagination();
 }
 
 function unlockTableWorkspace() {
     state.tablesLoaded = true;
     elements.tablesOverlay.classList.add("is-hidden");
-    [elements.tableSearch, elements.clearTableSearch, ...elements.tableStatusFilters, elements.selectAllTables, elements.clearSelection, elements.tablePageSize]
+    [
+        elements.tableSearch,
+        elements.clearTableSearch,
+        ...elements.tableStatusFilters,
+        elements.selectAllTables,
+        elements.clearSelection,
+        elements.tablePageSize,
+        elements.tablePageInput,
+        elements.goTablePage,
+    ]
         .forEach((control) => { control.disabled = false; });
     elements.comparisonMode.disabled = false;
     elements.batchSize.disabled = elements.comparisonMode.value !== "full";
@@ -439,10 +604,8 @@ async function loadTables({ resetPage = false, scroll = false, refreshCatalog = 
         renderTableRows(result.tables);
         unlockTableWorkspace();
         updatePagination();
+        openWorkflowStep(2, { collapseEarlier: true, scroll });
         addLog("INFO", `Showing ${result.tables.length} of ${state.tableTotal} filtered table names.`);
-        if (scroll) {
-            document.querySelector("#tablesSection").scrollIntoView({ behavior: "smooth", block: "start" });
-        }
     } catch (error) {
         if (error.name === "AbortError") return;
         addLog("WARN", error.message);
@@ -563,20 +726,70 @@ function updateEstimatedWork() {
     const mode = elements.comparisonMode.value;
     elements.estimatedWork.textContent = selectedCount
         ? mode === "full"
-            ? `${selectedCount} complete table comparison${selectedCount === 1 ? "" : "s"}`
+            ? `${selectedCount * 3} checks across ${selectedCount} table${selectedCount === 1 ? "" : "s"}`
             : mode === "schema_and_counts"
-                ? `${selectedCount} schema + ${selectedCount} count check${selectedCount === 1 ? "" : "s"}`
+                ? `${selectedCount * 2} checks across ${selectedCount} table${selectedCount === 1 ? "" : "s"}`
                 : `${selectedCount} schema check${selectedCount === 1 ? "" : "s"}`
         : "Waiting for tables";
+    if (!state.comparing) {
+        elements.comparisonVolume.textContent = selectedCount
+            ? mode === "full"
+                ? `Batch size ${formatCount(Number(elements.batchSize.value))}; total calculated during run`
+                : mode === "schema_and_counts"
+                    ? "Exact row counts calculated during run"
+                    : "Schema metadata only"
+            : "Not calculated";
+    }
+}
+
+function updateComparisonVolume() {
+    const mode = elements.comparisonMode.value;
+    if (mode === "schema_only") {
+        elements.comparisonVolume.textContent = "Schema metadata only";
+        return;
+    }
+    if (!state.discoveredRowPositions) {
+        elements.comparisonVolume.textContent = state.comparing
+            ? "Calculating row volume…"
+            : "Exact row counts calculated during run";
+        return;
+    }
+    if (mode === "schema_and_counts") {
+        elements.comparisonVolume.textContent =
+            `${formatCount(state.discoveredRowPositions)} row positions counted`;
+        return;
+    }
+    const processed = state.runProcessedRows + state.currentTableProcessedRows;
+    elements.comparisonVolume.textContent =
+        `${formatCount(processed)} / ${formatCount(state.discoveredRowPositions)} row positions`;
 }
 
 function updatePagination() {
     const start = state.tableTotal ? (state.tablePage - 1) * state.tablePageSize + 1 : 0;
     const end = Math.min(state.tablePage * state.tablePageSize, state.tableTotal);
     elements.tablePageRange.textContent = `${start}${state.tableTotal ? `–${end}` : ""} of ${state.tableTotal} tables`;
-    elements.tablePageStatus.textContent = `Page ${state.tablePage} of ${state.tableTotalPages}`;
+    elements.tablePageInput.value = String(state.tablePage);
+    elements.tablePageInput.max = String(state.tableTotalPages);
+    elements.tablePageStatus.textContent = `of ${state.tableTotalPages}`;
+    elements.firstTablePage.disabled = !state.tablesLoaded || state.tablePage === 1;
     elements.previousTablePage.disabled = !state.tablesLoaded || state.tablePage === 1;
     elements.nextTablePage.disabled = !state.tablesLoaded || state.tablePage >= state.tableTotalPages;
+    elements.lastTablePage.disabled =
+        !state.tablesLoaded || state.tablePage >= state.tableTotalPages;
+    elements.tablePageInput.disabled = !state.tablesLoaded;
+    elements.goTablePage.disabled = !state.tablesLoaded;
+}
+
+function goToTablePage(page) {
+    if (!state.tablesLoaded) return;
+    const target = Math.min(
+        state.tableTotalPages,
+        Math.max(1, Number.parseInt(page, 10) || state.tablePage),
+    );
+    elements.tablePageInput.value = String(target);
+    if (target === state.tablePage) return;
+    state.tablePage = target;
+    loadTables();
 }
 
 function activateTab(name) {
@@ -644,10 +857,34 @@ function resultStatus(result) {
     return ["Differences", "warning"];
 }
 
+function resultCheckBadges(result) {
+    const schemaLabel = result.status === "match"
+        ? ["Schema match", "ready"]
+        : result.status === "error"
+            ? ["Schema error", "warning"]
+            : result.status === "missing_table"
+                ? ["Schema unavailable", "warning"]
+                : ["Schema difference", "warning"];
+    const countLabel = result.row_counts?.status === "match"
+        ? ["Count match", "ready"]
+        : result.row_counts
+            ? ["Count difference", "warning"]
+            : ["Count not run", "warning"];
+    const dataLabel = result.data_result?.status === "match"
+        ? ["Data match", "ready"]
+        : result.data_result?.status === "different"
+            ? ["Data difference", "warning"]
+            : result.data_result?.status === "cancelled"
+                ? ["Data safe-stopped", "warning"]
+                : result.data_result?.status === "stopped_immediately"
+                    ? ["Data stopped", "warning"]
+                    : ["Data not run", "warning"];
+    return [schemaLabel, countLabel, dataLabel];
+}
+
 function appendSchemaResult(tableId, result) {
     elements.resultsEmpty.classList.add("is-hidden");
     elements.resultsTable.classList.remove("is-hidden");
-    const status = resultStatus(result);
     const row = document.createElement("tr");
     row.className = "schema-result-row";
 
@@ -704,10 +941,15 @@ function appendSchemaResult(tableId, result) {
         }[result.key_status] || "Not found");
 
     const statusCell = document.createElement("td");
-    const chip = document.createElement("span");
-    chip.className = `status-chip ${status[1]}`;
-    chip.textContent = status[0];
-    statusCell.append(chip);
+    const statusStack = document.createElement("div");
+    statusStack.className = "result-status-stack";
+    resultCheckBadges(result).forEach(([label, kind]) => {
+        const chip = document.createElement("span");
+        chip.className = `status-chip result-check-badge ${kind}`;
+        chip.textContent = label;
+        statusStack.append(chip);
+    });
+    statusCell.append(statusStack);
 
     const actionCell = document.createElement("td");
     const detailButton = document.createElement("button");
@@ -1013,8 +1255,11 @@ async function waitForDataComparison(jobId, tableId) {
         const response = await requestJson(`/api/data/compare/${jobId}`, {
             method: "GET",
         });
+        state.currentTableProcessedRows = Number(response.processed || 0);
+        updateComparisonVolume();
         elements.progressStatus.textContent =
-            `Comparing ${tableId}: ${formatCount(response.processed)} row positions processed.`;
+            `Comparing ${tableId}: ${formatCount(response.processed)} row positions processed. `
+            + `${elements.comparisonVolume.textContent}.`;
         if (["complete", "cancelled", "stopped_immediately"].includes(response.status)) {
             state.activeDataJobId = null;
             return response.result;
@@ -1051,6 +1296,9 @@ async function runSchemaComparison() {
     updateProfileButtons();
     state.stopRequested = false;
     state.stopMode = "";
+    state.runProcessedRows = 0;
+    state.currentTableProcessedRows = 0;
+    state.discoveredRowPositions = 0;
     state.schemaResults.clear();
     resetSchemaResults();
     elements.startCompare.disabled = true;
@@ -1061,6 +1309,8 @@ async function runSchemaComparison() {
     window.clearInterval(state.elapsedTimer);
     updateElapsedTime();
     state.elapsedTimer = window.setInterval(updateElapsedTime, 1000);
+    updateComparisonVolume();
+    openWorkflowStep(3, { collapseEarlier: true, scroll: true });
     const includeCounts = mode !== "schema_only";
     const includeData = mode === "full";
     const runTitle = includeData
@@ -1120,6 +1370,11 @@ async function runSchemaComparison() {
                     signal: state.compareController.signal,
                 });
                 countResult = countResponse.result;
+                state.discoveredRowPositions += Math.max(
+                    Number(countResult.sqlserver || 0),
+                    Number(countResult.postgres || 0),
+                );
+                updateComparisonVolume();
             }
             let dataResult = null;
             let dataSkipped = "";
@@ -1154,6 +1409,9 @@ async function runSchemaComparison() {
                         }),
                     });
                     dataResult = await waitForDataComparison(startResponse.job_id, tableId);
+                    state.runProcessedRows += Number(dataResult?.processed || 0);
+                    state.currentTableProcessedRows = 0;
+                    updateComparisonVolume();
                     if (dataResult?.status === "cancelled") {
                         state.stopRequested = true;
                         state.stopMode = "safe";
@@ -1176,6 +1434,8 @@ async function runSchemaComparison() {
             const dataMessage = dataResult ? ` ${dataResult.summary}` : dataSkipped ? ` ${dataSkipped}` : "";
             addLog(logLevel, `${tableId}: ${schemaResponse.result.summary}${countMessage}${dataMessage}`);
         } catch (error) {
+            state.currentTableProcessedRows = 0;
+            updateComparisonVolume();
             if (error.name === "AbortError" && state.stopRequested) break;
             const result = {
                 status: "error",
@@ -1363,17 +1623,19 @@ elements.tablePageSize.addEventListener("change", () => {
     state.tablePageSize = Number(elements.tablePageSize.value);
     loadTables({ resetPage: true });
 });
+elements.firstTablePage.addEventListener("click", () => goToTablePage(1));
 elements.previousTablePage.addEventListener("click", () => {
-    if (state.tablePage > 1) {
-        state.tablePage -= 1;
-        loadTables();
-    }
+    goToTablePage(state.tablePage - 1);
 });
 elements.nextTablePage.addEventListener("click", () => {
-    if (state.tablePage < state.tableTotalPages) {
-        state.tablePage += 1;
-        loadTables();
-    }
+    goToTablePage(state.tablePage + 1);
+});
+elements.lastTablePage.addEventListener("click", () => goToTablePage(state.tableTotalPages));
+elements.goTablePage.addEventListener("click", () => goToTablePage(elements.tablePageInput.value));
+elements.tablePageInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    goToTablePage(elements.tablePageInput.value);
 });
 elements.clearSelection.addEventListener("click", () => {
     state.selectedTables.clear();
@@ -1384,6 +1646,7 @@ elements.comparisonMode.addEventListener("change", () => {
     elements.batchSize.disabled = elements.comparisonMode.value !== "full";
     updateEstimatedWork();
 });
+elements.batchSize.addEventListener("change", updateEstimatedWork);
 
 elements.startCompare.addEventListener("click", runSchemaComparison);
 elements.stopCompare.addEventListener("click", () => {
@@ -1506,8 +1769,24 @@ elements.backToTop.addEventListener("click", () => {
 window.addEventListener("scroll", () => {
     elements.backToTop.classList.toggle("visible", window.scrollY > 520);
 }, { passive: true });
+elements.retryService.addEventListener("click", checkBackendHealth);
+elements.accordionToggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+        const step = Number(toggle.dataset.accordionStep);
+        setAccordion(step, toggle.getAttribute("aria-expanded") !== "true");
+    });
+});
+window.addEventListener("focus", () => {
+    if (state.backendOffline) checkBackendHealth();
+});
+window.setInterval(() => {
+    if (!document.hidden) checkBackendHealth();
+}, 15000);
 
 applyTheme(document.documentElement.dataset.theme || "light", false);
+setAccordion(1, true);
+setAccordion(2, false);
+setAccordion(3, false);
 updatePagination();
 setReportExports();
 refreshProfiles();
