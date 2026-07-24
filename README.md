@@ -303,20 +303,21 @@ run.bat
 | v0.7.2 | Theme, navigation, and dual stop controls |
 | v0.7.3 | Notification contrast and precise partial-match statuses |
 | v0.7.4 | Persistent connection success panels, aligned connection options, and offline-safe bundled database icons |
+| v0.7.5 | Theme-safe contrast for the locked Step 2 table-discovery state |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.7.4 commit is:
+The suggested v0.7.5 commit is:
 
 ```text
-feat: polish connection cards and offline icons
+fix: improve locked table panel contrast
 ```
 
-The suggested v0.7.4 tag is:
+The suggested v0.7.5 tag is:
 
 ```text
-v0.7.4-connection-card-polish
+v0.7.5-locked-state-contrast
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

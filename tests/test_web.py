@@ -33,19 +33,33 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.7.4" in response.data
+    assert b"v0.7.5" in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
     assert b"connection-options-row" in response.data
     assert b"Local session" not in response.data
 
 
-def test_health_endpoint_reports_connection_card_checkpoint():
+def test_health_endpoint_reports_locked_state_contrast_checkpoint():
     response = client().get("/api/health")
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.4-connection-card-polish"
+    assert response.json["phase"] == "v0.7.5-locked-state-contrast"
+
+
+def test_locked_table_overlay_has_theme_safe_contrast_tokens():
+    project_root = Path(__file__).resolve().parents[1]
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "--locked-surface: rgba(248, 249, 251, 0.94);" in stylesheet
+    assert "--locked-surface: rgba(29, 34, 46, 0.96);" in stylesheet
+    assert "background: var(--locked-surface);" in stylesheet
+    assert "color: var(--locked-ink);" in stylesheet
+    assert "color: var(--locked-ink-soft);" in stylesheet
+    assert "background: var(--locked-mark-bg);" in stylesheet
 
 
 def test_database_icons_are_bundled_static_assets():
