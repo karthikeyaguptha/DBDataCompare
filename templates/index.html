@@ -31,6 +31,21 @@
             </div>
         </div>
         <div class="topbar-actions">
+            <div class="service-indicator checking" id="serviceBanner" role="status"
+                aria-live="polite" aria-label="Local service status: checking">
+                <span class="service-status-dot" aria-hidden="true"></span>
+                <span class="service-indicator-copy">
+                    <strong id="serviceBannerTitle">Local service</strong>
+                    <span id="serviceBannerMessage">Checking…</span>
+                </span>
+                <button class="service-refresh" id="retryService" type="button"
+                    aria-label="Refresh local service status" title="Check local service again">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 11a8 8 0 1 0-2.34 5.66"/>
+                        <path d="M20 5v6h-6"/>
+                    </svg>
+                </button>
+            </div>
             <button class="theme-toggle" id="themeToggle" type="button"
                 aria-label="Switch to dark theme" title="Switch theme">
                 <span class="theme-icon" aria-hidden="true">☾</span>
@@ -38,14 +53,6 @@
             </button>
         </div>
     </header>
-
-    <aside class="service-banner is-hidden" id="serviceBanner" role="alert" aria-live="assertive">
-        <div>
-            <strong id="serviceBannerTitle">Local service is unavailable</strong>
-            <span id="serviceBannerMessage">Start run.bat, then retest both database connections.</span>
-        </div>
-        <button class="button ghost" id="retryService" type="button">Check again</button>
-    </aside>
 
     <main class="workspace" id="workspace">
         <section class="intro" aria-labelledby="page-title">
@@ -76,29 +83,37 @@
         <section class="section-block workflow-step" id="connectionsSection"
             data-step-panel="1" aria-labelledby="connections-title">
             <div class="section-heading">
-                <div>
+                <div class="section-heading-copy">
                     <p class="section-kicker">Step 1</p>
-                    <div class="accordion-title-row">
-                        <h2 id="connections-title">Database connections</h2>
-                        <button class="accordion-toggle" type="button"
-                            data-accordion-step="1" aria-expanded="true"
-                            aria-controls="connectionsContent">
-                            <span class="accordion-label">Collapse</span>
-                            <span class="accordion-chevron" aria-hidden="true">⌃</span>
-                        </button>
-                    </div>
+                    <h2 id="connections-title">Database connections</h2>
                     <p>Credentials stay in memory for this local session and are never stored by the UI.</p>
                 </div>
-                <div class="profile-tools" aria-label="Saved comparison profiles">
-                    <label>
-                        <span class="sr-only">Saved profile</span>
-                        <select id="profileSelect" aria-label="Saved profile">
-                            <option value="">No saved profile</option>
-                        </select>
-                    </label>
-                    <button class="button ghost" id="loadProfile" type="button" disabled>Load</button>
-                    <button class="button ghost" id="saveProfile" type="button">Save profile</button>
-                    <button class="icon-button delete-profile" id="deleteProfile" type="button" disabled aria-label="Delete selected profile" title="Delete selected profile">×</button>
+                <div class="section-heading-actions">
+                    <button class="accordion-toggle" type="button"
+                            data-accordion-step="1" aria-expanded="true"
+                            aria-controls="connectionsContent">
+                        <span class="accordion-label">Collapse</span>
+                        <span class="accordion-chevron" aria-hidden="true">⌃</span>
+                    </button>
+                    <div class="profile-tools" aria-label="Saved comparison profiles">
+                        <label>
+                            <span class="sr-only">Saved profile</span>
+                            <select id="profileSelect" aria-label="Saved profile">
+                                <option value="">No saved profile</option>
+                            </select>
+                        </label>
+                        <button class="button ghost" id="loadProfile" type="button" disabled>Load</button>
+                        <button class="button ghost" id="saveProfile" type="button">Save profile</button>
+                        <button class="icon-button delete-profile" id="deleteProfile" type="button" disabled
+                            aria-label="Delete selected profile" title="Delete selected profile">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 7h16"/>
+                                <path d="M9 7V4h6v3"/>
+                                <path d="m6 7 1 13h10l1-13"/>
+                                <path d="M10 11v5M14 11v5"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -270,20 +285,20 @@
         <section class="section-block muted-section workflow-step" id="tablesSection"
             data-step-panel="2" aria-labelledby="tables-title">
             <div class="section-heading">
-                <div>
+                <div class="section-heading-copy">
                     <p class="section-kicker">Step 2</p>
-                    <div class="accordion-title-row">
-                        <h2 id="tables-title">Select tables</h2>
-                        <button class="accordion-toggle" type="button"
-                            data-accordion-step="2" aria-expanded="true"
-                            aria-controls="tablesContent">
-                            <span class="accordion-label">Collapse</span>
-                            <span class="accordion-chevron" aria-hidden="true">⌃</span>
-                        </button>
-                    </div>
+                    <h2 id="tables-title">Select tables</h2>
                     <p>Search, select, and optionally override the key used to match corresponding rows.</p>
                 </div>
-                <span class="selection-count" id="selectionCount">0 of 0 selected</span>
+                <div class="section-heading-actions">
+                    <button class="accordion-toggle" type="button"
+                            data-accordion-step="2" aria-expanded="true"
+                            aria-controls="tablesContent">
+                        <span class="accordion-label">Collapse</span>
+                        <span class="accordion-chevron" aria-hidden="true">⌃</span>
+                    </button>
+                    <span class="selection-count" id="selectionCount">0 of 0 selected</span>
+                </div>
             </div>
 
             <div class="step-content" id="tablesContent">
@@ -382,27 +397,27 @@
         <section class="section-block muted-section workflow-step" id="compareSection"
             data-step-panel="3" aria-labelledby="compare-title">
             <div class="section-heading">
-                <div>
+                <div class="section-heading-copy">
                     <p class="section-kicker">Step 3</p>
-                    <div class="accordion-title-row">
-                        <h2 id="compare-title">Run comparison</h2>
-                        <button class="accordion-toggle" type="button"
-                            data-accordion-step="3" aria-expanded="true"
-                            aria-controls="compareContent">
-                            <span class="accordion-label">Collapse</span>
-                            <span class="accordion-chevron" aria-hidden="true">⌃</span>
-                        </button>
-                    </div>
+                    <h2 id="compare-title">Run comparison</h2>
                     <p>Review scope, track progress, and choose safe or immediate cancellation.</p>
                 </div>
-                <div class="compare-buttons">
-                    <button class="button warning" id="stopCompare" type="button" disabled
-                        title="Finish the current query or data batch, then stop">Safe Stop</button>
-                    <button class="button danger" id="stopNow" type="button" disabled
-                        title="Attempt to cancel the active database operation immediately">Stop Now</button>
-                    <button class="button primary" id="startCompare" type="button" disabled>
-                        Start comparison <span aria-hidden="true">▶</span>
+                <div class="section-heading-actions">
+                    <button class="accordion-toggle" type="button"
+                            data-accordion-step="3" aria-expanded="true"
+                            aria-controls="compareContent">
+                        <span class="accordion-label">Collapse</span>
+                        <span class="accordion-chevron" aria-hidden="true">⌃</span>
                     </button>
+                    <div class="compare-buttons">
+                        <button class="button warning" id="stopCompare" type="button" disabled
+                            title="Finish the current query or data batch, then stop">Safe Stop</button>
+                        <button class="button danger" id="stopNow" type="button" disabled
+                            title="Attempt to cancel the active database operation immediately">Stop Now</button>
+                        <button class="button primary" id="startCompare" type="button" disabled>
+                            Start comparison <span aria-hidden="true">▶</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -563,7 +578,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.7.6</b></span>
+        <span>DB Compare Studio <b>v0.7.7</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

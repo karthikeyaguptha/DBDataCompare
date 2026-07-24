@@ -168,10 +168,18 @@ function timestamp() {
 }
 
 function showServiceBanner(kind, title, message) {
-    elements.serviceBanner.classList.remove("is-hidden", "offline", "restored");
+    elements.serviceBanner.classList.remove("checking", "ready", "offline", "restored");
     elements.serviceBanner.classList.add(kind);
     elements.serviceBannerTitle.textContent = title;
     elements.serviceBannerMessage.textContent = message;
+    elements.serviceBanner.setAttribute(
+        "aria-label",
+        `Local service status: ${message}`,
+    );
+    elements.serviceBanner.setAttribute("aria-live", kind === "offline" ? "assertive" : "polite");
+    elements.serviceBanner.title = kind === "offline"
+        ? "Restart run.bat, then use refresh and retest both database connections."
+        : "The local DB Compare Studio service is running.";
 }
 
 function markBackendOffline() {
@@ -224,8 +232,8 @@ function markBackendOffline() {
         "Completed results remain visible. Restart run.bat before starting another operation.";
     showServiceBanner(
         "offline",
-        "Local service is unavailable",
-        "run.bat may have been closed. Start it again, then check the service and retest both connections.",
+        "Local service",
+        "Unavailable",
     );
     updateSelectionCount();
     updatePagination();
@@ -237,8 +245,8 @@ function markBackendReachable() {
     state.backendOffline = false;
     showServiceBanner(
         "restored",
-        "Local service is running again",
-        "Retest SQL Server and PostgreSQL before reloading tables.",
+        "Local service",
+        "Running · retest connections",
     );
     elements.tablesOverlayTitle.textContent = "Retest both database connections";
     elements.tablesOverlayMessage.textContent =
@@ -247,19 +255,27 @@ function markBackendReachable() {
 
 async function checkBackendHealth() {
     elements.retryService.disabled = true;
+    elements.retryService.classList.add("is-checking");
     try {
         await requestJson("/api/health", { method: "GET" });
-        if (!state.sqlValidated || !state.pgValidated) {
+        if (state.sqlValidated && state.pgValidated) {
             showServiceBanner(
-                "restored",
-                "Local service is running",
-                "Test both database connections again before reloading tables.",
+                "ready",
+                "Local service",
+                "Running",
+            );
+        } else if (!state.backendOffline) {
+            showServiceBanner(
+                "ready",
+                "Local service",
+                "Running · connections pending",
             );
         }
     } catch {
         // requestJson displays the persistent offline recovery state.
     } finally {
         elements.retryService.disabled = false;
+        elements.retryService.classList.remove("is-checking");
     }
 }
 
@@ -477,7 +493,7 @@ function updateConnectionState() {
     if (bothValidated) {
         document.querySelector("[data-step='1']").classList.add("complete");
         document.querySelector("[data-step='2']").classList.add("active");
-        elements.serviceBanner.classList.add("is-hidden");
+        showServiceBanner("ready", "Local service", "Running");
         showToast("Both database connections succeeded. You can now load tables.");
     } else {
         document.querySelector("[data-step='1']").classList.remove("complete");
@@ -1790,3 +1806,4 @@ setAccordion(3, false);
 updatePagination();
 setReportExports();
 refreshProfiles();
+checkBackendHealth();

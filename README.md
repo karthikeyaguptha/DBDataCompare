@@ -312,20 +312,21 @@ run.bat
 | v0.7.4 | Persistent connection success panels, aligned connection options, and offline-safe bundled database icons |
 | v0.7.5 | Theme-safe contrast for the locked Step 2 table-discovery state |
 | v0.7.6 | Workflow accordions, three-layer result badges, comparison-volume progress, fixed table viewport, direct pagination, and local-service recovery |
+| v0.7.7 | Compact local-service status, aligned profile actions, red delete icon, and consistent accordion header controls |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.7.6 commit is:
+The suggested v0.7.7 commit is:
 
 ```text
-feat: refine workflow results and table navigation
+fix: align workflow headers and local service controls
 ```
 
-The suggested v0.7.6 tag is:
+The suggested v0.7.7 tag is:
 
 ```text
-v0.7.6-workflow-results-refinement
+v0.7.7-header-layout-polish
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

@@ -33,7 +33,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.7.6" in response.data
+    assert b"v0.7.7" in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
     assert b"connection-options-row" in response.data
@@ -54,7 +54,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.6-workflow-results-refinement"
+    assert response.json["phase"] == "v0.7.7-header-layout-polish"
 
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():
@@ -140,6 +140,43 @@ def test_workflow_accordions_and_fixed_table_viewport_are_present():
     assert "height: clamp(420px, 56vh, 610px);" in stylesheet
     assert ".workflow-step.is-collapsed .step-content" in stylesheet
     assert "position: sticky;" in stylesheet
+
+
+def test_service_status_is_compact_and_refreshable_from_header():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'class="service-indicator checking"' in template
+    assert 'class="service-refresh"' in template
+    assert ".service-indicator.offline" in stylesheet
+    assert ".service-refresh.is-checking svg" in stylesheet
+    assert 'showServiceBanner("ready", "Local service", "Running")' in javascript
+    assert "checkBackendHealth();" in javascript
+
+
+def test_profile_actions_and_accordion_headers_use_aligned_controls():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert template.count('class="section-heading-actions"') == 3
+    assert 'class="icon-button delete-profile"' in template
+    assert 'viewBox="0 0 24 24" aria-hidden="true"' in template
+    assert ".section-heading-actions" in stylesheet
+    assert "height: 40px;" in stylesheet
+    assert ".delete-profile svg" in stylesheet
 
 
 def test_pagination_supports_first_last_and_direct_page_jump():

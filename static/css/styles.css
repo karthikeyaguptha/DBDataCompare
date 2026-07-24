@@ -147,49 +147,109 @@ select:disabled {
     backdrop-filter: blur(12px);
 }
 
-.service-banner {
-    position: sticky;
-    z-index: 19;
-    top: 72px;
-    display: flex;
+.service-indicator {
+    display: inline-flex;
+    min-height: 40px;
     align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-    padding: 11px max(28px, calc((100vw - 1320px) / 2));
-    border-bottom: 1px solid var(--line);
-    box-shadow: var(--shadow-sm);
+    gap: 9px;
+    padding: 5px 5px 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink-soft);
 }
 
-.service-banner.is-hidden {
-    display: none;
+.service-status-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+    box-shadow: 0 0 0 3px var(--surface-strong);
 }
 
-.service-banner.offline {
+.service-indicator.ready,
+.service-indicator.restored {
+    border-color: color-mix(in srgb, var(--success) 42%, var(--line));
+}
+
+.service-indicator.ready .service-status-dot,
+.service-indicator.restored .service-status-dot {
+    background: var(--success);
+    box-shadow: 0 0 0 3px var(--success-soft);
+}
+
+.service-indicator.offline {
     border-color: var(--danger);
     background: var(--danger-soft);
+}
+
+.service-indicator.offline .service-status-dot {
+    background: var(--danger);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.service-indicator-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 94px;
+    gap: 1px;
+    line-height: 1.15;
+}
+
+.service-indicator-copy strong {
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.service-indicator-copy > span {
+    color: var(--ink-soft);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.service-indicator.offline .service-indicator-copy > span {
     color: var(--danger);
 }
 
-.service-banner.restored {
-    border-color: var(--success);
-    background: var(--success-soft);
-    color: var(--success);
-}
-
-.service-banner > div {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.service-banner span {
+.service-refresh {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-left: 1px solid var(--line);
+    background: transparent;
     color: var(--ink-soft);
-    font-size: 12px;
 }
 
-.service-banner .button {
-    flex: 0 0 auto;
-    min-height: 34px;
+.service-refresh:hover {
+    color: var(--primary);
+}
+
+.service-refresh:disabled {
+    opacity: 0.55;
+}
+
+.service-refresh svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.service-refresh.is-checking svg {
+    animation: service-spin 700ms linear infinite;
+}
+
+@keyframes service-spin {
+    to { transform: rotate(360deg); }
 }
 
 .brand,
@@ -286,30 +346,59 @@ select:disabled {
 .profile-tools {
     display: grid;
     grid-template-columns: minmax(210px, 1fr) auto auto auto;
-    align-items: stretch;
+    align-items: center;
+    gap: 8px;
 }
 
 .profile-tools label {
+    display: block;
     min-width: 0;
+    height: 40px;
 }
 
 .profile-tools select {
     width: 100%;
-    min-height: 38px;
+    height: 40px;
+    min-height: 40px;
     margin: 0;
 }
 
 .profile-tools .button {
-    min-height: 38px;
+    height: 40px;
+    min-height: 40px;
     padding: 8px 11px;
     white-space: nowrap;
 }
 
 .delete-profile {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
+    border-color: color-mix(in srgb, var(--danger) 42%, var(--line));
+    background: var(--danger-soft);
     color: var(--danger);
-    font-size: 19px;
+}
+
+.delete-profile:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+    color: var(--danger);
+}
+
+.delete-profile:disabled {
+    border-color: var(--line);
+    background: var(--surface-muted);
+    color: var(--ink-faint);
+    opacity: 0.62;
+}
+
+.delete-profile svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .local-badge,
@@ -501,6 +590,19 @@ select:disabled {
     margin-bottom: 22px;
 }
 
+.section-heading-copy {
+    min-width: 0;
+    padding-top: 1px;
+}
+
+.section-heading-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 12px;
+}
+
 .section-heading h2 {
     margin: 0 0 5px;
     font-size: 21px;
@@ -511,16 +613,6 @@ select:disabled {
     margin: 0;
     color: var(--ink-soft);
     line-height: 1.5;
-}
-
-.accordion-title-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.accordion-title-row h2 {
-    flex: 1 1 auto;
 }
 
 .accordion-toggle {
@@ -552,9 +644,7 @@ select:disabled {
 }
 
 .workflow-step.is-collapsed .step-content,
-.workflow-step.is-collapsed .profile-tools,
-.workflow-step.is-collapsed .selection-count,
-.workflow-step.is-collapsed .compare-buttons {
+.workflow-step.is-collapsed .section-heading-actions > :not(.accordion-toggle) {
     display: none;
 }
 
@@ -2010,6 +2100,16 @@ select:disabled {
         flex-wrap: wrap;
     }
 
+    .section-heading-actions {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    .section-heading-actions .profile-tools,
+    .section-heading-actions .compare-buttons {
+        width: 100%;
+    }
+
     .tab-actions {
         width: 100%;
         margin-left: 0;
@@ -2071,7 +2171,7 @@ select:disabled {
 
     .profile-tools {
         width: 100%;
-        grid-template-columns: 1fr 1fr 38px;
+        grid-template-columns: 1fr 1fr 40px;
     }
 
     .profile-tools label {
@@ -2149,15 +2249,20 @@ select:disabled {
         order: 2;
     }
 
-    .service-banner {
-        top: 68px;
-        align-items: stretch;
-        flex-direction: column;
-        padding-inline: 18px;
+    .service-indicator-copy {
+        display: none;
     }
 
-    .service-banner .button {
-        width: 100%;
+    .service-indicator {
+        min-height: 38px;
+        gap: 7px;
+        padding-left: 9px;
+    }
+
+    .service-refresh {
+        width: 28px;
+        height: 28px;
+        flex-basis: 28px;
     }
 
     .progress-meta {
@@ -2196,6 +2301,22 @@ select:disabled {
     .back-to-top {
         right: 14px;
         bottom: 70px;
+    }
+}
+
+@media (max-width: 460px) {
+    .brand p,
+    .theme-label {
+        display: none;
+    }
+
+    .topbar-actions {
+        gap: 6px;
+    }
+
+    .theme-toggle {
+        min-height: 38px;
+        padding-inline: 10px;
     }
 }
 
