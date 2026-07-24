@@ -608,6 +608,18 @@ select:disabled {
     margin-bottom: 22px;
 }
 
+.section-heading.is-clickable {
+    cursor: pointer;
+}
+
+.section-heading.is-clickable:hover .section-heading-copy h2 {
+    color: var(--primary);
+}
+
+.section-heading.is-clickable .section-heading-copy h2 {
+    transition: color 120ms ease;
+}
+
 .section-heading-copy {
     min-width: 0;
     padding-top: 1px;
@@ -790,6 +802,97 @@ label > span:first-child,
     color: var(--ink-soft);
     font-size: 12px;
     font-weight: 650;
+}
+
+.field-label-row {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px;
+}
+
+.port-field {
+    position: relative;
+}
+
+.port-help-toggle {
+    display: grid;
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--primary);
+    border-radius: 50%;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.port-help-toggle:hover,
+.port-help-toggle[aria-expanded="true"] {
+    background: var(--primary);
+    color: #fff;
+}
+
+.port-help-panel {
+    position: absolute;
+    z-index: 8;
+    top: 24px;
+    right: 0;
+    width: min(370px, calc(100vw - 56px));
+    padding: 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    box-shadow: var(--shadow-lg);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.port-help-panel code {
+    display: block;
+    margin: 8px 0 10px;
+    padding: 9px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--surface-muted);
+    color: var(--ink);
+    font-size: 10px;
+    overflow-wrap: anywhere;
+    user-select: text;
+}
+
+.copy-port-query {
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.copy-port-query:hover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.copy-port-query svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
 }
 
 label b {
@@ -1255,8 +1358,14 @@ select:disabled {
 }
 
 #clearSelection {
-    margin-left: auto;
     white-space: nowrap;
+}
+
+.selection-actions {
+    display: inline-flex;
+    margin-left: auto;
+    align-items: center;
+    gap: 8px;
 }
 
 .data-table-wrap {
@@ -1440,23 +1549,6 @@ select:disabled {
     text-align: center;
 }
 
-.page-go {
-    min-width: 42px;
-    height: 34px;
-    padding: 5px 9px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--primary);
-    font-size: 11px;
-    font-weight: 750;
-}
-
-.page-go:not(:disabled):hover {
-    border-color: var(--primary);
-    background: var(--primary-soft);
-}
-
 .page-size select {
     width: 72px;
     min-height: 34px;
@@ -1478,11 +1570,21 @@ select:disabled {
     width: 34px;
     height: 34px;
     place-items: center;
-    border: 1px solid var(--line);
+    border: 1px solid var(--line-strong);
     border-radius: 8px;
-    background: var(--surface);
-    color: var(--ink-soft);
+    background: var(--surface-strong);
+    color: var(--primary);
     font-weight: 750;
+}
+
+.page-button svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.2;
 }
 
 .page-button:not(:disabled):hover {
@@ -1494,7 +1596,7 @@ select:disabled {
 .page-button:disabled {
     background: var(--surface-muted);
     color: var(--ink-faint);
-    opacity: 0.65;
+    opacity: 0.5;
 }
 
 .locked-overlay {
@@ -2270,9 +2372,10 @@ select:disabled {
         flex: 1 1 100%;
     }
 
-    #clearSelection {
+    .selection-actions {
         width: 100%;
         margin-left: 0;
+        justify-content: flex-end;
     }
 
     .page-range {
@@ -2287,10 +2390,6 @@ select:disabled {
         order: 2;
         width: 100%;
         justify-content: center;
-    }
-
-    .page-go {
-        order: 2;
     }
 
     .service-indicator-copy {

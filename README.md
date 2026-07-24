@@ -166,6 +166,8 @@ in the local browser.
 Passwords are never saved. After loading a profile, enter both passwords again,
 test both connections, and reload tables. Saved table selections are then
 restored wherever those tables remain available under the saved filters.
+Choosing **No saved profile** restores the connection cards and comparison
+settings to their original defaults and clears the loaded table scope.
 
 Profiles are stored only on the local computer in `config/profiles.json`.
 
@@ -315,20 +317,21 @@ run.bat
 | v0.7.6 | Workflow accordions, three-layer result badges, comparison-volume progress, fixed table viewport, direct pagination, and local-service recovery |
 | v0.7.7 | Compact local-service status, aligned profile actions, red delete icon, and consistent accordion header controls |
 | v0.7.8 | Simplified connection cards, advanced options, automatic profile loading, and icon-only profile actions |
+| v0.7.9 | Whole-header accordions, clearer selection and pagination controls, SQL port help, and reliable profile reset/loading |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.7.8 commit is:
+The suggested v0.7.9 commit is:
 
 ```text
-feat: simplify connection cards and profile controls
+fix: refine table navigation accordions and profiles
 ```
 
-The suggested v0.7.8 tag is:
+The suggested v0.7.9 tag is:
 
 ```text
-v0.7.8-connection-card-simplification
+v0.7.9-navigation-profile-fixes
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

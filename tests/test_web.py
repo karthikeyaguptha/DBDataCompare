@@ -33,7 +33,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.7.8" in response.data
+    assert b"v0.7.9" in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
     assert b"connection-options-row" in response.data
@@ -44,7 +44,9 @@ def test_home_page_loads():
     assert b'id="firstTablePage"' in response.data
     assert b'id="lastTablePage"' in response.data
     assert b'id="tablePageInput"' in response.data
-    assert b'id="goTablePage"' in response.data
+    assert b'id="goTablePage"' not in response.data
+    assert b'id="sqlPortHelp"' in response.data
+    assert b'id="copySqlPortQuery"' in response.data
     assert b'id="comparisonVolume"' in response.data
     assert b"Local session" not in response.data
 
@@ -54,7 +56,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.8-connection-card-simplification"
+    assert response.json["phase"] == "v0.7.9-navigation-profile-fixes"
 
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():
@@ -210,6 +212,9 @@ def test_accordion_controls_are_text_only_and_profiles_auto_load():
     assert "accordion-chevron" not in template
     assert 'elements.profileSelect.addEventListener("change", () =>' in javascript
     assert "applyProfile(profile);" in javascript
+    assert "resetProfileDefaults();" in javascript
+    assert "elements.sqlForm.reset();" in javascript
+    assert 'showToast("Default settings restored.");' in javascript
     assert 'existing?.name || window.prompt("Profile name", "")' in javascript
 
 
@@ -222,8 +227,36 @@ def test_pagination_supports_first_last_and_direct_page_jump():
     assert "function goToTablePage(page)" in javascript
     assert 'elements.firstTablePage.addEventListener("click"' in javascript
     assert 'elements.lastTablePage.addEventListener("click"' in javascript
-    assert 'elements.goTablePage.addEventListener("click"' in javascript
+    assert "goTablePage" not in javascript
     assert 'event.key !== "Enter"' in javascript
+
+
+def test_selection_pagination_accordion_and_port_hint_polish():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+
+    selection_actions = template.index('class="selection-actions"')
+    selected_badge = template.index('id="selectionCount"')
+    clear_button = template.index('id="clearSelection"')
+    assert selection_actions < selected_badge < clear_button
+    assert template.count('class="page-button"') == 4
+    assert 'id="goTablePage"' not in template
+    assert "accordionHeadings" in javascript
+    assert 'heading.addEventListener("click"' in javascript
+    assert "SELECT DISTINCT local_tcp_port" in template
+    assert "navigator.clipboard.writeText(elements.sqlPortQuery.textContent.trim())" in javascript
+    assert ".page-button svg" in stylesheet
+    assert ".selection-actions" in stylesheet
+    assert ".port-help-panel" in stylesheet
+    assert "cache: \"no-store\"" in javascript
 
 
 def test_backend_offline_state_invalidates_stale_connections():

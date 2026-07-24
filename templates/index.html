@@ -14,8 +14,8 @@
             document.documentElement.dataset.theme = saved || (dark ? "dark" : "light");
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.7.9') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='0.7.9') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -143,8 +143,25 @@
                                 <input type="text" name="server" placeholder="localhost or server name" autocomplete="off" required>
                             </label>
                             <label class="port-field">
-                                <span>Port</span>
+                                <span class="field-label-row">
+                                    <span>Port</span>
+                                    <button class="port-help-toggle" id="sqlPortHelp" type="button"
+                                        aria-label="Show SQL Server port lookup query"
+                                        aria-expanded="false" aria-controls="sqlPortHelpPanel"
+                                        title="How to find the SQL Server port">i</button>
+                                </span>
                                 <input type="number" name="port" placeholder="1433" min="1" max="65535">
+                                <span class="port-help-panel" id="sqlPortHelpPanel" hidden>
+                                    <span>Run this query on the SQL Server connection:</span>
+                                    <code id="sqlPortQuery">SELECT DISTINCT local_tcp_port FROM sys.dm_exec_connections WHERE session_id = @@SPID;</code>
+                                    <button class="copy-port-query" id="copySqlPortQuery" type="button">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <rect x="8" y="8" width="11" height="11" rx="2"/>
+                                            <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>
+                                        </svg>
+                                        Copy query
+                                    </button>
+                                </span>
                             </label>
                         </div>
 
@@ -317,7 +334,6 @@
                             aria-controls="tablesContent">
                         <span class="accordion-label">Collapse</span>
                     </button>
-                    <span class="selection-count" id="selectionCount">0 of 0 selected</span>
                 </div>
             </div>
 
@@ -343,7 +359,10 @@
                         <span>Only in PostgreSQL</span>
                     </label>
                 </div>
-                <button class="button ghost" id="clearSelection" type="button" disabled>Clear selection</button>
+                <div class="selection-actions">
+                    <span class="selection-count" id="selectionCount">0 selected</span>
+                    <button class="button ghost" id="clearSelection" type="button" disabled>Clear selection</button>
+                </div>
             </div>
 
             <div class="data-table-wrap" tabindex="0" aria-label="Table selection preview">
@@ -395,20 +414,35 @@
                 <span class="page-range" id="tablePageRange" aria-live="polite">0 of 0 tables</span>
                 <div class="page-controls">
                     <button class="page-button" id="firstTablePage" type="button" disabled
-                        aria-label="First table page" title="First page">«</button>
+                        aria-label="First table page" title="First page">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 5v14M18 6l-6 6 6 6"/>
+                        </svg>
+                    </button>
                     <button class="page-button" id="previousTablePage" type="button" disabled
-                        aria-label="Previous table page" title="Previous page">‹</button>
+                        aria-label="Previous table page" title="Previous page">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m15 6-6 6 6 6"/>
+                        </svg>
+                    </button>
                     <label class="page-jump">
                         <span>Page</span>
                         <input id="tablePageInput" type="number" min="1" value="1"
                             inputmode="numeric" aria-label="Desired table page" disabled>
                         <span id="tablePageStatus">of 1</span>
                     </label>
-                    <button class="page-go" id="goTablePage" type="button" disabled>Go</button>
                     <button class="page-button" id="nextTablePage" type="button" disabled
-                        aria-label="Next table page" title="Next page">›</button>
+                        aria-label="Next table page" title="Next page">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m9 6 6 6-6 6"/>
+                        </svg>
+                    </button>
                     <button class="page-button" id="lastTablePage" type="button" disabled
-                        aria-label="Last table page" title="Last page">»</button>
+                        aria-label="Last table page" title="Last page">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m6 6 6 6-6 6M18 5v14"/>
+                        </svg>
+                    </button>
                 </div>
             </nav>
             </div>
@@ -597,7 +631,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.7.8</b></span>
+        <span>DB Compare Studio <b>v0.7.9</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

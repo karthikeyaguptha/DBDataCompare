@@ -45,6 +45,8 @@ def test_profile_round_trip_never_persists_passwords(tmp_path):
     listed = client.get("/api/profiles")
     assert listed.status_code == 200
     assert listed.json["profiles"][0]["id"] == profile_id
+    assert listed.json["profiles"][0]["sqlserver"]["server"] == "sql-host"
+    assert listed.json["profiles"][0]["postgres"]["host"] == "pg-host"
     raw = (tmp_path / "config" / "profiles.json").read_text(encoding="utf-8")
     assert "sql-secret" not in raw
     assert "pg-secret" not in raw

@@ -63,7 +63,6 @@ const elements = {
     nextTablePage: document.querySelector("#nextTablePage"),
     lastTablePage: document.querySelector("#lastTablePage"),
     tablePageInput: document.querySelector("#tablePageInput"),
-    goTablePage: document.querySelector("#goTablePage"),
     selectedSummary: document.querySelector("#selectedSummary"),
     estimatedWork: document.querySelector("#estimatedWork"),
     comparisonVolume: document.querySelector("#comparisonVolume"),
@@ -109,6 +108,11 @@ const elements = {
     tablesOverlayTitle: document.querySelector("#tablesOverlayTitle"),
     tablesOverlayMessage: document.querySelector("#tablesOverlayMessage"),
     accordionToggles: [...document.querySelectorAll(".accordion-toggle")],
+    accordionHeadings: [...document.querySelectorAll(".workflow-step > .section-heading")],
+    sqlPortHelp: document.querySelector("#sqlPortHelp"),
+    sqlPortHelpPanel: document.querySelector("#sqlPortHelpPanel"),
+    sqlPortQuery: document.querySelector("#sqlPortQuery"),
+    copySqlPortQuery: document.querySelector("#copySqlPortQuery"),
 };
 
 let toastTimer;
@@ -381,6 +385,8 @@ function updateProfileButtons() {
 function applyProfile(profile) {
     state.applyingProfile = true;
     const savedManualKeys = new Map(Object.entries(profile.manual_keys || {}));
+    elements.sqlForm.reset();
+    elements.pgForm.reset();
     fillForm(elements.sqlForm, profile.sqlserver);
     fillForm(elements.pgForm, profile.postgres);
     elements.sqlAuthentication.dispatchEvent(new Event("change"));
@@ -418,6 +424,54 @@ function applyProfile(profile) {
     showToast(`Profile loaded. Enter passwords and retest both connections.`);
 }
 
+function resetProfileDefaults() {
+    state.applyingProfile = true;
+    elements.sqlForm.reset();
+    elements.pgForm.reset();
+    elements.sqlAuthentication.dispatchEvent(new Event("change"));
+    document.querySelectorAll(".connection-more-options").forEach((details) => {
+        details.open = false;
+    });
+    elements.tableStatusFilters.forEach((checkbox) => {
+        checkbox.checked = checkbox.value === "available";
+    });
+    elements.comparisonMode.value = "full";
+    elements.batchSize.value = "5000";
+    elements.ignoreTrailingSpaces.checked = false;
+    elements.caseSensitiveText.checked = true;
+    elements.decimalTolerance.value = "0";
+    elements.timestampTolerance.value = "0";
+    elements.tableSearch.value = "";
+    elements.tablePageSize.value = "10";
+    state.tablePage = 1;
+    state.tablePageSize = 10;
+    state.currentProfileId = "";
+    state.profileDirty = false;
+    state.pendingProfileSelection.clear();
+    state.sqlValidated = false;
+    state.pgValidated = false;
+    state.sqlSignature = "";
+    state.pgSignature = "";
+    ["sql", "pg"].forEach((prefix) => {
+        const badge = document.querySelector(`#${prefix}State`);
+        const feedback = document.querySelector(`#${prefix}Feedback`);
+        badge.textContent = "Not tested";
+        badge.className = "connection-state neutral";
+        feedback.textContent = "";
+        feedback.className = "form-feedback neutral";
+    });
+    elements.loadTablesButton.disabled = true;
+    lockTables();
+    state.applyingProfile = false;
+    updateProfileButtons();
+    updateEstimatedWork();
+    setAccordion(1, true);
+    setAccordion(2, false);
+    setAccordion(3, false);
+    addLog("INFO", "Profile selection cleared. Default settings restored.");
+    showToast("Default settings restored.");
+}
+
 function clearInvalid(form) {
     form.querySelectorAll("[aria-invalid='true']").forEach((field) => field.removeAttribute("aria-invalid"));
 }
@@ -445,6 +499,7 @@ async function requestJson(url, options) {
     try {
         response = await fetch(url, {
             ...options,
+            cache: "no-store",
             headers: { "Content-Type": "application/json", ...(options.headers || {}) },
         });
     } catch (error) {
@@ -553,7 +608,6 @@ function lockTables() {
         elements.clearSelection,
         elements.tablePageSize,
         elements.tablePageInput,
-        elements.goTablePage,
     ]
         .forEach((control) => { control.disabled = true; });
     elements.tablesBody.replaceChildren();
@@ -572,7 +626,6 @@ function unlockTableWorkspace() {
         elements.clearSelection,
         elements.tablePageSize,
         elements.tablePageInput,
-        elements.goTablePage,
     ]
         .forEach((control) => { control.disabled = false; });
     elements.comparisonMode.disabled = false;
@@ -809,7 +862,6 @@ function updatePagination() {
     elements.lastTablePage.disabled =
         !state.tablesLoaded || state.tablePage >= state.tableTotalPages;
     elements.tablePageInput.disabled = !state.tablesLoaded;
-    elements.goTablePage.disabled = !state.tablesLoaded;
 }
 
 function goToTablePage(page) {
@@ -1664,7 +1716,6 @@ elements.nextTablePage.addEventListener("click", () => {
     goToTablePage(state.tablePage + 1);
 });
 elements.lastTablePage.addEventListener("click", () => goToTablePage(state.tableTotalPages));
-elements.goTablePage.addEventListener("click", () => goToTablePage(elements.tablePageInput.value));
 elements.tablePageInput.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
@@ -1745,9 +1796,7 @@ elements.profileSelect.addEventListener("change", () => {
         applyProfile(profile);
         return;
     }
-    state.currentProfileId = "";
-    state.profileDirty = false;
-    updateProfileButtons();
+    resetProfileDefaults();
 });
 elements.saveProfile.addEventListener("click", async () => {
     const existing = state.profiles.find((item) => item.id === elements.profileSelect.value);
@@ -1838,10 +1887,40 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 elements.retryService.addEventListener("click", checkBackendHealth);
 elements.accordionToggles.forEach((toggle) => {
-    toggle.addEventListener("click", () => {
+    toggle.addEventListener("click", (event) => {
+        event.stopPropagation();
         const step = Number(toggle.dataset.accordionStep);
         setAccordion(step, toggle.getAttribute("aria-expanded") !== "true");
     });
+});
+elements.accordionHeadings.forEach((heading) => {
+    heading.classList.add("is-clickable");
+    heading.title = "Click anywhere in this header to expand or collapse";
+    heading.addEventListener("click", (event) => {
+        if (event.target.closest("button, input, select, textarea, a, label, summary")) return;
+        const panel = heading.closest("[data-step-panel]");
+        const step = Number(panel?.dataset.stepPanel);
+        const toggle = panel?.querySelector(".accordion-toggle");
+        if (!step || !toggle) return;
+        setAccordion(step, toggle.getAttribute("aria-expanded") !== "true");
+    });
+});
+elements.sqlPortHelp.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const willOpen = elements.sqlPortHelpPanel.hidden;
+    elements.sqlPortHelpPanel.hidden = !willOpen;
+    elements.sqlPortHelp.setAttribute("aria-expanded", String(willOpen));
+});
+elements.copySqlPortQuery.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+        await navigator.clipboard.writeText(elements.sqlPortQuery.textContent.trim());
+        showToast("SQL Server port query copied.");
+    } catch {
+        showToast("Clipboard access is unavailable. Select and copy the query manually.");
+    }
 });
 window.addEventListener("focus", () => {
     if (state.backendOffline) checkBackendHealth();
