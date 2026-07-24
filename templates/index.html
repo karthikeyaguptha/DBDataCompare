@@ -3,9 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
     <meta name="description" content="Compare SQL Server and PostgreSQL tables from a local, read-only workspace.">
     <title>DB Compare Studio</title>
+    <script>
+        (() => {
+            let saved = "";
+            try { saved = localStorage.getItem("db-compare-theme") || ""; } catch {}
+            const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            document.documentElement.dataset.theme = saved || (dark ? "dark" : "light");
+        })();
+    </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 </head>
@@ -22,7 +30,13 @@
                 <p>SQL Server <span aria-hidden="true">→</span> PostgreSQL</p>
             </div>
         </div>
-
+        <div class="topbar-actions">
+            <button class="theme-toggle" id="themeToggle" type="button"
+                aria-label="Switch to dark theme" title="Switch theme">
+                <span class="theme-icon" aria-hidden="true">☾</span>
+                <span class="theme-label">Dark</span>
+            </button>
+        </div>
     </header>
 
     <main class="workspace" id="workspace">
@@ -327,10 +341,13 @@
                 <div>
                     <p class="section-kicker">Step 3</p>
                     <h2 id="compare-title">Run comparison</h2>
-                    <p>Review scope, track progress, and stop safely between processing batches.</p>
+                    <p>Review scope, track progress, and choose safe or immediate cancellation.</p>
                 </div>
                 <div class="compare-buttons">
-                    <button class="button danger" id="stopCompare" type="button" disabled>Stop</button>
+                    <button class="button warning" id="stopCompare" type="button" disabled
+                        title="Finish the current query or data batch, then stop">Safe Stop</button>
+                    <button class="button danger" id="stopNow" type="button" disabled
+                        title="Attempt to cancel the active database operation immediately">Stop Now</button>
                     <button class="button primary" id="startCompare" type="button" disabled>
                         Start comparison <span aria-hidden="true">▶</span>
                     </button>
@@ -418,7 +435,7 @@
                     <label class="export-choice">
                         <span class="sr-only">Report format</span>
                         <select id="reportType" disabled aria-label="Report format">
-                            <option value="mismatches" selected>Mismatch Report</option>
+                            <option value="mismatches" selected>Data Mismatch Report</option>
                             <option value="summary">JSON Run Summary</option>
                             <option value="csv">CSV Run Summary</option>
                             <option value="log">Execution Log</option>
@@ -482,9 +499,13 @@
     </main>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <button class="back-to-top" id="backToTop" type="button"
+        aria-label="Back to top" title="Back to top">
+        <span aria-hidden="true">↑</span>
+    </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.7.1</b></span>
+        <span>DB Compare Studio <b>v0.7.2</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

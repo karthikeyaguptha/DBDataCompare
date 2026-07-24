@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from ..cancellation import CancellationController
 from ..db import postgres, sqlserver
 from ..db.errors import DatabaseConfigurationError
 
@@ -67,6 +68,7 @@ def compare_table_schema(
     *,
     sql_loader: Callable[[dict[str, Any], str], dict[str, Any]] | None = None,
     pg_loader: Callable[[dict[str, Any], str], dict[str, Any]] | None = None,
+    cancellation: CancellationController | None = None,
 ) -> dict[str, Any]:
     """Compare one mapped table and return a JSON-safe result."""
     if not sqlserver_table or not postgres_table:
@@ -81,11 +83,19 @@ def compare_table_schema(
             "key_status": "not_available",
         }
 
-    sql_schema = (sql_loader or sqlserver.load_table_schema)(
-        sqlserver_config, sqlserver_table
+    sql_schema = (
+        sql_loader(sqlserver_config, sqlserver_table)
+        if sql_loader
+        else sqlserver.load_table_schema(
+            sqlserver_config, sqlserver_table, cancellation=cancellation
+        )
     )
-    pg_schema = (pg_loader or postgres.load_table_schema)(
-        postgres_config, postgres_table
+    pg_schema = (
+        pg_loader(postgres_config, postgres_table)
+        if pg_loader
+        else postgres.load_table_schema(
+            postgres_config, postgres_table, cancellation=cancellation
+        )
     )
     columns = _compare_columns(sql_schema["columns"], pg_schema["columns"])
     comparison_key, key_status = _discover_comparison_key(sql_schema, pg_schema)

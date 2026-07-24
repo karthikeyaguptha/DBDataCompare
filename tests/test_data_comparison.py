@@ -124,6 +124,17 @@ def test_comparison_can_cancel_between_rows():
     assert result["processed"] == 1
 
 
+def test_comparison_can_mark_immediate_stop():
+    result = compare(
+        [(1, "A", 1)],
+        [(1, "A", 1)],
+        immediate_cancel_requested=lambda: True,
+    )
+
+    assert result["status"] == "stopped_immediately"
+    assert result["processed"] == 0
+
+
 def test_manual_key_must_exist_on_both_sides():
     with pytest.raises(DatabaseConfigurationError, match="not available in both"):
         compare_table_data(

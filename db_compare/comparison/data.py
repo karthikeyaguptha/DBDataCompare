@@ -9,6 +9,7 @@ from itertools import zip_longest
 from typing import Any, Callable, Iterable
 from uuid import UUID
 
+from ..cancellation import CancellationController
 from ..db import postgres, sqlserver
 from ..db.errors import DatabaseConfigurationError
 
@@ -28,6 +29,8 @@ def compare_table_data(
     batch_size: int = 5000,
     options: dict[str, Any] | None = None,
     cancel_requested: Callable[[], bool] | None = None,
+    immediate_cancel_requested: Callable[[], bool] | None = None,
+    cancellation: CancellationController | None = None,
     progress: Callable[[int], None] | None = None,
     mismatch_sink: Callable[[dict[str, Any]], None] | None = None,
     sql_rows: Iterable[tuple[Any, ...]] | None = None,
@@ -64,60 +67,38 @@ def compare_table_data(
     rules = _comparison_options(options or {})
 
     sql_stream = iter(sql_rows) if sql_rows is not None else sqlserver.iter_table_rows(
-        sqlserver_config, sqlserver_table, sql_columns, sql_keys, batch_size
+        sqlserver_config,
+        sqlserver_table,
+        sql_columns,
+        sql_keys,
+        batch_size,
+        cancellation=cancellation,
     )
     pg_stream = iter(pg_rows) if pg_rows is not None else postgres.iter_table_rows(
-        postgres_config, postgres_table, pg_columns, pg_keys, batch_size
+        postgres_config,
+        postgres_table,
+        pg_columns,
+        pg_keys,
+        batch_size,
+        cancellation=cancellation,
     )
 
     counts = {"matched": 0, "different": 0, "sql_only": 0, "postgres_only": 0}
     preview: list[dict[str, Any]] = []
     processed = 0
-    sql_row = next(sql_stream, _MISSING)
-    pg_row = next(pg_stream, _MISSING)
+    try:
+        sql_row = next(sql_stream, _MISSING)
+        pg_row = next(pg_stream, _MISSING)
 
-    while sql_row is not _MISSING or pg_row is not _MISSING:
-        if cancel_requested and cancel_requested():
-            return _result("cancelled", counts, preview, processed, comparison_key)
-
-        if sql_row is _MISSING:
-            _record_missing(
-                "postgres_only",
-                pg_row,
-                len(key_pairs),
-                pg_columns,
-                counts,
-                preview,
-                mismatch_sink,
-            )
-            pg_row = next(pg_stream, _MISSING)
-        elif pg_row is _MISSING:
-            _record_missing(
-                "sql_only",
-                sql_row,
-                len(key_pairs),
-                sql_columns,
-                counts,
-                preview,
-                mismatch_sink,
-            )
-            sql_row = next(sql_stream, _MISSING)
-        else:
-            sql_key = _key_value(sql_row, len(key_pairs), rules)
-            pg_key = _key_value(pg_row, len(key_pairs), rules)
-            relation = _compare_keys(sql_key, pg_key)
-            if relation < 0:
-                _record_missing(
-                    "sql_only",
-                    sql_row,
-                    len(key_pairs),
-                    sql_columns,
-                    counts,
-                    preview,
-                    mismatch_sink,
+        while sql_row is not _MISSING or pg_row is not _MISSING:
+            if immediate_cancel_requested and immediate_cancel_requested():
+                return _result(
+                    "stopped_immediately", counts, preview, processed, comparison_key
                 )
-                sql_row = next(sql_stream, _MISSING)
-            elif relation > 0:
+            if cancel_requested and cancel_requested():
+                return _result("cancelled", counts, preview, processed, comparison_key)
+
+            if sql_row is _MISSING:
                 _record_missing(
                     "postgres_only",
                     pg_row,
@@ -128,29 +109,72 @@ def compare_table_data(
                     mismatch_sink,
                 )
                 pg_row = next(pg_stream, _MISSING)
-            else:
-                differences = _row_differences(
-                    sql_row, pg_row, ordered_pairs, len(key_pairs), rules
+            elif pg_row is _MISSING:
+                _record_missing(
+                    "sql_only",
+                    sql_row,
+                    len(key_pairs),
+                    sql_columns,
+                    counts,
+                    preview,
+                    mismatch_sink,
                 )
-                if differences:
-                    counts["different"] += 1
-                    item = {
-                        "kind": "different",
-                        "key": _display_key(sql_row[: len(key_pairs)], comparison_key),
-                        "differences": differences,
-                    }
-                    if mismatch_sink:
-                        mismatch_sink(item)
-                    if len(preview) < _PREVIEW_LIMIT:
-                        preview.append(item)
-                else:
-                    counts["matched"] += 1
                 sql_row = next(sql_stream, _MISSING)
-                pg_row = next(pg_stream, _MISSING)
+            else:
+                sql_key = _key_value(sql_row, len(key_pairs), rules)
+                pg_key = _key_value(pg_row, len(key_pairs), rules)
+                relation = _compare_keys(sql_key, pg_key)
+                if relation < 0:
+                    _record_missing(
+                        "sql_only",
+                        sql_row,
+                        len(key_pairs),
+                        sql_columns,
+                        counts,
+                        preview,
+                        mismatch_sink,
+                    )
+                    sql_row = next(sql_stream, _MISSING)
+                elif relation > 0:
+                    _record_missing(
+                        "postgres_only",
+                        pg_row,
+                        len(key_pairs),
+                        pg_columns,
+                        counts,
+                        preview,
+                        mismatch_sink,
+                    )
+                    pg_row = next(pg_stream, _MISSING)
+                else:
+                    differences = _row_differences(
+                        sql_row, pg_row, ordered_pairs, len(key_pairs), rules
+                    )
+                    if differences:
+                        counts["different"] += 1
+                        item = {
+                            "kind": "different",
+                            "key": _display_key(sql_row[: len(key_pairs)], comparison_key),
+                            "differences": differences,
+                        }
+                        if mismatch_sink:
+                            mismatch_sink(item)
+                        if len(preview) < _PREVIEW_LIMIT:
+                            preview.append(item)
+                    else:
+                        counts["matched"] += 1
+                    sql_row = next(sql_stream, _MISSING)
+                    pg_row = next(pg_stream, _MISSING)
 
-        processed += 1
-        if progress and (processed % batch_size == 0):
-            progress(processed)
+            processed += 1
+            if progress and (processed % batch_size == 0):
+                progress(processed)
+    except Exception:
+        if immediate_cancel_requested and immediate_cancel_requested():
+            return _result(
+                "stopped_immediately", counts, preview, processed, comparison_key
+            )
+        raise
 
     if progress:
         progress(processed)
@@ -323,6 +347,8 @@ def _result(
         "summary": (
             "Row data matches."
             if status == "match"
+            else "Data comparison stopped immediately; only completed work was preserved."
+            if status == "stopped_immediately"
             else "Data comparison cancelled."
             if status == "cancelled"
             else f"{mismatch_total:,} row difference(s) found."

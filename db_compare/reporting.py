@@ -92,12 +92,20 @@ def finalize_report_run(
         raise DatabaseConfigurationError("The report contains too many summary items.")
 
     completed_at = datetime.now(timezone.utc).isoformat()
-    status = "cancelled" if payload.get("cancelled") else "complete"
+    stop_mode = _safe_text(payload.get("stop_mode"), 20)
+    status = (
+        "stopped_immediately"
+        if payload.get("cancelled") and stop_mode == "immediate"
+        else "cancelled"
+        if payload.get("cancelled")
+        else "complete"
+    )
     safe_tables = [_safe_table_summary(item) for item in tables if isinstance(item, dict)]
     summary = {
         "format_version": 1,
         "run_id": run_id,
         "status": status,
+        "stop_mode": stop_mode if payload.get("cancelled") else "",
         "started_at": _safe_text(payload.get("started_at"), 80),
         "completed_at": completed_at,
         "duration_seconds": _safe_nonnegative_number(payload.get("duration_seconds")),

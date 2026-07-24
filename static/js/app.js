@@ -20,7 +20,9 @@ const state = {
     schemaResults: new Map(),
     comparing: false,
     stopRequested: false,
+    stopMode: "",
     compareController: null,
+    activeOperationId: "",
     activeDataJobId: null,
     elapsedTimer: null,
     comparisonStartedAt: null,
@@ -62,6 +64,7 @@ const elements = {
     timestampTolerance: document.querySelector("#timestampTolerance"),
     startCompare: document.querySelector("#startCompare"),
     stopCompare: document.querySelector("#stopCompare"),
+    stopNow: document.querySelector("#stopNow"),
     progressTitle: document.querySelector("#progressTitle"),
     progressStatus: document.querySelector("#progressStatus"),
     progressPercent: document.querySelector("#progressPercent"),
@@ -87,9 +90,35 @@ const elements = {
     exportReport: document.querySelector("#exportReport"),
     exportLog: document.querySelector("#exportLog"),
     toast: document.querySelector("#toast"),
+    themeToggle: document.querySelector("#themeToggle"),
+    backToTop: document.querySelector("#backToTop"),
 };
 
 let toastTimer;
+
+function applyTheme(theme, persist = true) {
+    const selected = theme === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = selected;
+    const dark = selected === "dark";
+    elements.themeToggle.querySelector(".theme-icon").textContent = dark ? "☀" : "☾";
+    elements.themeToggle.querySelector(".theme-label").textContent = dark ? "Light" : "Dark";
+    elements.themeToggle.setAttribute(
+        "aria-label",
+        `Switch to ${dark ? "light" : "dark"} theme`,
+    );
+    if (persist) {
+        try {
+            localStorage.setItem("db-compare-theme", selected);
+        } catch {
+            // Theme still applies for this session when browser storage is unavailable.
+        }
+    }
+}
+
+function newOperationId() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `operation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 function showToast(message) {
     elements.toast.textContent = message;
@@ -581,6 +610,8 @@ function resultStatus(result) {
     }
     if (status === "missing_table") return ["Table missing", "missing"];
     if (status === "error") return ["Error", "missing"];
+    if (status === "stopped_immediately") return ["Stopped now", "missing"];
+    if (status === "cancelled") return ["Safe stop", "warning"];
     return ["Differences", "warning"];
 }
 
@@ -622,8 +653,10 @@ function appendSchemaResult(tableId, result) {
 
     const dataDifferenceCell = document.createElement("td");
     if (result.data_result) {
-        dataDifferenceCell.textContent = result.data_result.status === "cancelled"
-            ? "Cancelled"
+        dataDifferenceCell.textContent = result.data_result.status === "stopped_immediately"
+            ? "Stopped now"
+            : result.data_result.status === "cancelled"
+            ? "Safe stop"
             : formatCount(result.data_result.mismatch_total);
         if (result.data_result.mismatch_total) {
             dataDifferenceCell.classList.add("count-difference");
@@ -806,7 +839,11 @@ function formatCount(value) {
 }
 
 function combinedResult(schemaResult, countResult, dataResult = null, dataSkipped = "") {
-    const overallStatus = schemaResult.status === "error"
+    const overallStatus = dataResult?.status === "stopped_immediately"
+        ? "stopped_immediately"
+        : dataResult?.status === "cancelled"
+            ? "cancelled"
+        : schemaResult.status === "error"
         ? "error"
         : schemaResult.status === "missing_table"
             ? "missing_table"
@@ -832,7 +869,9 @@ function reportTableSummaries() {
             table_id: tableId,
             sqlserver_table: result.sqlserver_table || "",
             postgres_table: result.postgres_table || "",
-            status: result.data_result?.status === "cancelled"
+            status: result.data_result?.status === "stopped_immediately"
+                ? "stopped_immediately"
+                : result.data_result?.status === "cancelled"
                 ? "cancelled"
                 : result.overall_status || result.status,
             summary: [
@@ -883,7 +922,7 @@ function downloadReport(kind) {
     link.remove();
 }
 
-async function finalizeCurrentReport(cancelled) {
+async function finalizeCurrentReport(cancelled, stopMode = "") {
     if (!state.reportRunId) return;
     const result = await requestJson(
         `/api/reports/${state.reportRunId}/finalize`,
@@ -896,6 +935,7 @@ async function finalizeCurrentReport(cancelled) {
                 batch_size: Number(elements.batchSize.value),
                 comparison_options: comparisonOptions(),
                 cancelled,
+                stop_mode: stopMode,
                 tables: reportTableSummaries(),
                 log_entries: collectLogEntries(),
             }),
@@ -903,7 +943,7 @@ async function finalizeCurrentReport(cancelled) {
     );
     setReportExports(result.files || {});
     addLog(
-        result.status === "cancelled" ? "WARN" : "READY",
+        ["cancelled", "stopped_immediately"].includes(result.status) ? "WARN" : "READY",
         `Report files saved for run ${result.run_id}.`,
     );
 }
@@ -935,7 +975,7 @@ function comparisonOptions() {
 async function waitForDataComparison(jobId, tableId) {
     state.activeDataJobId = jobId;
     while (true) {
-        if (state.stopRequested) {
+        if (state.stopRequested && state.stopMode === "safe") {
             await requestJson(`/api/data/compare/${jobId}/cancel`, {
                 method: "POST",
                 body: "{}",
@@ -946,7 +986,7 @@ async function waitForDataComparison(jobId, tableId) {
         });
         elements.progressStatus.textContent =
             `Comparing ${tableId}: ${formatCount(response.processed)} row positions processed.`;
-        if (response.status === "complete" || response.status === "cancelled") {
+        if (["complete", "cancelled", "stopped_immediately"].includes(response.status)) {
             state.activeDataJobId = null;
             return response.result;
         }
@@ -981,10 +1021,12 @@ async function runSchemaComparison() {
     state.comparing = true;
     updateProfileButtons();
     state.stopRequested = false;
+    state.stopMode = "";
     state.schemaResults.clear();
     resetSchemaResults();
     elements.startCompare.disabled = true;
     elements.stopCompare.disabled = false;
+    elements.stopNow.disabled = false;
     elements.currentTable.textContent = "Preparing…";
     state.comparisonStartedAt = Date.now();
     window.clearInterval(state.elapsedTimer);
@@ -1019,6 +1061,7 @@ async function runSchemaComparison() {
         elements.currentTable.textContent = tableId;
         elements.progressStatus.textContent = `Comparing ${tableId}`;
         state.compareController = new AbortController();
+        state.activeOperationId = newOperationId();
         try {
             const schemaResponse = await requestJson("/api/schema/compare", {
                 method: "POST",
@@ -1027,11 +1070,13 @@ async function runSchemaComparison() {
                     postgres: connectionConfig("pg"),
                     catalog_token: state.catalogToken,
                     table_id: tableId,
+                    operation_id: state.activeOperationId,
                 }),
                 signal: state.compareController.signal,
             });
             let countResult = null;
             if (includeCounts && schemaResponse.result.status !== "error") {
+                state.activeOperationId = newOperationId();
                 elements.progressStatus.textContent =
                     `Counting rows in ${tableId}. Exact counts can take longer for large tables.`;
                 const countResponse = await requestJson("/api/counts/compare", {
@@ -1041,6 +1086,7 @@ async function runSchemaComparison() {
                         postgres: connectionConfig("pg"),
                         catalog_token: state.catalogToken,
                         table_id: tableId,
+                        operation_id: state.activeOperationId,
                     }),
                     signal: state.compareController.signal,
                 });
@@ -1081,6 +1127,10 @@ async function runSchemaComparison() {
                     dataResult = await waitForDataComparison(startResponse.job_id, tableId);
                     if (dataResult?.status === "cancelled") {
                         state.stopRequested = true;
+                        state.stopMode = "safe";
+                    } else if (dataResult?.status === "stopped_immediately") {
+                        state.stopRequested = true;
+                        state.stopMode = "immediate";
                     }
                 }
             }
@@ -1114,6 +1164,7 @@ async function runSchemaComparison() {
             appendSchemaResult(tableId, result);
             addLog("WARN", `${tableId}: ${error.message}`);
         }
+        state.activeOperationId = "";
         completed += 1;
         setProgress(
             completed,
@@ -1127,6 +1178,7 @@ async function runSchemaComparison() {
     state.comparing = false;
     updateProfileButtons();
     state.compareController = null;
+    state.activeOperationId = "";
     window.clearInterval(state.elapsedTimer);
     state.elapsedTimer = null;
     updateElapsedTime();
@@ -1134,20 +1186,25 @@ async function runSchemaComparison() {
         ? Math.max(0, (Date.now() - state.comparisonStartedAt) / 1000)
         : 0;
     elements.stopCompare.disabled = true;
+    elements.stopNow.disabled = true;
     elements.startCompare.disabled = state.selectedTables.size === 0;
     elements.currentTable.textContent = "—";
     setProgress(
         completed,
         tableIds.length,
         stopped
-            ? "Comparison stopped"
+            ? state.stopMode === "immediate"
+                ? "Comparison stopped immediately"
+                : "Comparison stopped safely"
             : includeData
                 ? "Schema, row count, and data comparison complete"
                 : includeCounts
                 ? "Schema and row-count comparison complete"
                 : "Schema comparison complete",
         stopped
-            ? `Stopped safely after ${completed} of ${tableIds.length} tables.`
+            ? state.stopMode === "immediate"
+                ? `Immediate cancellation requested after ${completed} of ${tableIds.length} tables. Completed results were preserved.`
+                : `Stopped safely after ${completed} of ${tableIds.length} tables.`
             : includeData
                 ? `${completed} table structures, counts, and data sets reviewed.`
                 : includeCounts
@@ -1157,7 +1214,9 @@ async function runSchemaComparison() {
     addLog(
         stopped ? "WARN" : "READY",
         stopped
-            ? "Comparison stopped by user."
+            ? state.stopMode === "immediate"
+                ? "Comparison stopped immediately by user. Only completed work was preserved."
+                : "Comparison stopped safely by user."
             : includeData
                 ? "Full data comparison completed."
                 : includeCounts
@@ -1165,14 +1224,16 @@ async function runSchemaComparison() {
                 : "Schema comparison completed.",
     );
     try {
-        await finalizeCurrentReport(stopped);
+        await finalizeCurrentReport(stopped, state.stopMode);
     } catch (error) {
         addLog("WARN", `Report finalization failed: ${error.message}`);
         showToast("Comparison completed, but report files could not be finalized.");
     }
     showToast(
         stopped
-            ? "Comparison stopped safely."
+            ? state.stopMode === "immediate"
+                ? "Comparison stopped immediately."
+                : "Comparison stopped safely."
             : includeData
                 ? "Full data comparison complete."
                 : includeCounts
@@ -1299,6 +1360,7 @@ elements.startCompare.addEventListener("click", runSchemaComparison);
 elements.stopCompare.addEventListener("click", () => {
     if (!state.comparing) return;
     state.stopRequested = true;
+    state.stopMode = "safe";
     elements.stopCompare.disabled = true;
     elements.progressStatus.textContent = state.activeDataJobId
         ? "Stopping safely after the current data batch finishes…"
@@ -1309,6 +1371,45 @@ elements.stopCompare.addEventListener("click", () => {
             body: "{}",
         }).catch(() => {});
     }
+});
+elements.stopNow.addEventListener("click", async () => {
+    if (!state.comparing) return;
+    const confirmed = window.confirm(
+        "Stop immediately?\n\nThe active database operation will be cancelled where the driver supports it. "
+        + "Only completed results will be preserved, and the current batch may be absent from the report.",
+    );
+    if (!confirmed) return;
+
+    state.stopRequested = true;
+    state.stopMode = "immediate";
+    elements.stopCompare.disabled = true;
+    elements.stopNow.disabled = true;
+    elements.progressStatus.textContent =
+        "Requesting immediate database cancellation…";
+    addLog(
+        "WARN",
+        "Stop Now requested. Cancelling active database work and preserving completed results.",
+    );
+
+    const requests = [];
+    if (state.activeDataJobId) {
+        requests.push(
+            requestJson(`/api/data/compare/${state.activeDataJobId}/cancel-now`, {
+                method: "POST",
+                body: "{}",
+            }),
+        );
+    }
+    if (state.activeOperationId) {
+        requests.push(
+            requestJson(`/api/operations/${state.activeOperationId}/cancel-now`, {
+                method: "POST",
+                body: "{}",
+            }),
+        );
+    }
+    await Promise.allSettled(requests);
+    if (!state.activeDataJobId) state.compareController?.abort();
 });
 elements.resultsTab.addEventListener("click", () => activateTab("results"));
 elements.logTab.addEventListener("click", () => activateTab("log"));
@@ -1366,6 +1467,18 @@ document.addEventListener("keydown", (event) => {
     if (event.altKey && event.key === "2") activateTab("log");
 });
 
+elements.themeToggle.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+});
+elements.backToTop.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+});
+window.addEventListener("scroll", () => {
+    elements.backToTop.classList.toggle("visible", window.scrollY > 520);
+}, { passive: true });
+
+applyTheme(document.documentElement.dataset.theme || "light", false);
 updatePagination();
 setReportExports();
 refreshProfiles();

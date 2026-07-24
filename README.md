@@ -13,7 +13,7 @@ not sent to an external web server.
 - Column names and metadata
 - Row counts
 - Key-based, row-level data comparison
-- Progress, cancellation, execution logs, and exportable reports
+- Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
 ## Phase 6 status
@@ -41,7 +41,7 @@ This checkpoint contains:
 - Missing and database-only column detection
 - Primary-key and unique-key discovery, including composite keys
 - Automatic comparison-key matching when the same key exists on both sides
-- Table-by-table schema execution with progress and safe Stop behaviour
+- Table-by-table execution with progress, batch-safe stopping, and best-effort immediate database cancellation
 - Expandable per-table column-difference results
 - Exact SQL Server counts through `COUNT_BIG(*)`
 - Exact PostgreSQL counts through `COUNT(*)`
@@ -71,7 +71,7 @@ This checkpoint contains:
   binary values, JSON-like values, and Unicode text
 - Strict defaults with optional trailing-space, case, decimal, and timestamp rules
 - Live elapsed-time and completed-table progress
-- Comparison settings, progress, Start/Stop controls, and result states
+- Comparison settings, progress, Safe Stop/Stop Now controls, and result states
 - Results and execution-log tabs
 - Windows setup and launch scripts
 - Environment and Git safety rules
@@ -80,8 +80,9 @@ This checkpoint contains:
 Table-name metadata is read
 once and retained in a short-lived in-memory catalog for fast search, filtering,
 pagination, and safe table mapping. When comparison starts, each selected table
-is processed separately so progress remains visible and Stop can take effect
-after the current table query. Phase 6 retains the Phase 5 engine and retrieves
+is processed separately so progress remains visible. Safe Stop finishes the
+active query or batch, while Stop Now asks the database drivers to cancel active
+work and preserves only completed results. Phase 6 retains the Phase 5 engine and retrieves
 exact counts directly in each
 database, then streams ordered business rows using the selected comparison key.
 Only the current driver batch and a bounded mismatch preview are retained in
@@ -140,8 +141,9 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
 11. Click **Start comparison**.
 12. Review schema, row-count, and row-data differences in the combined result.
 13. Expand **View details** for column differences and the mismatch preview.
-14. Use **Stop** to cancel safely after the current query or data batch.
-15. After completion or cancellation, choose **Mismatch Report**,
+14. Use **Safe Stop** to finish the current query or data batch before halting.
+15. Use **Stop Now** when you need to attempt immediate driver-level cancellation; only completed work is preserved.
+16. After completion or cancellation, choose **Data Mismatch Report**,
     **JSON Run Summary**, **CSV Run Summary**, or **Execution Log** and click
     **Export**.
 
@@ -149,7 +151,9 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
 
 Use **Save profile** to store a reusable comparison setup. Profiles include
 connection preferences, selected tables, manual/composite keys, filters,
-comparison mode, batch size, and value-comparison rules.
+comparison mode, batch size, and value-comparison rules. The header theme control
+follows the operating-system preference initially and remembers Light/Dark choices
+in the local browser.
 
 Passwords are never saved. After loading a profile, enter both passwords again,
 test both connections, and reload tables. Saved table selections are then
@@ -296,20 +300,21 @@ run.bat
 | v0.6.0 | Scalable data comparison |
 | v0.7.0 | Reporting and profiles |
 | v0.7.1 | Pre-release UI polish |
+| v0.7.2 | Theme, navigation, and dual stop controls |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested Phase 6 commit is:
+The suggested v0.7.2 commit is:
 
 ```text
-feat: add reports and saved comparison profiles
+feat: add theme navigation and dual stop controls
 ```
 
-The suggested Phase 6 tag is:
+The suggested v0.7.2 tag is:
 
 ```text
-v0.7.0-reporting
+v0.7.2-usability-controls
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

@@ -5,6 +5,8 @@ from __future__ import annotations
 from contextlib import closing
 from typing import Any, Iterator
 
+from ..cancellation import CancellationController
+
 from .errors import DatabaseConfigurationError, DatabaseConnectionError
 
 
@@ -106,11 +108,30 @@ def list_tables(config: dict[str, Any]) -> list[str]:
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
 
 
-def load_table_schema(config: dict[str, Any], table_name: str) -> dict[str, Any]:
+def load_table_schema(
+    config: dict[str, Any],
+    table_name: str,
+    cancellation: CancellationController | None = None,
+) -> dict[str, Any]:
     schema = str(config.get("schema") or "dbo").strip()
     try:
         with closing(connect(config)) as connection:
             with closing(connection.cursor()) as cursor:
+                cancel = lambda: _cancel_operation(cursor, connection)
+                if cancellation:
+                    cancellation.register(cancel)
+                try:
+                    return _load_table_schema(cursor, schema, table_name)
+                finally:
+                    if cancellation:
+                        cancellation.unregister(cancel)
+    except (DatabaseConnectionError, DatabaseConfigurationError):
+        raise
+    except Exception as exc:
+        raise DatabaseConnectionError(_friendly_error(exc)) from exc
+
+
+def _load_table_schema(cursor, schema: str, table_name: str) -> dict[str, Any]:
                 cursor.execute(
                     """
                     SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE,
@@ -172,22 +193,27 @@ def load_table_schema(config: dict[str, Any], table_name: str) -> dict[str, Any]
                     "primary_key": primary_key,
                     "unique_keys": unique_keys,
                 }
-    except (DatabaseConnectionError, DatabaseConfigurationError):
-        raise
-    except Exception as exc:
-        raise DatabaseConnectionError(_friendly_error(exc)) from exc
-
-
-def count_table_rows(config: dict[str, Any], table_name: str) -> int:
+def count_table_rows(
+    config: dict[str, Any],
+    table_name: str,
+    cancellation: CancellationController | None = None,
+) -> int:
     """Return an exact count without loading table rows into Python."""
     schema = str(config.get("schema") or "dbo").strip()
     qualified_table = f"{_quote_identifier(schema)}.{_quote_identifier(table_name)}"
     try:
         with closing(connect(config)) as connection:
             with closing(connection.cursor()) as cursor:
-                cursor.execute(f"SELECT COUNT_BIG(*) FROM {qualified_table}")
-                row = cursor.fetchone()
-                return int(row[0])
+                cancel = lambda: _cancel_operation(cursor, connection)
+                if cancellation:
+                    cancellation.register(cancel)
+                try:
+                    cursor.execute(f"SELECT COUNT_BIG(*) FROM {qualified_table}")
+                    row = cursor.fetchone()
+                    return int(row[0])
+                finally:
+                    if cancellation:
+                        cancellation.unregister(cancel)
     except DatabaseConnectionError:
         raise
     except Exception as exc:
@@ -200,6 +226,7 @@ def iter_table_rows(
     columns: list[str],
     key_columns: list[str],
     batch_size: int,
+    cancellation: CancellationController | None = None,
 ) -> Iterator[tuple[Any, ...]]:
     """Yield ordered rows without retaining the full table in memory."""
     if not columns or not key_columns:
@@ -210,6 +237,9 @@ def iter_table_rows(
     order_columns = ", ".join(_quote_identifier(value) for value in key_columns)
     connection = connect(config)
     cursor = connection.cursor()
+    cancel = lambda: _cancel_operation(cursor, connection)
+    if cancellation:
+        cancellation.register(cancel)
     try:
         cursor.execute(
             f"SELECT {select_columns} FROM {qualified_table} ORDER BY {order_columns}"
@@ -225,7 +255,18 @@ def iter_table_rows(
     except Exception as exc:
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
     finally:
-        cursor.close()
+        if cancellation:
+            cancellation.unregister(cancel)
+        try:
+            cursor.close()
+        finally:
+            connection.close()
+
+
+def _cancel_operation(cursor, connection) -> None:
+    try:
+        cursor.cancel()
+    finally:
         connection.close()
 
 

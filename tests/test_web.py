@@ -27,18 +27,29 @@ def test_home_page_loads():
     assert b'id="exportReport"' in response.data
     assert b'id="clearTableSearch"' in response.data
     assert b'id="selectAllTables"' in response.data
-    assert b'<option value="mismatches" selected>Mismatch Report</option>' in response.data
+    assert b'<option value="mismatches" selected>Data Mismatch Report</option>' in response.data
+    assert b'id="themeToggle"' in response.data
+    assert b'id="backToTop"' in response.data
+    assert b'id="stopCompare"' in response.data
+    assert b'id="stopNow"' in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
     assert b"Local session" not in response.data
 
 
-def test_health_endpoint_reports_ui_polish_checkpoint():
+def test_health_endpoint_reports_usability_checkpoint():
     response = client().get("/api/health")
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.1-ui-polish"
+    assert response.json["phase"] == "v0.7.2-usability-controls"
+
+
+def test_cancel_unknown_operation_is_safe():
+    response = client().post("/api/operations/not-active/cancel-now", json={})
+
+    assert response.status_code == 200
+    assert response.json["status"] == "not_active"
 
 
 @patch("db_compare.web.test_database_connection")

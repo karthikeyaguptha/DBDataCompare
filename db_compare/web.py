@@ -7,6 +7,7 @@ from typing import Any
 
 from flask import Blueprint, current_app, jsonify, render_template, request, send_file
 
+from .cancellation import CancellationController
 from .comparison import compare_table_data, compare_table_row_counts, compare_table_schema
 from .db import (
     DatabaseConfigurationError,
@@ -33,6 +34,8 @@ _DATA_JOB_TTL_SECONDS = 30 * 60
 _DATA_JOB_LIMIT = 4
 _DATA_JOBS: dict[str, dict[str, Any]] = {}
 _DATA_JOB_LOCK = Lock()
+_ACTIVE_OPERATIONS: dict[str, CancellationController] = {}
+_ACTIVE_OPERATIONS_LOCK = Lock()
 
 
 @web.get("/")
@@ -46,7 +49,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.7.1-ui-polish",
+            "phase": "v0.7.2-usability-controls",
         }
     )
 
@@ -209,12 +212,20 @@ def compare_schema():
     if table is None:
         raise DatabaseConfigurationError("The selected table is unavailable.")
 
-    result = compare_table_schema(
-        sqlserver_config,
-        postgres_config,
-        table["sqlserver"],
-        table["postgres"],
-    )
+    operation_id = _operation_id(payload)
+    controller = _begin_operation(operation_id) if operation_id else None
+    try:
+        kwargs = {"cancellation": controller} if controller else {}
+        result = compare_table_schema(
+            sqlserver_config,
+            postgres_config,
+            table["sqlserver"],
+            table["postgres"],
+            **kwargs,
+        )
+    finally:
+        if operation_id:
+            _finish_operation(operation_id)
     return jsonify({"status": "ready", "table_id": table_id, "result": result})
 
 
@@ -227,13 +238,41 @@ def compare_counts():
         raise DatabaseConfigurationError("Both database connections are required.")
 
     table_id, table = _catalog_table_from_payload(payload)
-    result = compare_table_row_counts(
-        sqlserver_config,
-        postgres_config,
-        table["sqlserver"],
-        table["postgres"],
-    )
+    operation_id = _operation_id(payload)
+    controller = _begin_operation(operation_id) if operation_id else None
+    try:
+        kwargs = {"cancellation": controller} if controller else {}
+        result = compare_table_row_counts(
+            sqlserver_config,
+            postgres_config,
+            table["sqlserver"],
+            table["postgres"],
+            **kwargs,
+        )
+    finally:
+        if operation_id:
+            _finish_operation(operation_id)
     return jsonify({"status": "ready", "table_id": table_id, "result": result})
+
+
+@web.post("/api/operations/<operation_id>/cancel-now")
+def cancel_active_operation(operation_id: str):
+    controller = _active_operation(operation_id)
+    if controller is None:
+        return jsonify(
+            {
+                "status": "not_active",
+                "message": "The database operation already finished or is unavailable.",
+            }
+        )
+    targets = controller.cancel_now()
+    return jsonify(
+        {
+            "status": "cancelling",
+            "targets": targets,
+            "message": "Immediate database cancellation requested.",
+        }
+    )
 
 
 @web.post("/api/data/compare/start")
@@ -278,6 +317,8 @@ def start_data_compare():
 
     job_id = token_urlsafe(24)
     cancel_event = Event()
+    immediate_cancel_event = Event()
+    cancellation = CancellationController()
     now = monotonic()
     job = {
         "id": job_id,
@@ -287,6 +328,8 @@ def start_data_compare():
         "result": None,
         "error": None,
         "cancel": cancel_event,
+        "cancel_now": immediate_cancel_event,
+        "cancellation": cancellation,
         "last_accessed": now,
     }
     with _DATA_JOB_LOCK:
@@ -342,6 +385,23 @@ def cancel_data_compare(job_id: str):
         raise DatabaseConfigurationError("The data comparison job expired or is unavailable.")
     job["cancel"].set()
     return jsonify({"status": "cancelling", "table_id": job["table_id"]})
+
+
+@web.post("/api/data/compare/<job_id>/cancel-now")
+def cancel_data_compare_now(job_id: str):
+    job = _get_data_job(job_id)
+    if job is None:
+        raise DatabaseConfigurationError("The data comparison job expired or is unavailable.")
+    job["cancel_now"].set()
+    job["cancel"].set()
+    targets = job["cancellation"].cancel_now()
+    return jsonify(
+        {
+            "status": "cancelling_immediately",
+            "table_id": job["table_id"],
+            "targets": targets,
+        }
+    )
 
 
 def _catalog_table_from_payload(
@@ -427,6 +487,7 @@ def _run_data_job(
             postgres_config,
             table["sqlserver"],
             table["postgres"],
+            cancellation=job["cancellation"],
         )
         comparison_key = manual_key or schema_result.get("comparison_key") or []
         if not comparison_key:
@@ -443,15 +504,40 @@ def _run_data_job(
             batch_size=batch_size,
             options=options,
             cancel_requested=job["cancel"].is_set,
+            immediate_cancel_requested=job["cancel_now"].is_set,
+            cancellation=job["cancellation"],
             progress=report_progress,
             mismatch_sink=writer,
         )
         job["result"] = result
         job["processed"] = result["processed"]
-        job["status"] = "cancelled" if result["status"] == "cancelled" else "complete"
+        job["status"] = (
+            "stopped_immediately"
+            if result["status"] == "stopped_immediately"
+            else "cancelled"
+            if result["status"] == "cancelled"
+            else "complete"
+        )
     except (DatabaseConfigurationError, DatabaseConnectionError) as exc:
-        job["error"] = str(exc)
-        job["status"] = "error"
+        if job["cancel_now"].is_set():
+            job["result"] = {
+                "status": "stopped_immediately",
+                "summary": "Data comparison stopped immediately; only completed work was preserved.",
+                "processed": job["processed"],
+                "counts": {
+                    "matched": 0,
+                    "different": 0,
+                    "sql_only": 0,
+                    "postgres_only": 0,
+                },
+                "mismatch_total": 0,
+                "preview": [],
+                "preview_limited": False,
+            }
+            job["status"] = "stopped_immediately"
+        else:
+            job["error"] = str(exc)
+            job["status"] = "error"
     except Exception:
         job["error"] = (
             "Data comparison failed unexpectedly. Review the database availability "
@@ -481,6 +567,30 @@ def _remove_expired_jobs(now: float) -> None:
     ]
     for job_id in expired:
         del _DATA_JOBS[job_id]
+
+
+def _operation_id(payload: dict[str, Any]) -> str:
+    value = str(payload.get("operation_id", "")).strip()
+    if value and (len(value) > 80 or not all(char.isalnum() or char in "-_" for char in value)):
+        raise DatabaseConfigurationError("The comparison operation identifier is invalid.")
+    return value
+
+
+def _begin_operation(operation_id: str) -> CancellationController:
+    controller = CancellationController()
+    with _ACTIVE_OPERATIONS_LOCK:
+        _ACTIVE_OPERATIONS[operation_id] = controller
+    return controller
+
+
+def _finish_operation(operation_id: str) -> None:
+    with _ACTIVE_OPERATIONS_LOCK:
+        _ACTIVE_OPERATIONS.pop(operation_id, None)
+
+
+def _active_operation(operation_id: str) -> CancellationController | None:
+    with _ACTIVE_OPERATIONS_LOCK:
+        return _ACTIVE_OPERATIONS.get(operation_id)
 
 
 def _merge_table_names(sql_names: list[str], pg_names: list[str]) -> list[dict[str, Any]]:

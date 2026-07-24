@@ -5,6 +5,8 @@ from __future__ import annotations
 from contextlib import closing
 from typing import Any, Iterator
 
+from ..cancellation import CancellationController
+
 from .errors import DatabaseConfigurationError, DatabaseConnectionError
 
 
@@ -70,11 +72,30 @@ def list_tables(config: dict[str, Any]) -> list[str]:
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
 
 
-def load_table_schema(config: dict[str, Any], table_name: str) -> dict[str, Any]:
+def load_table_schema(
+    config: dict[str, Any],
+    table_name: str,
+    cancellation: CancellationController | None = None,
+) -> dict[str, Any]:
     schema = str(config.get("schema") or "public").strip()
     try:
         with closing(connect(config)) as connection:
             with connection.cursor() as cursor:
+                cancel = lambda: _cancel_operation(connection)
+                if cancellation:
+                    cancellation.register(cancel)
+                try:
+                    return _load_table_schema(cursor, schema, table_name)
+                finally:
+                    if cancellation:
+                        cancellation.unregister(cancel)
+    except (DatabaseConnectionError, DatabaseConfigurationError):
+        raise
+    except Exception as exc:
+        raise DatabaseConnectionError(_friendly_error(exc)) from exc
+
+
+def _load_table_schema(cursor, schema: str, table_name: str) -> dict[str, Any]:
                 cursor.execute(
                     """
                     SELECT column_name, data_type, is_nullable,
@@ -136,13 +157,11 @@ def load_table_schema(config: dict[str, Any], table_name: str) -> dict[str, Any]
                     "primary_key": primary_key,
                     "unique_keys": unique_keys,
                 }
-    except (DatabaseConnectionError, DatabaseConfigurationError):
-        raise
-    except Exception as exc:
-        raise DatabaseConnectionError(_friendly_error(exc)) from exc
-
-
-def count_table_rows(config: dict[str, Any], table_name: str) -> int:
+def count_table_rows(
+    config: dict[str, Any],
+    table_name: str,
+    cancellation: CancellationController | None = None,
+) -> int:
     """Return an exact count without loading table rows into Python."""
     schema = str(config.get("schema") or "public").strip()
     try:
@@ -155,13 +174,20 @@ def count_table_rows(config: dict[str, Any], table_name: str) -> int:
     try:
         with closing(connect(config)) as connection:
             with connection.cursor() as cursor:
-                query = sql.SQL("SELECT COUNT(*) FROM {}.{}").format(
-                    sql.Identifier(schema),
-                    sql.Identifier(table_name),
-                )
-                cursor.execute(query)
-                row = cursor.fetchone()
-                return int(row[0])
+                cancel = lambda: _cancel_operation(connection)
+                if cancellation:
+                    cancellation.register(cancel)
+                try:
+                    query = sql.SQL("SELECT COUNT(*) FROM {}.{}").format(
+                        sql.Identifier(schema),
+                        sql.Identifier(table_name),
+                    )
+                    cursor.execute(query)
+                    row = cursor.fetchone()
+                    return int(row[0])
+                finally:
+                    if cancellation:
+                        cancellation.unregister(cancel)
     except DatabaseConnectionError:
         raise
     except Exception as exc:
@@ -174,6 +200,7 @@ def iter_table_rows(
     columns: list[str],
     key_columns: list[str],
     batch_size: int,
+    cancellation: CancellationController | None = None,
 ) -> Iterator[tuple[Any, ...]]:
     """Yield ordered rows through a PostgreSQL server-side cursor."""
     if not columns or not key_columns:
@@ -189,6 +216,9 @@ def iter_table_rows(
     connection = connect(config)
     cursor = connection.cursor(name="db_compare_stream")
     cursor.itersize = batch_size
+    cancel = lambda: _cancel_operation(connection)
+    if cancellation:
+        cancellation.register(cancel)
     try:
         query = sql.SQL("SELECT {} FROM {}.{} ORDER BY {}").format(
             sql.SQL(", ").join(sql.Identifier(value) for value in columns),
@@ -208,7 +238,18 @@ def iter_table_rows(
     except Exception as exc:
         raise DatabaseConnectionError(_friendly_error(exc)) from exc
     finally:
-        cursor.close()
+        if cancellation:
+            cancellation.unregister(cancel)
+        try:
+            cursor.close()
+        finally:
+            connection.close()
+
+
+def _cancel_operation(connection) -> None:
+    try:
+        connection.cancel()
+    finally:
         connection.close()
 
 
