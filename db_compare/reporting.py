@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from secrets import token_hex
@@ -136,7 +137,8 @@ def finalize_report_run(
         "files": {
             kind: f"/api/reports/{run_id}/{kind}"
             for kind in _REPORT_KINDS
-        },
+        }
+        | {"dashboard": f"/reports/{run_id}/dashboard"},
     }
 
 
@@ -147,6 +149,96 @@ def report_file(reports_root: Path, run_id: str, kind: str) -> Path:
     if not path.is_file():
         raise DatabaseConfigurationError("That report export is not available yet.")
     return path
+
+
+def report_summary(reports_root: Path, run_id: str) -> dict[str, Any]:
+    path = report_run_directory(reports_root, run_id) / _REPORT_KINDS["summary"]
+    if not path.is_file():
+        raise DatabaseConfigurationError(
+            "The comparison dashboard is available after report export completes."
+        )
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DatabaseConfigurationError("The report summary could not be read.") from exc
+    if not isinstance(value, dict) or value.get("run_id") != run_id:
+        raise DatabaseConfigurationError("The report summary is invalid.")
+    return value
+
+
+def dashboard_mismatch_page(
+    reports_root: Path,
+    run_id: str,
+    *,
+    page: int,
+    page_size: int,
+    table_id: str = "",
+    kind: str = "",
+    search: str = "",
+) -> dict[str, Any]:
+    """Read a bounded, filterable page from the complete streaming JSONL report."""
+    if page < 1 or page_size not in {25, 50, 100, 250, 1000}:
+        raise DatabaseConfigurationError("Choose a supported report page size.")
+    supported_kinds = {"", "different", "sql_only", "postgres_only"}
+    if kind not in supported_kinds:
+        raise DatabaseConfigurationError("Choose a supported mismatch type.")
+
+    path = report_file(reports_root, run_id, "mismatches")
+    wanted_table = table_id.casefold().strip()
+    wanted_search = search.casefold().strip()[:200]
+    start = (page - 1) * page_size
+    rows: list[dict[str, Any]] = []
+    total = 0
+    all_total = 0
+    kind_counts: Counter[str] = Counter()
+    table_counts: Counter[str] = Counter()
+
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(item, dict):
+                    continue
+                item_table = _safe_text(item.get("table_id"), 256)
+                item_kind = _safe_text(item.get("kind"), 40)
+                all_total += 1
+                kind_counts[item_kind] += 1
+                table_counts[item_table] += 1
+                if wanted_table and item_table.casefold() != wanted_table:
+                    continue
+                if kind and item_kind != kind:
+                    continue
+                if wanted_search and wanted_search not in json.dumps(
+                    item, ensure_ascii=False, default=str
+                ).casefold():
+                    continue
+                if start <= total < start + page_size:
+                    rows.append(item)
+                total += 1
+    except OSError as exc:
+        raise DatabaseConfigurationError("The mismatch report could not be read.") from exc
+
+    return {
+        "run_id": run_id,
+        "rows": rows,
+        "pagination": {
+            "page": min(page, max(1, (total + page_size - 1) // page_size)),
+            "page_size": page_size,
+            "total": total,
+            "total_pages": max(1, (total + page_size - 1) // page_size),
+        },
+        "facets": {
+            "total": all_total,
+            "kinds": dict(kind_counts),
+            "tables": [
+                {"table_id": name, "count": count}
+                for name, count in sorted(table_counts.items(), key=lambda value: value[0].casefold())
+            ],
+        },
+    }
 
 
 def report_run_directory(reports_root: Path, run_id: str) -> Path:
@@ -182,7 +274,37 @@ def _safe_table_summary(item: dict[str, Any]) -> dict[str, Any]:
         "postgres_only_rows": _safe_nonnegative_integer(data_counts.get("postgres_only")),
         "processed_rows": _safe_nonnegative_integer(item.get("processed_rows")),
         "data_skipped": _safe_text(item.get("data_skipped"), 1_000),
+        "schema_differences": _safe_schema_differences(item.get("schema_differences")),
+        "primary_key_status": _safe_text(item.get("primary_key_status"), 40),
+        "sqlserver_primary_key": _safe_string_list(item.get("sqlserver_primary_key")),
+        "postgres_primary_key": _safe_string_list(item.get("postgres_primary_key")),
     }
+
+
+def _safe_string_list(value: Any, limit: int = 20) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [_safe_text(item, 256) for item in value[:limit]]
+
+
+def _safe_schema_differences(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    result = []
+    for item in value[:1_000]:
+        if not isinstance(item, dict):
+            continue
+        result.append(
+            {
+                "column": _safe_text(item.get("column"), 256),
+                "status": _safe_text(item.get("status"), 40),
+                "sqlserver": _safe_text(item.get("sqlserver"), 256),
+                "postgres": _safe_text(item.get("postgres"), 256),
+                "expected_postgres": _safe_text(item.get("expected_postgres"), 256),
+                "reason": _safe_text(item.get("reason"), 1_000),
+            }
+        )
+    return result
 
 
 def _totals(tables: list[dict[str, Any]]) -> dict[str, int]:

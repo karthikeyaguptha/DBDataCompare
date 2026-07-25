@@ -14,8 +14,8 @@
             document.documentElement.dataset.theme = saved || (dark ? "dark" : "light");
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.8.0') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='0.8.0') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.9.0') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='0.9.0') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -558,6 +558,12 @@
                     Execution Log <span class="live-indicator" aria-hidden="true"></span>
                 </button>
                 <div class="tab-actions">
+                    <button class="button dashboard-button" id="openDashboard" type="button" disabled>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>
+                        </svg>
+                        View dashboard
+                    </button>
                     <label class="export-choice">
                         <span class="sr-only">Report format</span>
                         <select id="reportType" disabled aria-label="Report format">
@@ -631,7 +637,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.8.0</b></span>
+        <span>DB Compare Studio <b>v0.9.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

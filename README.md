@@ -18,7 +18,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v0.8.0 status
+## v0.9.0 status
 
 This checkpoint contains:
 
@@ -69,6 +69,14 @@ This checkpoint contains:
 - Matched, changed, SQL Server-only, and PostgreSQL-only row detection
 - Bounded 200-row mismatch preview to protect browser and Python memory
 - Complete JSONL mismatch output written incrementally during full comparison
+- Readable single-table and multi-table HTML comparison dashboard generated
+  from the finalized summary and complete JSONL mismatch files
+- Dashboard filters for table, mismatch type, keys, and values with bounded
+  pagination for large reports
+- Results-grid dashboard action that safely stops and finalizes an active run
+  before opening the latest completed data
+- Print-optimized PDF export with complete overview totals and up to 1,000
+  filtered row-level details
 - Downloadable JSON run summary and UTF-8 CSV table summary
 - Downloadable execution log for completed and cancelled runs
 - Password-free saved profiles for connection preferences, table selections,
@@ -135,7 +143,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v0.8.0 workflow
+## v0.9.0 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -327,20 +335,21 @@ run.bat
 | v0.7.8 | Simplified connection cards, advanced options, automatic profile loading, and icon-only profile actions |
 | v0.7.9 | Whole-header accordions, clearer selection and pagination controls, SQL port help, and reliable profile reset/loading |
 | v0.8.0 | Approved SQL Server → PostgreSQL datatype baseline, explicit schema verdicts, and primary-key validation |
+| v0.9.0 | Readable comparison dashboard, active-run handoff, multi-table filters, and PDF-ready reporting |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.8.0 commit is:
+The suggested v0.9.0 commit is:
 
 ```text
-feat: validate schemas against migration datatype baseline
+feat: add comparison dashboard and PDF export
 ```
 
-The suggested v0.8.0 tag is:
+The suggested v0.9.0 tag is:
 
 ```text
-v0.8.0-schema-baseline
+v0.9.0-comparison-dashboard
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

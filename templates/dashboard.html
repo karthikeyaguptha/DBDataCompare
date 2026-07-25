@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="Readable SQL Server to PostgreSQL comparison report.">
+    <title>Comparison Report · {{ summary.run_id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='0.9.0') }}">
+    <script src="{{ url_for('static', filename='js/dashboard.js', v='0.9.0') }}" defer></script>
+</head>
+<body data-run-id="{{ summary.run_id }}">
+    <header class="report-header">
+        <a class="report-brand" href="{{ url_for('web.index') }}" aria-label="Back to DB Compare Studio">
+            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span><strong>DB Compare Studio</strong><small>Migration validation report</small></span>
+        </a>
+        <div class="report-actions">
+            <a class="button secondary" href="{{ url_for('web.index') }}">Back to workspace</a>
+            <button class="button primary" id="exportPdf" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/>
+                </svg>
+                Export PDF
+            </button>
+        </div>
+    </header>
+
+    <main class="report-page">
+        <section class="report-hero">
+            <div>
+                <p class="eyebrow">SQL Server → PostgreSQL</p>
+                <h1>Data comparison report</h1>
+                <p class="hero-copy">A clear view of table structure, row counts, and record-level differences found during migration validation.</p>
+            </div>
+            <dl class="run-meta">
+                <div><dt>Run ID</dt><dd>{{ summary.run_id }}</dd></div>
+                <div><dt>Mode</dt><dd>{{ summary.comparison_mode.replace("_", " ").title() }}</dd></div>
+                <div><dt>Completed</dt><dd>{{ summary.completed_at[:19].replace("T", " ") }} UTC</dd></div>
+                <div><dt>Status</dt><dd>{{ summary.status.replace("_", " ").title() }}</dd></div>
+            </dl>
+        </section>
+
+        {% set totals = summary.totals %}
+        {% set has_issues = totals.differences or totals.errors or totals.row_mismatches %}
+        <section class="verdict {{ 'has-issues' if has_issues else 'all-clear' }}">
+            <span class="verdict-icon" aria-hidden="true">{{ '!' if has_issues else '✓' }}</span>
+            <div>
+                <h2>{{ 'Differences need review' if has_issues else 'Comparison completed — all checked data matches' }}</h2>
+                <p>
+                    {% if has_issues %}
+                        {{ totals.differences }} table(s) have structural or comparison differences and
+                        {{ "{:,}".format(totals.row_mismatches) }} row-level issue(s) were recorded.
+                    {% else %}
+                        All {{ totals.tables }} checked table(s) passed the comparisons that were run.
+                    {% endif %}
+                </p>
+            </div>
+        </section>
+
+        <section class="metric-grid" aria-label="Run summary">
+            <article><span>Tables checked</span><strong>{{ totals.tables }}</strong><small>Across this run</small></article>
+            <article><span>Tables matched</span><strong>{{ totals.matches }}</strong><small>Completed checks passed</small></article>
+            <article><span>Tables with differences</span><strong>{{ totals.differences }}</strong><small>Review recommended</small></article>
+            <article><span>Row-level issues</span><strong>{{ "{:,}".format(totals.row_mismatches) }}</strong><small>Changed or missing rows</small></article>
+            <article><span>Duration</span><strong>{{ "%.1f"|format(summary.duration_seconds) }}s</strong><small>Total elapsed time</small></article>
+        </section>
+
+        <section class="report-section">
+            <div class="section-title">
+                <div>
+                    <p class="eyebrow">Table overview</p>
+                    <h2>What passed and what needs attention</h2>
+                </div>
+                <p>SQL and PG counts are shown side by side. Expand a table to review schema details.</p>
+            </div>
+            <div class="table-card">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Table</th>
+                            <th>Schema</th>
+                            <th>Rows SQL / PG</th>
+                            <th>Row diff.</th>
+                            <th>Data issues</th>
+                            <th>Key</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for table in summary.tables %}
+                        {% set data_issues = table.value_mismatches + table.sqlserver_only_rows + table.postgres_only_rows %}
+                        <tr>
+                            <td><strong>{{ table.sqlserver_table or table.table_id }}</strong><small>{{ table.postgres_table or 'Not available in PostgreSQL' }}</small></td>
+                            <td>
+                                <span class="status {{ 'success' if table.column_differences == 0 and table.primary_key_status != 'different' else 'warning' }}">
+                                    {{ 'Match' if table.column_differences == 0 and table.primary_key_status != 'different' else table.column_differences ~ ' difference(s)' }}
+                                </span>
+                            </td>
+                            <td>{{ table.sqlserver_rows if table.sqlserver_rows is not none else '—' }} / {{ table.postgres_rows if table.postgres_rows is not none else '—' }}</td>
+                            <td>{{ table.row_count_difference if table.row_count_difference is not none else '—' }}</td>
+                            <td>{{ "{:,}".format(data_issues) }}</td>
+                            <td>{{ table.comparison_key|join(", ") or 'Not available' }}</td>
+                            <td><span class="status {{ 'success' if table.status == 'match' else 'warning' if table.status not in ['error', 'missing_table'] else 'danger' }}">{{ table.status.replace("_", " ").title() }}</span></td>
+                        </tr>
+                        {% if table.schema_differences or table.primary_key_status == "different" %}
+                        <tr class="schema-detail">
+                            <td colspan="7">
+                                <details>
+                                    <summary>Review schema differences for {{ table.table_id }}</summary>
+                                    {% if table.primary_key_status == "different" %}
+                                    <p class="key-warning"><strong>Primary key mismatch:</strong> SQL Server:
+                                        {{ table.sqlserver_primary_key|join(", ") or "None" }} · PostgreSQL:
+                                        {{ table.postgres_primary_key|join(", ") or "None" }}</p>
+                                    {% endif %}
+                                    {% if table.schema_differences %}
+                                    <div class="schema-grid">
+                                        {% for item in table.schema_differences %}
+                                        <article>
+                                            <strong>{{ item.column }}</strong>
+                                            <span>{{ item.reason or item.status.replace("_", " ").title() }}</span>
+                                            <small>SQL: {{ item.sqlserver }} · PG: {{ item.postgres }}
+                                                {% if item.expected_postgres %} · Expected: {{ item.expected_postgres }}{% endif %}
+                                            </small>
+                                        </article>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </details>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="report-section" id="mismatchSection">
+            <div class="section-title">
+                <div>
+                    <p class="eyebrow">Row-level findings</p>
+                    <h2>Data mismatch details</h2>
+                </div>
+                <p id="resultRange">Loading saved mismatch data…</p>
+            </div>
+            <form class="filters" id="filters">
+                <label>Table<select id="tableFilter"><option value="">All tables</option></select></label>
+                <label>Issue type
+                    <select id="kindFilter">
+                        <option value="">All issue types</option>
+                        <option value="different">Value mismatch</option>
+                        <option value="sql_only">Only in SQL Server</option>
+                        <option value="postgres_only">Only in PostgreSQL</option>
+                    </select>
+                </label>
+                <label class="search-label">Search keys or values<input id="reportSearch" type="search" placeholder="e.g. ManifestID 19315"></label>
+                <button class="button secondary" id="clearFilters" type="button">Clear</button>
+            </form>
+            <div class="issue-legend" id="issueLegend"></div>
+            <div class="table-card">
+                <table class="detail-table">
+                    <thead><tr><th>Table</th><th>Issue</th><th>Comparison key</th><th>Column / row details</th><th>SQL Server</th><th>PostgreSQL</th></tr></thead>
+                    <tbody id="mismatchBody"></tbody>
+                </table>
+                <div class="empty-details" id="emptyDetails" hidden>No saved row-level mismatches match these filters.</div>
+            </div>
+            <nav class="pagination" aria-label="Mismatch report pages">
+                <button class="button secondary" id="previousPage" type="button">Previous</button>
+                <span id="pageStatus">Page 1 of 1</span>
+                <button class="button secondary" id="nextPage" type="button">Next</button>
+            </nav>
+        </section>
+
+        <section class="print-details" id="printDetails" aria-hidden="true">
+            <h2>Row-level mismatch details</h2>
+            <p id="printScope"></p>
+            <table class="detail-table">
+                <thead><tr><th>Table</th><th>Issue</th><th>Key</th><th>Details</th><th>SQL Server</th><th>PostgreSQL</th></tr></thead>
+                <tbody id="printBody"></tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer class="report-footer">
+        <span>Generated by DB Compare Studio v0.9.0</span>
+        <span>Run {{ summary.run_id }}</span>
+    </footer>
+    <div class="toast" id="dashboardToast" role="status" aria-live="polite"></div>
+</body>
+</html>

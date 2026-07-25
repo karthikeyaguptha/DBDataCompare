@@ -1878,6 +1878,26 @@ select:disabled {
     white-space: nowrap;
 }
 
+.dashboard-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--line));
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+    font-weight: 750;
+}
+
+.dashboard-button svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
 .tab-panel {
     min-height: 265px;
 }

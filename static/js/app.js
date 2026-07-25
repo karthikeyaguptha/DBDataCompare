@@ -29,6 +29,7 @@ const state = {
     reportRunId: "",
     reportStartedAt: "",
     reportFiles: {},
+    comparisonPromise: null,
     lastRunDurationSeconds: 0,
     profiles: [],
     currentProfileId: "",
@@ -97,6 +98,7 @@ const elements = {
     deleteProfile: document.querySelector("#deleteProfile"),
     reportType: document.querySelector("#reportType"),
     exportReport: document.querySelector("#exportReport"),
+    openDashboard: document.querySelector("#openDashboard"),
     exportLog: document.querySelector("#exportLog"),
     toast: document.querySelector("#toast"),
     themeToggle: document.querySelector("#themeToggle"),
@@ -1270,6 +1272,23 @@ function reportTableSummaries() {
             data_counts: dataCounts,
             processed_rows: result.data_result?.processed || 0,
             data_skipped: result.data_skipped || "",
+            schema_differences: (result.columns || [])
+                .filter((column) => column.status !== "match")
+                .map((column) => ({
+                    column: column.name || "",
+                    status: column.status || "",
+                    sqlserver: column.sqlserver
+                        ? `${column.sqlserver.type} · ${column.sqlserver.nullable ? "NULL" : "NOT NULL"}`
+                        : "Missing",
+                    postgres: column.postgres
+                        ? `${column.postgres.type} · ${column.postgres.nullable ? "NULL" : "NOT NULL"}`
+                        : "Missing",
+                    expected_postgres: column.expected_postgres || "",
+                    reason: column.differences?.join(", ") || "",
+                })),
+            primary_key_status: result.primary_key_status || "",
+            sqlserver_primary_key: result.sqlserver_primary_key || [],
+            postgres_primary_key: result.postgres_primary_key || [],
         };
     });
 }
@@ -1284,10 +1303,11 @@ function collectLogEntries() {
 
 function setReportExports(files = {}) {
     state.reportFiles = files;
-    const available = Object.keys(files).length > 0;
+    const available = ["mismatches", "summary", "csv", "log"].some((kind) => files[kind]);
     elements.reportType.disabled = !available;
     elements.exportReport.disabled = !available;
     elements.exportLog.disabled = !files.log;
+    elements.openDashboard.disabled = !files.dashboard && !state.comparing;
 }
 
 function downloadReport(kind) {
@@ -1302,6 +1322,48 @@ function downloadReport(kind) {
     document.body.append(link);
     link.click();
     link.remove();
+}
+
+function requestSafeStop(message) {
+    if (!state.comparing) return;
+    state.stopRequested = true;
+    state.stopMode = "safe";
+    elements.stopCompare.disabled = true;
+    elements.progressStatus.textContent = message
+        || (state.activeDataJobId
+            ? "Stopping safely after the current data batch finishes…"
+            : "Stopping safely after the current database query finishes…");
+    if (state.activeDataJobId) {
+        requestJson(`/api/data/compare/${state.activeDataJobId}/cancel`, {
+            method: "POST",
+            body: "{}",
+        }).catch(() => {});
+    }
+}
+
+async function openComparisonDashboard() {
+    const reportWindow = window.open("", "_blank");
+    if (!reportWindow) {
+        showToast("Allow pop-ups to open the comparison dashboard.");
+        return;
+    }
+    reportWindow.document.title = "Preparing comparison dashboard";
+    reportWindow.document.body.innerHTML =
+        '<p style="font:16px Segoe UI,sans-serif;padding:32px;color:#334155">Preparing the latest completed results…</p>';
+
+    if (state.comparing) {
+        requestSafeStop("Preparing the dashboard after the current safe batch finishes…");
+        showToast("Stopping safely, exporting completed results, and preparing the dashboard.");
+        await state.comparisonPromise;
+    }
+
+    const url = state.reportFiles.dashboard;
+    if (!url) {
+        reportWindow.close();
+        showToast("Complete at least one table before opening the dashboard.");
+        return;
+    }
+    reportWindow.location.replace(url);
 }
 
 async function finalizeCurrentReport(cancelled, stopMode = "") {
@@ -1404,6 +1466,7 @@ async function runSchemaComparison() {
         return;
     }
     state.comparing = true;
+    elements.openDashboard.disabled = false;
     updateProfileButtons();
     state.stopRequested = false;
     state.stopMode = "";
@@ -1760,21 +1823,12 @@ elements.comparisonMode.addEventListener("change", () => {
 });
 elements.batchSize.addEventListener("change", updateEstimatedWork);
 
-elements.startCompare.addEventListener("click", runSchemaComparison);
+elements.startCompare.addEventListener("click", () => {
+    state.comparisonPromise = runSchemaComparison()
+        .finally(() => { state.comparisonPromise = null; });
+});
 elements.stopCompare.addEventListener("click", () => {
-    if (!state.comparing) return;
-    state.stopRequested = true;
-    state.stopMode = "safe";
-    elements.stopCompare.disabled = true;
-    elements.progressStatus.textContent = state.activeDataJobId
-        ? "Stopping safely after the current data batch finishes…"
-        : "Stopping safely after the current database query finishes…";
-    if (state.activeDataJobId) {
-        requestJson(`/api/data/compare/${state.activeDataJobId}/cancel`, {
-            method: "POST",
-            body: "{}",
-        }).catch(() => {});
-    }
+    requestSafeStop();
 });
 elements.stopNow.addEventListener("click", async () => {
     if (!state.comparing) return;
@@ -1888,6 +1942,7 @@ function markProfileDirty(event) {
     control.addEventListener("change", markProfileDirty);
 });
 elements.exportReport.addEventListener("click", () => downloadReport(elements.reportType.value));
+elements.openDashboard.addEventListener("click", openComparisonDashboard);
 elements.exportLog.addEventListener("click", () => downloadReport("log"));
 document.querySelector("#copyLog").addEventListener("click", async () => {
     try {

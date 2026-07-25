@@ -20,7 +20,9 @@ from .reporting import (
     create_report_run,
     finalize_report_run,
     mismatch_writer,
+    dashboard_mismatch_page,
     report_file,
+    report_summary,
 )
 
 
@@ -49,7 +51,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.8.0-schema-baseline",
+            "phase": "v0.9.0-comparison-dashboard",
         }
     )
 
@@ -115,6 +117,35 @@ def finalize_report(run_id: str):
 def download_report(run_id: str, kind: str):
     path = report_file(Path(current_app.config["REPORTS_DIR"]), run_id, kind)
     return send_file(path, as_attachment=True, download_name=path.name)
+
+
+@web.get("/reports/<run_id>/dashboard")
+def comparison_dashboard(run_id: str):
+    summary = report_summary(Path(current_app.config["REPORTS_DIR"]), run_id)
+    return render_template("dashboard.html", summary=summary)
+
+
+@web.get("/api/reports/<run_id>/dashboard-data")
+def comparison_dashboard_data(run_id: str):
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+        page_size = int(request.args.get("page_size", 50))
+    except (TypeError, ValueError) as exc:
+        raise DatabaseConfigurationError("Report page values must be valid numbers.") from exc
+    return jsonify(
+        {
+            "status": "ready",
+            **dashboard_mismatch_page(
+                Path(current_app.config["REPORTS_DIR"]),
+                run_id,
+                page=page,
+                page_size=page_size,
+                table_id=str(request.args.get("table", "")),
+                kind=str(request.args.get("kind", "")),
+                search=str(request.args.get("search", "")),
+            ),
+        }
+    )
 
 
 @web.post("/api/connections/test")

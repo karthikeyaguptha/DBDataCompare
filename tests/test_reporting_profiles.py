@@ -106,7 +106,13 @@ def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):
     )
 
     assert finalized.status_code == 200
-    assert set(finalized.json["files"]) == {"summary", "mismatches", "csv", "log"}
+    assert set(finalized.json["files"]) == {
+        "summary",
+        "mismatches",
+        "csv",
+        "log",
+        "dashboard",
+    }
     summary = json.loads((run_dir / "run-summary.json").read_text(encoding="utf-8"))
     assert summary["totals"]["row_mismatches"] == 1
     assert "CustomerId" in (run_dir / "comparison-summary.csv").read_text(
@@ -114,6 +120,59 @@ def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):
     )
     assert "Finished." in (run_dir / "execution.log").read_text(encoding="utf-8")
     assert client.get(f"/api/reports/{run_id}/mismatches").status_code == 200
+    dashboard = client.get(f"/reports/{run_id}/dashboard")
+    assert dashboard.status_code == 200
+    assert b"Data comparison report" in dashboard.data
+    assert b"Export PDF" in dashboard.data
+
+    dashboard_data = client.get(
+        f"/api/reports/{run_id}/dashboard-data?page=1&page_size=25"
+    )
+    assert dashboard_data.status_code == 200
+    assert dashboard_data.json["pagination"]["total"] == 1
+    assert dashboard_data.json["rows"][0]["table_id"] == "customers"
+    assert dashboard_data.json["facets"]["kinds"]["different"] == 1
+
+
+def test_dashboard_filters_multi_table_mismatch_data(tmp_path):
+    client = make_client(tmp_path)
+    started = client.post(
+        "/api/reports/runs",
+        json={"comparison_mode": "full", "selected_tables": ["a", "b"]},
+    )
+    run_id = started.json["run_id"]
+    run_dir = tmp_path / "reports" / run_id
+    records = [
+        {"table_id": "a", "kind": "different", "key": {"id": 1}},
+        {"table_id": "a", "kind": "sql_only", "key": {"id": 2}},
+        {"table_id": "b", "kind": "postgres_only", "key": {"id": 3}},
+    ]
+    with (run_dir / "mismatches.jsonl").open("a", encoding="utf-8") as handle:
+        for record in records:
+            handle.write(json.dumps(record) + "\n")
+    client.post(
+        f"/api/reports/{run_id}/finalize",
+        json={
+            "started_at": started.json["started_at"],
+            "duration_seconds": 0.3,
+            "comparison_mode": "full",
+            "cancelled": False,
+            "tables": [
+                {"table_id": "a", "status": "different"},
+                {"table_id": "b", "status": "different"},
+            ],
+            "log_entries": [],
+        },
+    )
+
+    response = client.get(
+        f"/api/reports/{run_id}/dashboard-data"
+        "?page=1&page_size=25&table=a&kind=sql_only"
+    )
+    assert response.status_code == 200
+    assert response.json["pagination"]["total"] == 1
+    assert response.json["rows"][0]["kind"] == "sql_only"
+    assert {item["table_id"] for item in response.json["facets"]["tables"]} == {"a", "b"}
 
 
 def test_csv_export_neutralizes_spreadsheet_formulas(tmp_path):
