@@ -51,7 +51,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.10.2-table-filters-pdf-pagination",
+            "phase": "v0.10.3-report-print-cleanup",
         }
     )
 

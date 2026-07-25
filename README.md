@@ -18,7 +18,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v0.10.2 status
+## v0.10.3 status
 
 This checkpoint contains:
 
@@ -78,7 +78,9 @@ This checkpoint contains:
 - Compact completion metadata and conversational elapsed time in seconds,
   minutes, hours, or days
 - Print-optimized PDF export with complete overview totals and up to 1,000
-  filtered row-level details plus theme-correct report headers and footers
+  filtered row-level details, repeated table headings, and `Page X / Y`
+  pagination without application header or footer content
+- Consistent plus/minus More options disclosure in Step 2
 - Step 2 Start comparison action beside the selected-table controls
 - Downloadable JSON run summary and UTF-8 CSV table summary
 - Downloadable execution log for completed and cancelled runs
@@ -146,7 +148,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v0.10.2 workflow
+## v0.10.3 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -342,20 +344,21 @@ run.bat
 | v0.10.0 | Compact workflow tracker, connection-aware report metadata, matching comparison-mode labels, and theme-preserving dashboard/PDF export |
 | v0.10.1 | Compact completion metadata, conversational duration, theme-correct PDF headers, and the Start comparison action in Step 2 |
 | v0.10.2 | Compact Step 2 table filters and current-page/total-pages numbering on PDF exports |
+| v0.10.3 | Consistent plus/minus disclosure control and overlap-free PDF output with pagination only |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.10.2 commit is:
+The suggested v0.10.3 commit is:
 
 ```text
-fix: compact table filters and add PDF page numbers
+fix: align Step 2 disclosure and clean PDF pagination
 ```
 
-The suggested v0.10.2 tag is:
+The suggested v0.10.3 tag is:
 
 ```text
-v0.10.2-table-filters-pdf-pagination
+v0.10.3-report-print-cleanup
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

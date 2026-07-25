@@ -147,8 +147,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .empty-details { padding: 34px; color: var(--muted); text-align: center; }
 .pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 11px; }
 .pagination span { color: var(--muted); font-size: 12px; font-weight: 700; }
-.print-details, .print-chrome { display: none; }
-.report-footer { display: flex; justify-content: space-between; padding: 20px max(24px, calc((100vw - 1280px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.print-details { display: none; }
 .toast { position: fixed; right: 22px; bottom: 22px; z-index: 30; max-width: 420px; padding: 11px 14px; border-radius: 10px; background: var(--ink); color: #fff; opacity: 0; pointer-events: none; transform: translateY(10px); transition: .2s ease; }
 .toast.visible { opacity: 1; transform: translateY(0); }
 
@@ -183,13 +182,7 @@ tbody tr:last-child td { border-bottom: 0; }
     }
     html, body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     body { min-height: 100%; padding: 0; background: var(--canvas); color: var(--ink); font-size: 9pt; }
-    .report-header, .report-actions, #mismatchSection, .toast, .report-footer { display: none !important; }
-    .print-chrome {
-        position: fixed; left: 0; right: 0; z-index: 50; display: flex;
-        justify-content: space-between; color: var(--ink); font-size: 7.5pt;
-    }
-    .print-page-header { top: -10mm; }
-    .print-page-footer { right: 42mm; bottom: -9mm; color: var(--muted); }
+    .report-header, .report-actions, #mismatchSection, .toast { display: none !important; }
     .report-page { width: 100%; margin: 0; }
     .report-hero { grid-template-columns: 1.25fr .75fr; padding: 12px; border-radius: 8px; box-shadow: none; break-inside: avoid; }
     h1 { font-size: 24pt; }
@@ -204,9 +197,10 @@ tbody tr:last-child td { border-bottom: 0; }
     th, td { padding: 6px; }
     .table-card { overflow: visible; border-radius: 5px; }
     .schema-detail details { display: none; }
-    .print-details { display: block; margin-top: 16px; }
+    .print-details { display: block; margin-top: 0; break-before: page; }
     .print-details h2 { margin-bottom: 2px; font-size: 15pt; }
     .print-details > p { margin: 0 0 6px; color: var(--muted); }
     .detail-table { min-width: 0; font-size: 7.5pt; }
+    thead { display: table-header-group; }
     tr { break-inside: avoid; }
 }
