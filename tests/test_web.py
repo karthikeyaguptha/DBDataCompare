@@ -44,7 +44,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.5.0" in response.data
+    assert b"v1.6.0" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'<details class="table-filter-options">' in response.data
     assert b"<summary>More options</summary>" in response.data
@@ -72,7 +72,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.5.0-logo-layout-refinement"
+    assert response.json["phase"] == "v1.6.0-report-readability-and-documentation"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -128,6 +128,14 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     assert "margin: 14mm 10mm 13mm;" in dashboard_css
     assert "break-before: page;" in dashboard_css
     assert "thead { display: table-header-group; }" in dashboard_css
+    assert ".report-title-logo" in dashboard_css
+    assert "width: 78px" in dashboard_css
+    assert "height: 43px" in dashboard_css
+    assert ".run-meta dd" in dashboard_css
+    assert "overflow-wrap: anywhere" in dashboard_css
+    assert "text-overflow: ellipsis" not in dashboard_css.split(
+        ".run-meta dd", 1
+    )[1].split(".run-meta .completed-meta", 1)[0]
 
 
 def test_secondary_table_filters_are_grouped_under_more_options():

@@ -73,10 +73,10 @@ button, input, select { font: inherit; }
 .button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .report-page { width: min(1280px, calc(100% - 40px)); margin: 18px auto 54px; }
 .report-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(480px, 1fr); gap: 30px; align-items: end; padding: 28px 30px; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(135deg, var(--hero-start) 0%, var(--hero-end) 100%); box-shadow: 0 16px 45px rgba(10,15,30,.13); }
-.report-title-brand { display: flex; align-items: center; gap: 12px; min-height: 34px; margin-bottom: 7px; }
-.report-title-logo { position: relative; display: block; width: 62px; height: 34px; flex: 0 0 62px; }
+.report-title-brand { display: flex; align-items: center; gap: 14px; min-height: 43px; margin-bottom: 9px; }
+.report-title-logo { position: relative; display: block; width: 78px; height: 43px; flex: 0 0 78px; }
 .report-title-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
-.report-title-wordmark { position: relative; display: block; width: 164px; height: 21px; flex: 0 0 164px; }
+.report-title-wordmark { position: relative; display: block; width: 190px; height: 25px; flex: 0 0 190px; }
 .report-title-wordmark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
 .report-title-logo .brand-for-dark { display: none; }
 :root:not([data-theme="dark"]) .report-title-wordmark .brand-for-dark { display: none; }
@@ -93,8 +93,8 @@ h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); line-height: 1.08; letter-spa
 .connection-meta.sql-meta { border-top-color: var(--sql-ink); }
 .connection-meta.pg-meta { border-top-color: var(--pg-ink); }
 .run-meta dt { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
-.run-meta dd { margin: 5px 0 0; overflow: hidden; text-overflow: ellipsis; font-weight: 750; white-space: nowrap; }
-.run-meta small { display: block; margin-top: 4px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.run-meta dd { margin: 5px 0 0; font-weight: 750; line-height: 1.35; overflow-wrap: anywhere; }
+.run-meta small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.35; overflow-wrap: anywhere; }
 .run-meta .completed-meta {
     grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 6px; margin: 0;
     color: var(--muted); font-size: 11px;

@@ -1,206 +1,72 @@
 # Data Sync Check
 
-A Windows-first, local browser application for comparing Microsoft SQL Server
-and PostgreSQL databases.
+Data Sync Check is a local Windows application for validating data migrations
+from Microsoft SQL Server to PostgreSQL. It compares table structures, exact row
+counts, and row-level values, then produces readable reports for review and
+sharing.
 
-The user interface opens in a browser, while a Python/Flask process runs locally
-and performs read-only database comparisons. Database credentials and data are
-not sent to an external web server.
+Dark theme is the first-launch default. Light theme is available and the
+selected preference is remembered.
 
-**Two sources. One truth.** Compare with confidence.
+## Features
 
-## Comparison scope
+### Database connections
 
-- Table names
-- Column names and metadata
-- Approved SQL Server → PostgreSQL datatype compatibility
-- Primary-key parity
-- Row counts
-- Key-based, row-level data comparison
-- Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
-- Batch streaming for large tables
+- Connects to Microsoft SQL Server and PostgreSQL.
+- Tests each connection independently with clear error messages.
+- Supports SQL Server Authentication and Windows Authentication.
+- Provides optional ODBC, certificate, and PostgreSQL SSL settings.
+- Keeps passwords out of saved profiles, logs, and reports.
 
-## v1.5.0 status
+### Table discovery and selection
 
-This checkpoint contains:
+- Loads table names once and supports fast local search and pagination.
+- Shows tables available in both databases.
+- Offers SQL Server-only and PostgreSQL-only filters under **More options**.
+- Supports single-table and multi-table comparison runs.
 
-- Flask application foundation
-- Modern, responsive browser workspace
-- Live SQL Server connectivity through `pyodbc`
-- Live PostgreSQL connectivity through Psycopg 3
-- Connection validation, timeout handling, and safe user-facing errors
-- Explicit ODBC driver detection and separate network, login, certificate,
-  database-access, and timeout diagnostics
-- SQL Server Authentication selected by default; Windows Authentication supported
-- Optional SQL Server `Trust server certificate` setting
-- Live schema-based table discovery for both databases
-- Case-insensitive same-name table availability preview
-- Common, SQL Server-only, and PostgreSQL-only table filters; Common is selected by default
-- Cached backend table search and pagination; only the current page is sent to the browser
-- Password visibility controls
-- Paginated table selection with fast search, filtered select-all, and page size
-- Fixed-height Step 2 table viewport with a sticky header, stable sparse-page layout,
-  First/Previous/Next/Last controls, and direct page entry
-- Live SQL Server and PostgreSQL column-metadata retrieval
-- Case-insensitive column matching with directional SQL Server → PostgreSQL mappings
-- Column type, length, precision, scale, timestamp precision, and nullability checks
-- Explicit **Schema Match** / **Schema Mismatch** verdicts with expected target types
-- Primary-key comparison included in the schema verdict
-- Missing and database-only column detection
-- Primary-key and unique-key discovery, including composite keys
-- Automatic comparison-key matching when the same key exists on both sides
-- Table-by-table execution with progress, batch-safe stopping, and best-effort immediate database cancellation
-- Expandable per-table column-difference results
-- Exact SQL Server counts through `COUNT_BIG(*)`
-- Exact PostgreSQL counts through `COUNT(*)`
-- Per-table SQL Server/PostgreSQL row totals and absolute count differences
-- Independent vertical Schema, Count, and Data result badges; each match is
-  green and each difference, skip, stop, or not-run state is amber
-- **Schema Only** and **Schema + Row Count** comparison modes
-- **Schema + Row Count + Data** selected by default
-- Responsive, wrapped table grids that keep result actions inside the viewport
-- Header-level bulk selection for all currently filtered Step 2 tables
-- Persistent search-clear control and aligned profile/report action groups
-- SQL Server and PostgreSQL product icons in the connection cards
-- Automatic primary/unique keys and comma-separated manual key overrides
-- Composite detected and manual key support
-- SQL Server `fetchmany()` and PostgreSQL server-side cursor streaming
-- Configurable 2,000, 5,000, or 10,000 row batches
-- Background data jobs with lightweight browser progress polling
-- Backend cancellation checked between row batches
-- Matched, changed, SQL Server-only, and PostgreSQL-only row detection
-- Bounded 200-row mismatch preview to protect browser and Python memory
-- Complete JSONL mismatch output written incrementally during full comparison
-- Readable single-table and multi-table HTML comparison dashboard generated
-  from the finalized summary and complete JSONL mismatch files
-- Dashboard filters for table, mismatch type, keys, and values with bounded
-  pagination for large reports
-- Results-grid dashboard action that safely stops and finalizes an active run
-  before opening the latest completed data
-- Compact completion metadata and conversational elapsed time in seconds,
-  minutes, hours, or days
-- Print-optimized PDF export with complete overview totals and up to 1,000
-  filtered row-level details, repeated table headings, and `Page X / Y`
-  pagination without application header or footer content
-- Consistent plus/minus More options disclosure in Step 2
-- Step 2 Start comparison action beside the selected-table controls
-- Downloadable JSON run summary and UTF-8 CSV table summary
-- Downloadable execution log for completed and cancelled runs
-- Password-free saved profiles for connection preferences, table selections,
-  manual keys, filters, mode, batch size, and comparison rules
-- Spreadsheet-formula protection for exported CSV text
-- Normalisation for nulls, numbers, timestamps/time zones, UUIDs, booleans,
-  binary values, JSON-like values, and Unicode text
-- Strict defaults with optional trailing-space, case, decimal, and timestamp rules
-- Live elapsed-time and completed-table progress
-- Planned-check summary plus cumulative discovered and processed row positions
-- Accessible Step 1/2/3 accordions with workflow-aware automatic transitions
-- Local-service watchdog that invalidates stale connection cards and explains
-  how to restart `run.bat` without discarding already-rendered results
-- Comparison settings, progress, Safe Stop/Stop Now controls, and result states
-- Results and execution-log tabs
-- Windows setup and launch scripts
-- Environment and Git safety rules
-- Health endpoint and automated page checks
-- Data Sync Check naming across the workspace, reports, database client identity,
-  setup/launch scripts, and documentation
-- Theme-aware Data Sync Check wordmark with a visible compact DSC logo on Home
-- Two-row report identity with the DSC logo and Data Sync Check above
-  **Comparison Report**
-- Theme-aware top-right notification stack with semantic status styling,
-  immediate dismissal, and fixed 5-second countdown bars
+### Comparison modes
 
-Table-name metadata is read
-once and retained in a short-lived in-memory catalog for fast search, filtering,
-pagination, and safe table mapping. When comparison starts, each selected table
-is processed separately so progress remains visible. Safe Stop finishes the
-active query or batch, while Stop Now asks the database drivers to cancel active
-work and preserves only completed results. Phase 6 retains the Phase 5 engine and retrieves
-exact counts directly in each
-database, then streams ordered business rows using the selected comparison key.
-Only the current driver batch and a bounded mismatch preview are retained in
-memory. Every mismatch is written immediately to JSONL, so the complete export
-does not depend on the browser preview limit.
+- **Schema Only**
+- **Schema + Row Count**
+- **Schema + Row Count + Data**
 
-## Windows prerequisites
+Schema validation covers approved SQL Server-to-PostgreSQL datatype mappings,
+length, precision, scale, nullability, and primary keys. Row counts are exact.
+Full data comparison reads both tables in key order and reports changed or
+missing rows.
 
-1. Windows 10 or Windows 11, 64-bit
-2. Python 3.12, 64-bit
-3. Microsoft ODBC Driver 18 for SQL Server
-4. GitHub Desktop
-5. Network access and read-only credentials for both databases
+Primary or unique keys are detected automatically when compatible keys exist on
+both databases. A manual single or composite key can be supplied when needed.
 
-During Python installation, select **Add Python to PATH**. You can verify the
-installation in PowerShell:
+### Comparison controls
 
-```powershell
-py -3.12 --version
-```
+- Recommended default batch size of 5,000 rows.
+- Strict or normalized value-comparison rules.
+- **Safe Stop** finishes the active query or batch before stopping.
+- **Stop Now** attempts immediate driver-level cancellation.
+- Completed work is retained for partial reports.
+- Comparison can be started or restarted from Step 2 or Step 3.
 
-## First-time setup
+### Profiles
 
-After cloning or downloading this repository:
+- Save and automatically load reusable comparison settings.
+- Stores connection preferences, filters, tables, keys, mode, batch size, and
+  comparison rules.
+- Never stores database passwords.
+- Selecting **No saved profile** restores the original defaults.
 
-1. Double-click `setup.bat`.
-2. Wait for the dependency installation to finish.
-3. Double-click `run.bat`.
-4. The application opens at `http://127.0.0.1:5000`.
+### Results and reporting
 
-PowerShell alternative:
+- Combined result grid with schema, count, and data verdicts.
+- Expandable schema differences and a bounded mismatch preview.
+- Readable HTML Comparison Report for single or multiple tables.
+- Report filters for table, issue type, key, and value.
+- Theme-aware PDF export with `Page X / Y` pagination.
+- Natural duration labels such as `4 min 4 sec`.
+- Complete JSON, JSONL, CSV, and execution-log exports.
 
-```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe app.py
-```
-
-Stop the application by returning to its command window and pressing `Ctrl+C`.
-
-## v1.5.0 workflow
-
-1. Enter SQL Server and PostgreSQL details.
-2. Click each **Test** button.
-3. Correct any friendly connection error shown in the card or execution log.
-4. When both tests succeed, click **Load tables**.
-5. Keep **Common** selected for migration comparisons, or open **More options**
-   to include either database-only filter when investigating missing tables.
-6. Search or page through the cached table-name list.
-7. Select one or more tables.
-8. Keep **Schema + Row Count + Data** selected. If automatic key detection is unavailable,
-   enter one or more comma-separated key columns beside the table.
-9. Choose a batch size. `5,000` is the recommended default.
-10. Optionally expand **Comparison rules**. Strict comparison is the default.
-11. Click **Start comparison** in Step 2 after selecting tables, or use the same
-    action in Step 3 when restarting after a stop or mode change.
-12. Review schema, row-count, and row-data differences in the combined result.
-13. Expand **View details** for column differences and the mismatch preview.
-14. Use **Safe Stop** to finish the current query or data batch before halting.
-15. Use **Stop Now** when you need to attempt immediate driver-level cancellation; only completed work is preserved.
-16. After completion or cancellation, choose **Data Mismatch Report**,
-    **JSON Run Summary**, **CSV Run Summary**, or **Execution Log** and click
-    **Export**.
-
-### Saved profiles
-
-Use the **save icon** to store a reusable comparison setup. Selecting a saved
-profile loads it automatically. Profiles include
-connection preferences, selected tables, manual/composite keys, filters,
-comparison mode, batch size, and value-comparison rules. The theme control starts
-in Dark mode and remembers later Light/Dark choices
-in the local browser.
-
-Passwords are never saved. After loading a profile, enter both passwords again,
-test both connections, and reload tables. Saved table selections are then
-restored wherever those tables remain available under the saved filters.
-Choosing **No saved profile** restores the connection cards and comparison
-settings to their original defaults and clears the loaded table scope.
-
-Profiles are stored only on the local computer in `config/profiles.json`.
-
-### Report files
-
-Every run creates a separate local folder:
+Each run is written to a separate local folder:
 
 ```text
 reports/
@@ -212,79 +78,84 @@ reports/
     manifest.json
 ```
 
-- `data-sync-check-run-summary.json` contains run settings, totals, and per-table summaries.
-- `data-sync-check-mismatches.jsonl` contains one complete mismatch record per line.
-- `data-sync-check-comparison-summary.csv` is a spreadsheet-friendly table summary.
-- `data-sync-check-execution.log` contains the visible session log captured at finalization.
-- `manifest.json` records the run identity and complete/cancelled state.
+The browser preview is intentionally limited to the first 200 differences.
+Use the JSONL export for the complete mismatch set.
 
-**Schema Only** and **Schema + Row Count** runs produce an empty mismatch JSONL
-because they do not compare row values. Reports, logs, and saved profiles are
-local runtime files and are excluded from Git.
+## Requirements
 
-For SQL Server ODBC Driver 18, encryption is enabled. Leave **Trust server
-certificate** off when the server has a certificate trusted by Windows. Enable
-it only for an approved internal server that uses a self-signed certificate.
+- Windows 10 or Windows 11
+- Python 3.11 or newer
+- Microsoft ODBC Driver 18 for SQL Server
+- Network access to the SQL Server and PostgreSQL instances
+- Read-only database accounts are strongly recommended
 
-### SQL Server connection troubleshooting
+## Setup
 
-Confirm that the same Python environment used by the app can see the driver:
+Open Command Prompt or PowerShell in the project folder and run:
 
 ```powershell
-.\.venv\Scripts\python.exe -c "import pyodbc; print(pyodbc.drivers())"
+setup.bat
 ```
 
-If Driver 18 is listed but the connection still fails, follow the specific
-message shown by the app:
+Start the application:
 
-- **Could not be reached**: verify the server/instance name, port, SQL Server
-  service, TCP/IP, firewall, and network/VPN.
-- **Rejected the login**: verify SQL Server Authentication is enabled and check
-  the username and password.
-- **Database could not be opened**: verify the database name and that the login
-  has access.
-- **Certificate validation failed**: verify the server certificate; use Trust
-  server certificate only for an approved internal server.
-- **Timed out**: verify the server address, network path, and firewall.
+```powershell
+run.bat
+```
 
-The table status values mean:
+Data Sync Check opens locally at:
 
-- **Available in both**: the same table name exists in both schemas, ignoring case.
-- **SQL Server only**: the name exists only in the selected SQL Server schema.
-- **PostgreSQL only**: the name exists only in the selected PostgreSQL schema.
+```text
+http://127.0.0.1:5000
+```
 
-The column count is shown as **SQL Server / PostgreSQL**. Type matching uses
-approved migration equivalents rather than requiring identical type names.
-Examples include `int → integer`, `tinyint → smallint`, `bit → boolean`,
-`datetime → timestamp`, `uniqueidentifier → uuid`, `varbinary → bytea`, and
-`varchar(max) → text`. Fixed and variable character lengths and numeric
-precision/scale must agree. Nullability and primary-key columns must also agree.
-An SQL Server type outside the approved mapping is reported as a schema mismatch
-instead of being accepted merely because PostgreSQL exposes a similarly named type.
+To set up manually:
 
-The comparison key is selected automatically when matching primary or unique
-keys exist on both databases. **Keys differ** means keys were discovered but do
-not map to the same columns. **Key required** means neither database exposes a
-matching key. Enter a manual key as `CustomerId` or a composite key such as
-`CustomerId, AddressType`. Every manual key column must exist on both sides.
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe app.py
+```
 
-Row counts are exact rather than estimates. `COUNT(*)`/`COUNT_BIG(*)` can take
-time on very large tables, and the source and target should remain stable while
-the comparison runs. A count difference proves that the table contents differ;
-matching counts do not prove that every row value matches.
+Stop the application with `Ctrl+C` in its command window.
 
-Row comparison reads each table ordered by its key. For best performance and
-stable results, the key should be unique and indexed, and both databases should
-remain unchanged during the run. Text-key collations should use compatible
-ordering rules across the two databases.
+## Typical workflow
 
-The Results view intentionally keeps only the first 200 differences so very
-large migrations do not overload the browser. Export JSONL to review the
-complete mismatch set.
+1. Enter and test both database connections.
+2. Load the available tables.
+3. Select one or more tables.
+4. Choose the comparison mode, batch size, and optional rules.
+5. Confirm or enter comparison keys when full data comparison is selected.
+6. Start the comparison from Step 2 or Step 3.
+7. Review results or stop the run when necessary.
+8. Open the Comparison Report or export JSON, JSONL, CSV, or the execution log.
+9. Export the HTML report to PDF when a shareable copy is required.
 
-## Development commands
+## Important comparison notes
 
-Run the tests:
+- Keep source and target data stable while a comparison is running.
+- Use unique, indexed keys for reliable and efficient row comparison.
+- Text-key collations should have compatible ordering across both databases.
+- Matching row counts do not prove that row values match.
+- An unmapped SQL Server datatype is reported as a schema mismatch.
+- For ODBC Driver 18, enable **Trust server certificate** only for an approved
+  internal server using a self-signed certificate.
+
+## Security
+
+- The service binds to `127.0.0.1` and is local to the computer by default.
+- Do not expose port 5000 through a firewall or router.
+- Never commit passwords, connection strings, `.env`, saved profiles, logs, or
+  generated reports.
+- Credentials are sent only to the local Flask process and remain in the current
+  browser form session.
+- Reports include only limited connection identity such as server/host,
+  database, port, and schema—never credentials.
+
+## Development
+
+Run the test suite:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
@@ -296,85 +167,37 @@ Run the development server:
 .\.venv\Scripts\python.exe app.py
 ```
 
-## Security rules
-
-- Use read-only database accounts.
-- Never commit passwords, connection strings, `.env`, logs, or reports.
-- Password values must never be written to application logs.
-- Credentials are posted only to the local Flask process and retained in the
-  browser form for the current page session; they are not saved by the app.
-- The server binds to `127.0.0.1`, so it is accessible only from the local
-  computer by default.
-- Do not expose port 5000 through a firewall or router.
-
-## Project structure
+Project layout:
 
 ```text
 app.py
 db_compare/
-  web.py
-  db/
   comparison/
-  reporting.py
+  db/
   profiles.py
+  reporting.py
+  web.py
 templates/
 static/
-config/
-logs/
-reports/
 tests/
-setup.bat
-run.bat
+config/
+reports/
 ```
 
-## Release history
+## v1.6.0
 
-| Version | Milestone |
-|---|---|
-| v0.1.0 | Project setup |
-| v0.2.0 | Modern UI shell |
-| v0.3.0 | Database connectivity |
-| v0.3.1 | Connectivity diagnostics fix |
-| v0.3.2 | Fast table search and availability filters |
-| v0.4.0 | Schema comparison |
-| v0.5.0 | Row-count comparison |
-| v0.6.0 | Scalable data comparison |
-| v0.7.0 | Reporting and profiles |
-| v0.7.1 | Pre-release UI polish |
-| v0.7.2 | Theme, navigation, and dual stop controls |
-| v0.7.3 | Notification contrast and precise partial-match statuses |
-| v0.7.4 | Persistent connection success panels, aligned connection options, and offline-safe bundled database icons |
-| v0.7.5 | Theme-safe contrast for the locked Step 2 table-discovery state |
-| v0.7.6 | Workflow accordions, three-layer result badges, comparison-volume progress, fixed table viewport, direct pagination, and local-service recovery |
-| v0.7.7 | Compact local-service status, aligned profile actions, red delete icon, and consistent accordion header controls |
-| v0.7.8 | Simplified connection cards, advanced options, automatic profile loading, and icon-only profile actions |
-| v0.7.9 | Whole-header accordions, clearer selection and pagination controls, SQL port help, and reliable profile reset/loading |
-| v0.8.0 | Approved SQL Server → PostgreSQL datatype baseline, explicit schema verdicts, and primary-key validation |
-| v0.9.0 | Readable comparison dashboard, active-run handoff, multi-table filters, and PDF-ready reporting |
-| v0.10.0 | Compact workflow tracker, connection-aware report metadata, matching comparison-mode labels, and theme-preserving dashboard/PDF export |
-| v0.10.1 | Compact completion metadata, conversational duration, theme-correct PDF headers, and the Start comparison action in Step 2 |
-| v0.10.2 | Compact Step 2 table filters and current-page/total-pages numbering on PDF exports |
-| v0.10.3 | Consistent plus/minus disclosure control and overlap-free PDF output with pagination only |
-| v0.10.4 | Header-free report layout, restart actions in Steps 2 and 3, and dark theme by default |
-| v1.0.0 | Data Sync Check Windows release with finalized naming, theme-aware branding, dashboard/PDF reporting, profiles, and SQL Server → PostgreSQL validation |
-| v1.1.0 | Top-right notification stack with status treatments, Data Sync Check lettermark, close controls, and fixed 1.5-second countdown bars |
-| v1.2.0 | Logo placement on Home and reports, two-row report title, logo-free notifications, and fixed 5-second countdown bars |
-| v1.3.0 | Consistent DSC lettermark and Data Sync Check wordmark lockup on Home and comparison reports |
-| v1.5.0 | Refined Home and report logo composition with a prominent DSC lettermark beside the wordmark and the Home database direction beneath it; Dark remains the first-launch default |
+- Enlarged the Data Sync Check branding on the Comparison Report.
+- Long report metadata now wraps cleanly instead of being shortened with `...`.
+- Reorganized this README around the current product features and usage.
+- Home-page branding and all established workflows remain unchanged.
 
-## GitHub checkpoint
-
-The suggested v1.5.0 commit is:
+## Git checkpoint
 
 ```text
-feat: refine Home and report logo composition
+docs: refine report branding and product documentation
 ```
 
-The suggested v1.5.0 tag is:
-
-```text
-v1.5.0
+```bash
+git tag -a v1.6.0 -m "Refine report branding and documentation"
+git push origin v1.6.0
 ```
-
-Keep the repository private until credentials, logs, screenshots, documentation,
-and licensing have been reviewed.
