@@ -2,6 +2,7 @@ import json
 
 from db_compare import create_app
 from db_compare.comparison.data import compare_table_data
+from db_compare.reporting import format_duration
 
 
 def make_client(tmp_path):
@@ -13,6 +14,14 @@ def make_client(tmp_path):
         }
     )
     return app.test_client()
+
+
+def test_duration_is_formatted_in_conversational_units():
+    assert format_duration(0.3) == "< 1 sec"
+    assert format_duration(45) == "45 sec"
+    assert format_duration(243.9) == "4 min 4 sec"
+    assert format_duration(7_680) == "2 hr 8 min"
+    assert format_duration(97_200) == "1 day 3 hr"
 
 
 def test_profile_round_trip_never_persists_passwords(tmp_path):

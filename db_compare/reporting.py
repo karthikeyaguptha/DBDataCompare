@@ -25,6 +25,31 @@ _REPORT_KINDS = {
 _WRITE_LOCK = Lock()
 
 
+def format_duration(value: Any) -> str:
+    """Return a compact, conversational elapsed-time label."""
+    raw_seconds = _safe_nonnegative_number(value)
+    total_seconds = int(round(raw_seconds))
+    if total_seconds == 0:
+        return "< 1 sec" if raw_seconds > 0 else "0 sec"
+
+    units = (
+        ("day", 86_400),
+        ("hr", 3_600),
+        ("min", 60),
+        ("sec", 1),
+    )
+    parts: list[str] = []
+    remainder = total_seconds
+    for label, size in units:
+        amount, remainder = divmod(remainder, size)
+        if amount:
+            suffix = "s" if label == "day" and amount != 1 else ""
+            parts.append(f"{amount} {label}{suffix}")
+        if len(parts) == 2:
+            break
+    return " ".join(parts)
+
+
 def create_report_run(
     reports_root: Path,
     *,

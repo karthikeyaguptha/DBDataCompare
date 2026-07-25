@@ -18,7 +18,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v0.10.0 status
+## v0.10.1 status
 
 This checkpoint contains:
 
@@ -75,8 +75,11 @@ This checkpoint contains:
   pagination for large reports
 - Results-grid dashboard action that safely stops and finalizes an active run
   before opening the latest completed data
+- Compact completion metadata and conversational elapsed time in seconds,
+  minutes, hours, or days
 - Print-optimized PDF export with complete overview totals and up to 1,000
-  filtered row-level details
+  filtered row-level details plus theme-correct report headers and footers
+- Step 2 Start comparison action beside the selected-table controls
 - Downloadable JSON run summary and UTF-8 CSV table summary
 - Downloadable execution log for completed and cancelled runs
 - Password-free saved profiles for connection preferences, table selections,
@@ -143,7 +146,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v0.10.0 workflow
+## v0.10.1 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -157,7 +160,7 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
    enter one or more comma-separated key columns beside the table.
 9. Choose a batch size. `5,000` is the recommended default.
 10. Optionally expand **Comparison rules**. Strict comparison is the default.
-11. Click **Start comparison**.
+11. Click **Start comparison** directly in Step 2 after selecting tables.
 12. Review schema, row-count, and row-data differences in the combined result.
 13. Expand **View details** for column differences and the mismatch preview.
 14. Use **Safe Stop** to finish the current query or data batch before halting.
@@ -337,20 +340,21 @@ run.bat
 | v0.8.0 | Approved SQL Server → PostgreSQL datatype baseline, explicit schema verdicts, and primary-key validation |
 | v0.9.0 | Readable comparison dashboard, active-run handoff, multi-table filters, and PDF-ready reporting |
 | v0.10.0 | Compact workflow tracker, connection-aware report metadata, matching comparison-mode labels, and theme-preserving dashboard/PDF export |
+| v0.10.1 | Compact completion metadata, conversational duration, theme-correct PDF headers, and the Start comparison action in Step 2 |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.10.0 commit is:
+The suggested v0.10.1 commit is:
 
 ```text
-feat: refine dashboard metadata, layout, and theme export
+fix: refine report readability and comparison workflow
 ```
 
-The suggested v0.10.0 tag is:
+The suggested v0.10.1 tag is:
 
 ```text
-v0.10.0-dashboard-refinement
+v0.10.1-report-workflow-fixes
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

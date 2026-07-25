@@ -33,7 +33,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.10.0" in response.data
+    assert b"v0.10.1" in response.data
     assert b'id="openDashboard"' in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
@@ -57,7 +57,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.10.0-dashboard-refinement"
+    assert response.json["phase"] == "v0.10.1-dashboard-workflow-fixes"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -81,6 +81,9 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     assert "Back to workspace" not in template
     assert "SQL Server · Source" in template
     assert "Schema + Row Count + Data" in template
+    assert 'class="completed-meta"' in template
+    assert "summary.duration_seconds|duration" in template
+    assert 'class="print-chrome print-page-header"' in template
     assert 'id="tableFilter"' in template
     assert "requestSafeStop" in javascript
     assert "await state.comparisonPromise" in javascript
@@ -88,6 +91,18 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     assert "applyTheme" in dashboard_js
     assert "@media print" in dashboard_css
     assert ':root[data-theme="dark"]' in dashboard_css
+    assert "@page { size: A4 landscape; margin: 0; }" in dashboard_css
+
+
+def test_start_comparison_action_is_in_table_selection_step():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+
+    button = 'id="startCompare"'
+    assert template.count(button) == 1
+    assert template.index(button) < template.index('id="compareSection"')
 
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():

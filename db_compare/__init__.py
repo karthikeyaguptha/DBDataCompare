@@ -2,6 +2,7 @@ from pathlib import Path
 
 from flask import Flask
 
+from db_compare.reporting import format_duration
 from db_compare.web import web
 
 
@@ -23,5 +24,6 @@ def create_app(test_config: dict | None = None) -> Flask:
     if test_config:
         app.config.update(test_config)
 
+    app.jinja_env.filters["duration"] = format_duration
     app.register_blueprint(web)
     return app
