@@ -51,7 +51,7 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.2.0-brand-placement",
+            "phase": "v1.3.0-unified-brand-lockup",
         }
     )
 

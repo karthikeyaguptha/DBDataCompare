@@ -19,8 +19,8 @@
             document.documentElement.dataset.theme = theme;
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='1.2.0') }}">
-    <script src="{{ url_for('static', filename='js/dashboard.js', v='1.2.0') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='1.3.0') }}">
+    <script src="{{ url_for('static', filename='js/dashboard.js', v='1.3.0') }}" defer></script>
 </head>
 <body data-run-id="{{ summary.run_id }}">
     <main class="report-page">
@@ -48,7 +48,15 @@
                             src="{{ url_for('static', filename='img/branding/dsc-lettermark-dark.png') }}"
                             alt="">
                     </span>
-                    <span>Data Sync Check</span>
+                    <span class="report-title-wordmark" aria-hidden="true">
+                        <img class="brand-for-light"
+                            src="{{ url_for('static', filename='img/branding/data-sync-check-wordmark-light.png') }}"
+                            alt="">
+                        <img class="brand-for-dark"
+                            src="{{ url_for('static', filename='img/branding/data-sync-check-wordmark-dark.png') }}"
+                            alt="">
+                    </span>
+                    <span class="sr-only">Data Sync Check</span>
                 </div>
                 <h1>Comparison Report</h1>
                 <p class="hero-copy">A clear view of table structure, row counts, and record-level differences found during migration validation.</p>

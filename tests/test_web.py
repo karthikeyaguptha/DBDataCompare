@@ -21,6 +21,12 @@ def test_home_page_loads():
     assert b"data-sync-check-wordmark-dark.png" in response.data
     assert b"dsc-lettermark-light.png" in response.data
     assert b"dsc-lettermark-dark.png" in response.data
+    assert response.data.index(b"dsc-lettermark-light.png") < response.data.index(
+        b"data-sync-check-wordmark-light.png"
+    )
+    assert response.data.index(b"dsc-lettermark-dark.png") < response.data.index(
+        b"data-sync-check-wordmark-dark.png"
+    )
     assert b'<option value="full" selected>Schema + Row Count + Data</option>' in response.data
     assert b"Rows SQL / PG" in response.data
     assert b'<option value="credentials" selected>SQL Server Authentication</option>' in response.data
@@ -38,7 +44,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.2.0" in response.data
+    assert b"v1.3.0" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'<details class="table-filter-options">' in response.data
     assert b"<summary>More options</summary>" in response.data
@@ -66,7 +72,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.2.0-brand-placement"
+    assert response.json["phase"] == "v1.3.0-unified-brand-lockup"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -86,7 +92,16 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
 
     assert "Data Sync Check Comparison Report" in template
     assert 'class="report-title-logo"' in template
-    assert "<span>Data Sync Check</span>" in template
+    assert 'class="report-title-wordmark"' in template
+    assert "data-sync-check-wordmark-light.png" in template
+    assert "data-sync-check-wordmark-dark.png" in template
+    assert '<span class="sr-only">Data Sync Check</span>' in template
+    assert template.index("dsc-lettermark-light.png") < template.index(
+        "data-sync-check-wordmark-light.png"
+    )
+    assert template.index("dsc-lettermark-dark.png") < template.index(
+        "data-sync-check-wordmark-dark.png"
+    )
     assert "<h1>Comparison Report</h1>" in template
     assert "<header" not in template
     assert "report-header" not in template
