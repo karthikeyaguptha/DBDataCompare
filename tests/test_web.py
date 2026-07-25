@@ -33,7 +33,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.10.3" in response.data
+    assert b"v0.10.4" in response.data
     assert b'<details class="table-filter-options">' in response.data
     assert b"<summary>More options</summary>" in response.data
     assert b'id="openDashboard"' in response.data
@@ -59,7 +59,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.10.3-report-print-cleanup"
+    assert response.json["phase"] == "v0.10.4-workflow-theme-cleanup"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -78,6 +78,9 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     )
 
     assert "Data comparison report" in template
+    assert "<header" not in template
+    assert "report-header" not in template
+    assert "report-brand" not in template
     assert 'id="exportPdf"' in template
     assert 'id="reportThemeToggle"' in template
     assert "Back to workspace" not in template
@@ -135,15 +138,39 @@ def test_step_two_more_options_uses_connection_card_plus_minus_indicator():
     assert "rotate(" not in table_options
 
 
-def test_start_comparison_action_is_in_table_selection_step():
+def test_start_comparison_action_is_available_in_steps_two_and_three():
     project_root = Path(__file__).resolve().parents[1]
     template = (project_root / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
 
-    button = 'id="startCompare"'
-    assert template.count(button) == 1
-    assert template.index(button) < template.index('id="compareSection"')
+    step_three = template.index('id="compareSection"')
+    assert template.count("data-start-comparison") == 2
+    assert template.index('id="startCompareStep2"') < step_three
+    assert template.index('id="startCompareStep3"') > step_three
+
+
+def test_dark_theme_is_the_default_across_workspace_and_report():
+    project_root = Path(__file__).resolve().parents[1]
+    index_template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    dashboard_template = (project_root / "templates" / "dashboard.html").read_text(
+        encoding="utf-8"
+    )
+    app_javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    dashboard_javascript = (
+        project_root / "static" / "js" / "dashboard.js"
+    ).read_text(encoding="utf-8")
+
+    assert '<html lang="en" data-theme="dark">' in index_template
+    assert '<html lang="en" data-theme="dark">' in dashboard_template
+    assert 'document.documentElement.dataset.theme = saved || "dark";' in index_template
+    assert '(saved || "dark")' in dashboard_template
+    assert 'dataset.theme || "dark"' in app_javascript
+    assert 'dataset.theme || "dark"' in dashboard_javascript
 
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():

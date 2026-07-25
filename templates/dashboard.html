@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,20 +11,15 @@
             const requested = new URLSearchParams(location.search).get("theme");
             let saved = "";
             try { saved = localStorage.getItem("db-compare-theme") || ""; } catch {}
-            const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-            const theme = ["light", "dark"].includes(requested) ? requested : (saved || (dark ? "dark" : "light"));
+            const theme = ["light", "dark"].includes(requested) ? requested : (saved || "dark");
             document.documentElement.dataset.theme = theme;
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='0.10.3') }}">
-    <script src="{{ url_for('static', filename='js/dashboard.js', v='0.10.3') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='0.10.4') }}">
+    <script src="{{ url_for('static', filename='js/dashboard.js', v='0.10.4') }}" defer></script>
 </head>
 <body data-run-id="{{ summary.run_id }}">
-    <header class="report-header">
-        <div class="report-brand">
-            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span><strong>DB Compare Studio</strong><small>Migration validation report</small></span>
-        </div>
+    <main class="report-page">
         <div class="report-actions">
             <button class="button theme-button" id="reportThemeToggle" type="button"
                 aria-label="Switch report theme" title="Switch report theme">
@@ -38,9 +33,6 @@
                 Export PDF
             </button>
         </div>
-    </header>
-
-    <main class="report-page">
         <section class="report-hero">
             <div>
                 <p class="eyebrow">SQL Server → PostgreSQL</p>

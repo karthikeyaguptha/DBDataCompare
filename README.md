@@ -18,7 +18,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v0.10.3 status
+## v0.10.4 status
 
 This checkpoint contains:
 
@@ -148,7 +148,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v0.10.3 workflow
+## v0.10.4 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -162,7 +162,8 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
    enter one or more comma-separated key columns beside the table.
 9. Choose a batch size. `5,000` is the recommended default.
 10. Optionally expand **Comparison rules**. Strict comparison is the default.
-11. Click **Start comparison** directly in Step 2 after selecting tables.
+11. Click **Start comparison** in Step 2 after selecting tables, or use the same
+    action in Step 3 when restarting after a stop or mode change.
 12. Review schema, row-count, and row-data differences in the combined result.
 13. Expand **View details** for column differences and the mismatch preview.
 14. Use **Safe Stop** to finish the current query or data batch before halting.
@@ -176,8 +177,8 @@ Stop the application by returning to its command window and pressing `Ctrl+C`.
 Use the **save icon** to store a reusable comparison setup. Selecting a saved
 profile loads it automatically. Profiles include
 connection preferences, selected tables, manual/composite keys, filters,
-comparison mode, batch size, and value-comparison rules. The header theme control
-follows the operating-system preference initially and remembers Light/Dark choices
+comparison mode, batch size, and value-comparison rules. The theme control starts
+in Dark mode and remembers later Light/Dark choices
 in the local browser.
 
 Passwords are never saved. After loading a profile, enter both passwords again,
@@ -345,20 +346,21 @@ run.bat
 | v0.10.1 | Compact completion metadata, conversational duration, theme-correct PDF headers, and the Start comparison action in Step 2 |
 | v0.10.2 | Compact Step 2 table filters and current-page/total-pages numbering on PDF exports |
 | v0.10.3 | Consistent plus/minus disclosure control and overlap-free PDF output with pagination only |
+| v0.10.4 | Header-free report layout, restart actions in Steps 2 and 3, and dark theme by default |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.10.3 commit is:
+The suggested v0.10.4 commit is:
 
 ```text
-fix: align Step 2 disclosure and clean PDF pagination
+fix: streamline report header, restart flow, and default theme
 ```
 
-The suggested v0.10.3 tag is:
+The suggested v0.10.4 tag is:
 
 ```text
-v0.10.3-report-print-cleanup
+v0.10.4-workflow-theme-cleanup
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

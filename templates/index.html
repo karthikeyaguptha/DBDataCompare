@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,12 +10,11 @@
         (() => {
             let saved = "";
             try { saved = localStorage.getItem("db-compare-theme") || ""; } catch {}
-            const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-            document.documentElement.dataset.theme = saved || (dark ? "dark" : "light");
+            document.documentElement.dataset.theme = saved || "dark";
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.10.3') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='0.10.3') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.10.4') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='0.10.4') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -367,7 +366,8 @@
                 <div class="selection-actions">
                     <span class="selection-count" id="selectionCount">0 selected</span>
                     <button class="button ghost" id="clearSelection" type="button" disabled>Clear selection</button>
-                    <button class="button primary" id="startCompare" type="button" disabled>
+                    <button class="button primary" id="startCompareStep2"
+                        data-start-comparison type="button" disabled>
                         Start comparison <span aria-hidden="true">▶</span>
                     </button>
                 </div>
@@ -475,6 +475,10 @@
                             title="Finish the current query or data batch, then stop">Safe Stop</button>
                         <button class="button danger" id="stopNow" type="button" disabled
                             title="Attempt to cancel the active database operation immediately">Stop Now</button>
+                        <button class="button primary" id="startCompareStep3"
+                            data-start-comparison type="button" disabled>
+                            Start comparison <span aria-hidden="true">▶</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -642,7 +646,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.10.3</b></span>
+        <span>DB Compare Studio <b>v0.10.4</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

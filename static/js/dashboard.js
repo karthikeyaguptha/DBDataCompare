@@ -216,5 +216,5 @@ elements.exportPdf.addEventListener("click", async () => {
     }
 });
 
-applyTheme(document.documentElement.dataset.theme || "light", false);
+applyTheme(document.documentElement.dataset.theme || "dark", false);
 loadRows();

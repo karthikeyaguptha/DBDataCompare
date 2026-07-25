@@ -73,7 +73,7 @@ const elements = {
     caseSensitiveText: document.querySelector("#caseSensitiveText"),
     decimalTolerance: document.querySelector("#decimalTolerance"),
     timestampTolerance: document.querySelector("#timestampTolerance"),
-    startCompare: document.querySelector("#startCompare"),
+    startCompareButtons: [...document.querySelectorAll("[data-start-comparison]")],
     stopCompare: document.querySelector("#stopCompare"),
     stopNow: document.querySelector("#stopNow"),
     progressTitle: document.querySelector("#progressTitle"),
@@ -211,7 +211,7 @@ function markBackendOffline() {
     state.elapsedTimer = null;
     [
         elements.loadTablesButton,
-        elements.startCompare,
+        ...elements.startCompareButtons,
         elements.stopCompare,
         elements.stopNow,
         elements.tableSearch,
@@ -801,7 +801,9 @@ function updateSelectionCount() {
     elements.selectionCount.textContent = `${selectedCount} selected`;
     elements.selectedSummary.textContent = String(selectedCount);
     updateEstimatedWork();
-    elements.startCompare.disabled = selectedCount === 0 || state.comparing;
+    elements.startCompareButtons.forEach((button) => {
+        button.disabled = selectedCount === 0 || state.comparing;
+    });
     elements.selectAllTables.checked = state.currentMatchingIds.length > 0
         && selectedMatchingCount === state.currentMatchingIds.length;
     elements.selectAllTables.indeterminate = selectedMatchingCount > 0
@@ -1482,7 +1484,7 @@ async function runSchemaComparison() {
     state.discoveredRowPositions = 0;
     state.schemaResults.clear();
     resetSchemaResults();
-    elements.startCompare.disabled = true;
+    elements.startCompareButtons.forEach((button) => { button.disabled = true; });
     elements.stopCompare.disabled = false;
     elements.stopNow.disabled = false;
     elements.currentTable.textContent = "Preparing…";
@@ -1657,7 +1659,9 @@ async function runSchemaComparison() {
         : 0;
     elements.stopCompare.disabled = true;
     elements.stopNow.disabled = true;
-    elements.startCompare.disabled = state.selectedTables.size === 0;
+    elements.startCompareButtons.forEach((button) => {
+        button.disabled = state.selectedTables.size === 0;
+    });
     elements.currentTable.textContent = "—";
     setProgress(
         completed,
@@ -1830,9 +1834,12 @@ elements.comparisonMode.addEventListener("change", () => {
 });
 elements.batchSize.addEventListener("change", updateEstimatedWork);
 
-elements.startCompare.addEventListener("click", () => {
-    state.comparisonPromise = runSchemaComparison()
-        .finally(() => { state.comparisonPromise = null; });
+elements.startCompareButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        if (state.comparisonPromise) return;
+        state.comparisonPromise = runSchemaComparison()
+            .finally(() => { state.comparisonPromise = null; });
+    });
 });
 elements.stopCompare.addEventListener("click", () => {
     requestSafeStop();
@@ -2018,7 +2025,7 @@ window.setInterval(() => {
     if (!document.hidden) checkBackendHealth();
 }, 15000);
 
-applyTheme(document.documentElement.dataset.theme || "light", false);
+applyTheme(document.documentElement.dataset.theme || "dark", false);
 setAccordion(1, true);
 setAccordion(2, false);
 setAccordion(3, false);

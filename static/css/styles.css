@@ -1453,7 +1453,7 @@ select:disabled {
     }
 }
 
-.selection-actions #startCompare {
+.selection-actions [data-start-comparison] {
     margin-left: 4px;
     white-space: nowrap;
 }
