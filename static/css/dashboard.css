@@ -73,10 +73,10 @@ button, input, select { font: inherit; }
 .button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .report-page { width: min(1280px, calc(100% - 40px)); margin: 18px auto 54px; }
 .report-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(480px, 1fr); gap: 30px; align-items: end; padding: 28px 30px; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(135deg, var(--hero-start) 0%, var(--hero-end) 100%); box-shadow: 0 16px 45px rgba(10,15,30,.13); }
-.report-title-brand { display: flex; align-items: center; gap: 10px; min-height: 25px; margin-bottom: 7px; }
-.report-title-logo { position: relative; display: block; width: 46px; height: 25px; flex: 0 0 46px; }
+.report-title-brand { display: flex; align-items: center; gap: 12px; min-height: 34px; margin-bottom: 7px; }
+.report-title-logo { position: relative; display: block; width: 62px; height: 34px; flex: 0 0 62px; }
 .report-title-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
-.report-title-wordmark { position: relative; display: block; width: 143px; height: 17px; flex: 0 0 143px; }
+.report-title-wordmark { position: relative; display: block; width: 164px; height: 21px; flex: 0 0 164px; }
 .report-title-wordmark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
 .report-title-logo .brand-for-dark { display: none; }
 :root:not([data-theme="dark"]) .report-title-wordmark .brand-for-dark { display: none; }

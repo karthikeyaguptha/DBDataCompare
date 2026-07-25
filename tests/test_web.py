@@ -44,7 +44,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.3.0" in response.data
+    assert b"v1.5.0" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'<details class="table-filter-options">' in response.data
     assert b"<summary>More options</summary>" in response.data
@@ -72,7 +72,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.3.0-unified-brand-lockup"
+    assert response.json["phase"] == "v1.5.0-logo-layout-refinement"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():

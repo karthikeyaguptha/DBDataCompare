@@ -20,7 +20,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v1.3.0 status
+## v1.5.0 status
 
 This checkpoint contains:
 
@@ -157,7 +157,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v1.3.0 workflow
+## v1.5.0 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -360,19 +360,20 @@ run.bat
 | v1.1.0 | Top-right notification stack with status treatments, Data Sync Check lettermark, close controls, and fixed 1.5-second countdown bars |
 | v1.2.0 | Logo placement on Home and reports, two-row report title, logo-free notifications, and fixed 5-second countdown bars |
 | v1.3.0 | Consistent DSC lettermark and Data Sync Check wordmark lockup on Home and comparison reports |
+| v1.5.0 | Refined Home and report logo composition with a prominent DSC lettermark beside the wordmark and the Home database direction beneath it; Dark remains the first-launch default |
 
 ## GitHub checkpoint
 
-The suggested v1.3.0 commit is:
+The suggested v1.5.0 commit is:
 
 ```text
-feat: unify Home and report branding
+feat: refine Home and report logo composition
 ```
 
-The suggested v1.3.0 tag is:
+The suggested v1.5.0 tag is:
 
 ```text
-v1.3.0
+v1.5.0
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,
