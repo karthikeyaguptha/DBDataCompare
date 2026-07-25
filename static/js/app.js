@@ -100,7 +100,7 @@ const elements = {
     exportReport: document.querySelector("#exportReport"),
     openDashboard: document.querySelector("#openDashboard"),
     exportLog: document.querySelector("#exportLog"),
-    toast: document.querySelector("#toast"),
+    notificationStack: document.querySelector("#notificationStack"),
     themeToggle: document.querySelector("#themeToggle"),
     backToTop: document.querySelector("#backToTop"),
     serviceBanner: document.querySelector("#serviceBanner"),
@@ -117,7 +117,7 @@ const elements = {
     copySqlPortQuery: document.querySelector("#copySqlPortQuery"),
 };
 
-let toastTimer;
+const NOTIFICATION_DURATION_MS = 1500;
 
 function applyTheme(theme, persist = true) {
     const selected = theme === "dark" ? "dark" : "light";
@@ -143,11 +143,68 @@ function newOperationId() {
     return `operation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function showToast(message) {
-    elements.toast.textContent = message;
-    elements.toast.classList.add("show");
-    window.clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => elements.toast.classList.remove("show"), 3600);
+function showToast(message, type = "info") {
+    const supportedTypes = new Set(["success", "warning", "error", "info"]);
+    const selectedType = supportedTypes.has(type) ? type : "info";
+    const notification = document.createElement("article");
+    notification.className = `notification notification-${selectedType}`;
+    notification.setAttribute("role", selectedType === "error" ? "alert" : "status");
+
+    const content = document.createElement("div");
+    content.className = "notification-content";
+
+    const brand = document.createElement("span");
+    brand.className = "notification-brand";
+    brand.setAttribute("aria-hidden", "true");
+    [
+        ["brand-for-light", "/static/img/branding/dsc-lettermark-light.png"],
+        ["brand-for-dark", "/static/img/branding/dsc-lettermark-dark.png"],
+    ].forEach(([className, source]) => {
+        const image = document.createElement("img");
+        image.className = className;
+        image.src = source;
+        image.alt = "";
+        brand.append(image);
+    });
+
+    const statusIcon = document.createElement("span");
+    statusIcon.className = "notification-status-icon";
+    statusIcon.setAttribute("aria-hidden", "true");
+    statusIcon.textContent = {
+        success: "✓",
+        warning: "!",
+        error: "!",
+        info: "i",
+    }[selectedType];
+
+    const messageElement = document.createElement("p");
+    messageElement.className = "notification-message";
+    messageElement.textContent = message;
+
+    const closeButton = document.createElement("button");
+    closeButton.className = "notification-close";
+    closeButton.type = "button";
+    closeButton.setAttribute("aria-label", "Dismiss notification");
+    closeButton.textContent = "×";
+
+    const progress = document.createElement("span");
+    progress.className = "notification-progress";
+    progress.setAttribute("aria-hidden", "true");
+    progress.style.animationDuration = `${NOTIFICATION_DURATION_MS}ms`;
+
+    content.append(brand, statusIcon, messageElement, closeButton);
+    notification.append(content, progress);
+    elements.notificationStack.append(notification);
+
+    let timer;
+    const dismiss = () => {
+        window.clearTimeout(timer);
+        notification.classList.add("is-leaving");
+        window.setTimeout(() => notification.remove(), 180);
+    };
+    closeButton.addEventListener("click", dismiss);
+    window.requestAnimationFrame(() => notification.classList.add("is-visible"));
+    timer = window.setTimeout(dismiss, NOTIFICATION_DURATION_MS);
 }
 
 function setAccordion(step, expanded, { scroll = false } = {}) {
@@ -565,7 +622,7 @@ function updateConnectionState() {
         document.querySelector("[data-step='1']").classList.add("complete");
         document.querySelector("[data-step='2']").classList.add("active");
         showServiceBanner("ready", "Local service", "Running");
-        showToast("Both database connections succeeded. You can now load tables.");
+        showToast("Both database connections succeeded. You can now load tables.", "success");
     } else {
         document.querySelector("[data-step='1']").classList.remove("complete");
     }
@@ -644,7 +701,7 @@ function activeTableStatuses() {
 
 async function loadTables({ resetPage = false, scroll = false, refreshCatalog = false } = {}) {
     if (!state.sqlValidated || !state.pgValidated) {
-        showToast("Test both connections again before loading tables.");
+        showToast("Test both connections again before loading tables.", "warning");
         return;
     }
     if (refreshCatalog) {
@@ -694,7 +751,7 @@ async function loadTables({ resetPage = false, scroll = false, refreshCatalog = 
     } catch (error) {
         if (error.name === "AbortError") return;
         addLog("WARN", error.message);
-        showToast(error.message);
+        showToast(error.message, "error");
     } finally {
         if (requestId !== state.tableRequestId) return;
         elements.loadTablesButton.disabled = !(state.sqlValidated && state.pgValidated);
@@ -1315,7 +1372,7 @@ function setReportExports(files = {}) {
 function downloadReport(kind) {
     const url = state.reportFiles[kind];
     if (!url) {
-        showToast("Complete a comparison before exporting reports.");
+        showToast("Complete a comparison before exporting reports.", "warning");
         return;
     }
     const link = document.createElement("a");
@@ -1346,7 +1403,7 @@ function requestSafeStop(message) {
 async function openComparisonDashboard() {
     const reportWindow = window.open("", "_blank");
     if (!reportWindow) {
-        showToast("Allow pop-ups to open the comparison dashboard.");
+        showToast("Allow pop-ups to open the comparison dashboard.", "warning");
         return;
     }
     reportWindow.document.title = "Preparing comparison dashboard";
@@ -1362,7 +1419,7 @@ async function openComparisonDashboard() {
     const url = state.reportFiles.dashboard;
     if (!url) {
         reportWindow.close();
-        showToast("Complete at least one table before opening the dashboard.");
+        showToast("Complete at least one table before opening the dashboard.", "warning");
         return;
     }
     const theme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
@@ -1471,7 +1528,7 @@ async function runSchemaComparison() {
         setReportExports();
     } catch (error) {
         addLog("WARN", error.message);
-        showToast("The report run could not be created. Comparison was not started.");
+        showToast("The report run could not be created. Comparison was not started.", "error");
         return;
     }
     state.comparing = true;
@@ -1701,7 +1758,7 @@ async function runSchemaComparison() {
         await finalizeCurrentReport(stopped, state.stopMode);
     } catch (error) {
         addLog("WARN", `Report finalization failed: ${error.message}`);
-        showToast("Comparison completed, but report files could not be finalized.");
+        showToast("Comparison completed, but report files could not be finalized.", "error");
     }
     showToast(
         stopped
@@ -1713,6 +1770,7 @@ async function runSchemaComparison() {
                 : includeCounts
                 ? "Schema and row-count comparison complete."
                 : "Schema comparison complete.",
+        stopped ? "warning" : "success",
     );
     renderCurrentPageFromCache();
 }
@@ -1898,7 +1956,7 @@ elements.saveProfile.addEventListener("click", async () => {
     const name = existing?.name || window.prompt("Profile name", "");
     if (name === null) return;
     if (!name.trim()) {
-        showToast("Enter a profile name before saving.");
+        showToast("Enter a profile name before saving.", "warning");
         return;
     }
     try {
@@ -1910,10 +1968,10 @@ elements.saveProfile.addEventListener("click", async () => {
         state.profileDirty = false;
         await refreshProfiles(result.profile.id);
         addLog("READY", result.message);
-        showToast(result.message);
+        showToast(result.message, "success");
     } catch (error) {
         addLog("WARN", error.message);
-        showToast(error.message);
+        showToast(error.message, "error");
     }
 });
 elements.deleteProfile.addEventListener("click", async () => {
@@ -1927,10 +1985,10 @@ elements.deleteProfile.addEventListener("click", async () => {
         state.profileDirty = false;
         await refreshProfiles();
         addLog("INFO", result.message);
-        showToast(result.message);
+        showToast(result.message, "success");
     } catch (error) {
         addLog("WARN", error.message);
-        showToast(error.message);
+        showToast(error.message, "error");
     }
 });
 
@@ -1961,9 +2019,9 @@ elements.exportLog.addEventListener("click", () => downloadReport("log"));
 document.querySelector("#copyLog").addEventListener("click", async () => {
     try {
         await navigator.clipboard.writeText(elements.logWindow.innerText);
-        showToast("Execution log copied.");
+        showToast("Execution log copied.", "success");
     } catch {
-        showToast("Clipboard access is unavailable in this browser.");
+        showToast("Clipboard access is unavailable in this browser.", "warning");
     }
 });
 document.addEventListener("keydown", (event) => {
@@ -2013,9 +2071,9 @@ elements.copySqlPortQuery.addEventListener("click", async (event) => {
     event.stopPropagation();
     try {
         await navigator.clipboard.writeText(elements.sqlPortQuery.textContent.trim());
-        showToast("SQL Server port query copied.");
+        showToast("SQL Server port query copied.", "success");
     } catch {
-        showToast("Clipboard access is unavailable. Select and copy the query manually.");
+        showToast("Clipboard access is unavailable. Select and copy the query manually.", "warning");
     }
 });
 window.addEventListener("focus", () => {

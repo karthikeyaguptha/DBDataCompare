@@ -18,9 +18,10 @@ const elements = {
     themeToggle: document.querySelector("#reportThemeToggle"),
     printBody: document.querySelector("#printBody"),
     printScope: document.querySelector("#printScope"),
-    toast: document.querySelector("#dashboardToast"),
+    notificationStack: document.querySelector("#notificationStack"),
 };
 const state = { page: 1, totalPages: 1, timer: null, controller: null, facetsLoaded: false };
+const NOTIFICATION_DURATION_MS = 1500;
 
 function applyTheme(theme, persist = true) {
     const selected = theme === "dark" ? "dark" : "light";
@@ -155,10 +156,68 @@ function resetToFirstPage() {
     loadRows();
 }
 
-function showToast(message) {
-    elements.toast.textContent = message;
-    elements.toast.classList.add("visible");
-    window.setTimeout(() => elements.toast.classList.remove("visible"), 3200);
+function showToast(message, type = "error") {
+    const supportedTypes = new Set(["success", "warning", "error", "info"]);
+    const selectedType = supportedTypes.has(type) ? type : "info";
+    const notification = document.createElement("article");
+    notification.className = `notification notification-${selectedType}`;
+    notification.setAttribute("role", selectedType === "error" ? "alert" : "status");
+
+    const content = document.createElement("div");
+    content.className = "notification-content";
+
+    const brand = document.createElement("span");
+    brand.className = "notification-brand";
+    brand.setAttribute("aria-hidden", "true");
+    [
+        ["brand-for-light", "/static/img/branding/dsc-lettermark-light.png"],
+        ["brand-for-dark", "/static/img/branding/dsc-lettermark-dark.png"],
+    ].forEach(([className, source]) => {
+        const image = document.createElement("img");
+        image.className = className;
+        image.src = source;
+        image.alt = "";
+        brand.append(image);
+    });
+
+    const statusIcon = document.createElement("span");
+    statusIcon.className = "notification-status-icon";
+    statusIcon.setAttribute("aria-hidden", "true");
+    statusIcon.textContent = {
+        success: "✓",
+        warning: "!",
+        error: "!",
+        info: "i",
+    }[selectedType];
+
+    const messageElement = document.createElement("p");
+    messageElement.className = "notification-message";
+    messageElement.textContent = message;
+
+    const closeButton = document.createElement("button");
+    closeButton.className = "notification-close";
+    closeButton.type = "button";
+    closeButton.setAttribute("aria-label", "Dismiss notification");
+    closeButton.textContent = "×";
+
+    const progress = document.createElement("span");
+    progress.className = "notification-progress";
+    progress.setAttribute("aria-hidden", "true");
+    progress.style.animationDuration = `${NOTIFICATION_DURATION_MS}ms`;
+
+    content.append(brand, statusIcon, messageElement, closeButton);
+    notification.append(content, progress);
+    elements.notificationStack.append(notification);
+
+    let timer;
+    const dismiss = () => {
+        window.clearTimeout(timer);
+        notification.classList.add("is-leaving");
+        window.setTimeout(() => notification.remove(), 180);
+    };
+    closeButton.addEventListener("click", dismiss);
+    window.requestAnimationFrame(() => notification.classList.add("is-visible"));
+    timer = window.setTimeout(dismiss, NOTIFICATION_DURATION_MS);
 }
 
 elements.filters.addEventListener("submit", (event) => event.preventDefault());

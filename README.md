@@ -20,7 +20,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v1.0.0 status
+## v1.1.0 status
 
 This checkpoint contains:
 
@@ -105,6 +105,8 @@ This checkpoint contains:
 - Data Sync Check naming across the workspace, reports, database client identity,
   setup/launch scripts, and documentation
 - Theme-aware Data Sync Check wordmark with a compact DSC lettermark
+- Theme-aware top-right notification stack with the DSC lettermark, semantic
+  status styling, immediate dismissal, and fixed 1.5-second countdown bars
 
 Table-name metadata is read
 once and retained in a short-lived in-memory catalog for fast search, filtering,
@@ -153,7 +155,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v1.0.0 workflow
+## v1.1.0 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -353,19 +355,20 @@ run.bat
 | v0.10.3 | Consistent plus/minus disclosure control and overlap-free PDF output with pagination only |
 | v0.10.4 | Header-free report layout, restart actions in Steps 2 and 3, and dark theme by default |
 | v1.0.0 | Data Sync Check Windows release with finalized naming, theme-aware branding, dashboard/PDF reporting, profiles, and SQL Server → PostgreSQL validation |
+| v1.1.0 | Top-right notification stack with status treatments, Data Sync Check lettermark, close controls, and fixed 1.5-second countdown bars |
 
 ## GitHub checkpoint
 
-The suggested v1.0.0 commit is:
+The suggested v1.1.0 commit is:
 
 ```text
-feat: release Data Sync Check v1.0.0
+feat: improve notifications with countdown and dismissal
 ```
 
-The suggested v1.0.0 tag is:
+The suggested v1.1.0 tag is:
 
 ```text
-v1.0.0
+v1.1.0
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

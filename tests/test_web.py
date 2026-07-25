@@ -38,7 +38,8 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.0.0" in response.data
+    assert b"v1.1.0" in response.data
+    assert b'id="notificationStack"' in response.data
     assert b'<details class="table-filter-options">' in response.data
     assert b"<summary>More options</summary>" in response.data
     assert b'id="openDashboard"' in response.data
@@ -65,7 +66,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.0.0-data-sync-check-release"
+    assert response.json["phase"] == "v1.1.0-notification-experience"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -421,6 +422,42 @@ def test_toast_has_theme_safe_contrast_tokens():
     assert source.count("--toast-ink:") == 2
     assert "background: var(--toast-bg);" in source
     assert "color: var(--toast-ink);" in source
+
+
+def test_notifications_use_top_right_stack_countdown_close_and_branding():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
+    dashboard_template = (project_root / "templates" / "dashboard.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    dashboard_javascript = (
+        project_root / "static" / "js" / "dashboard.js"
+    ).read_text(encoding="utf-8")
+    css = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+    dashboard_css = (
+        project_root / "static" / "css" / "dashboard.css"
+    ).read_text(encoding="utf-8")
+
+    assert 'id="notificationStack"' in template
+    assert 'id="notificationStack"' in dashboard_template
+    for source in (javascript, dashboard_javascript):
+        assert "const NOTIFICATION_DURATION_MS = 1500;" in source
+        assert 'closeButton.setAttribute("aria-label", "Dismiss notification");' in source
+        assert "notification-progress" in source
+        assert "dsc-lettermark-light.png" in source
+        assert "dsc-lettermark-dark.png" in source
+        assert "notification.addEventListener" not in source
+    for source in (css, dashboard_css):
+        assert ".notification-stack" in source
+        assert "@keyframes notification-countdown" in source
+        assert ".notification-success" in source
+        assert ".notification-warning" in source
+        assert ".notification-error" in source
 
 
 def test_cancel_unknown_operation_is_safe():

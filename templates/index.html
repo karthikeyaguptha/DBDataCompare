@@ -17,8 +17,8 @@
             document.documentElement.dataset.theme = saved || "dark";
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.0.0') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='1.0.0') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.1.0') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='1.1.0') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -654,14 +654,15 @@
         </section>
     </main>
 
-    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="notification-stack" id="notificationStack"
+        aria-live="polite" aria-atomic="false" aria-label="Notifications"></div>
     <button class="back-to-top" id="backToTop" type="button"
         aria-label="Back to top" title="Back to top">
         <span aria-hidden="true">↑</span>
     </button>
 
     <footer class="footer">
-        <span>Data Sync Check <b>v1.0.0</b></span>
+        <span>Data Sync Check <b>v1.1.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>
