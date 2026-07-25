@@ -111,6 +111,7 @@ def finalize_report_run(
         "completed_at": completed_at,
         "duration_seconds": _safe_nonnegative_number(payload.get("duration_seconds")),
         "comparison_mode": _safe_mode(payload.get("comparison_mode")),
+        "connections": _safe_connections(payload.get("connections")),
         "batch_size": _safe_nonnegative_integer(payload.get("batch_size")),
         "comparison_options": _safe_options(payload.get("comparison_options")),
         "totals": _totals(safe_tables),
@@ -416,6 +417,29 @@ def _safe_options(value: Any) -> dict[str, Any]:
         "case_sensitive": bool(options.get("case_sensitive", True)),
         "decimal_tolerance": _safe_text(options.get("decimal_tolerance"), 40),
         "timestamp_tolerance_ms": _safe_text(options.get("timestamp_tolerance_ms"), 40),
+    }
+
+
+def _safe_connections(value: Any) -> dict[str, dict[str, str]]:
+    """Keep useful report identity while excluding credentials and driver options."""
+    connections = value if isinstance(value, dict) else {}
+    sqlserver = connections.get("sqlserver")
+    postgres = connections.get("postgres")
+    sqlserver = sqlserver if isinstance(sqlserver, dict) else {}
+    postgres = postgres if isinstance(postgres, dict) else {}
+    return {
+        "sqlserver": {
+            "database": _safe_text(sqlserver.get("database"), 256),
+            "server": _safe_text(sqlserver.get("server"), 256),
+            "port": _safe_text(sqlserver.get("port"), 8),
+            "schema": _safe_text(sqlserver.get("schema"), 256) or "dbo",
+        },
+        "postgres": {
+            "database": _safe_text(postgres.get("database"), 256),
+            "host": _safe_text(postgres.get("host"), 256),
+            "port": _safe_text(postgres.get("port"), 8) or "5432",
+            "schema": _safe_text(postgres.get("schema"), 256) or "public",
+        },
     }
 
 

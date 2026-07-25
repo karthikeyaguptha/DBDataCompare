@@ -1363,7 +1363,10 @@ async function openComparisonDashboard() {
         showToast("Complete at least one table before opening the dashboard.");
         return;
     }
-    reportWindow.location.replace(url);
+    const theme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    const themedUrl = new URL(url, window.location.origin);
+    themedUrl.searchParams.set("theme", theme);
+    reportWindow.location.replace(themedUrl.toString());
 }
 
 async function finalizeCurrentReport(cancelled, stopMode = "") {
@@ -1378,6 +1381,10 @@ async function finalizeCurrentReport(cancelled, stopMode = "") {
                 comparison_mode: elements.comparisonMode.value,
                 batch_size: Number(elements.batchSize.value),
                 comparison_options: comparisonOptions(),
+                connections: {
+                    sqlserver: connectionConfigWithoutPassword("sql"),
+                    postgres: connectionConfigWithoutPassword("pg"),
+                },
                 cancelled,
                 stop_mode: stopMode,
                 tables: reportTableSummaries(),

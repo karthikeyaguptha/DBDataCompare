@@ -18,7 +18,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v0.9.0 status
+## v0.10.0 status
 
 This checkpoint contains:
 
@@ -143,7 +143,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v0.9.0 workflow
+## v0.10.0 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -336,20 +336,21 @@ run.bat
 | v0.7.9 | Whole-header accordions, clearer selection and pagination controls, SQL port help, and reliable profile reset/loading |
 | v0.8.0 | Approved SQL Server → PostgreSQL datatype baseline, explicit schema verdicts, and primary-key validation |
 | v0.9.0 | Readable comparison dashboard, active-run handoff, multi-table filters, and PDF-ready reporting |
+| v0.10.0 | Compact workflow tracker, connection-aware report metadata, matching comparison-mode labels, and theme-preserving dashboard/PDF export |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.9.0 commit is:
+The suggested v0.10.0 commit is:
 
 ```text
-feat: add comparison dashboard and PDF export
+feat: refine dashboard metadata, layout, and theme export
 ```
 
-The suggested v0.9.0 tag is:
+The suggested v0.10.0 tag is:
 
 ```text
-v0.9.0-comparison-dashboard
+v0.10.0-dashboard-refinement
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

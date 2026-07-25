@@ -77,6 +77,24 @@ def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):
             "comparison_mode": "full",
             "batch_size": 5000,
             "comparison_options": {"case_sensitive": True},
+            "connections": {
+                "sqlserver": {
+                    "server": "sql-host",
+                    "port": "1433",
+                    "database": "SalesSource",
+                    "schema": "dbo",
+                    "username": "should-not-be-saved",
+                    "password": "secret",
+                },
+                "postgres": {
+                    "host": "pg-host",
+                    "port": "5432",
+                    "database": "sales_target",
+                    "schema": "public",
+                    "username": "should-not-be-saved",
+                    "password": "secret",
+                },
+            },
             "cancelled": False,
             "tables": [
                 {
@@ -115,6 +133,10 @@ def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):
     }
     summary = json.loads((run_dir / "run-summary.json").read_text(encoding="utf-8"))
     assert summary["totals"]["row_mismatches"] == 1
+    assert summary["connections"]["sqlserver"]["database"] == "SalesSource"
+    assert summary["connections"]["postgres"]["host"] == "pg-host"
+    assert "password" not in summary["connections"]["sqlserver"]
+    assert "username" not in summary["connections"]["postgres"]
     assert "CustomerId" in (run_dir / "comparison-summary.csv").read_text(
         encoding="utf-8-sig"
     )
@@ -124,6 +146,9 @@ def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):
     assert dashboard.status_code == 200
     assert b"Data comparison report" in dashboard.data
     assert b"Export PDF" in dashboard.data
+    assert b"SalesSource" in dashboard.data
+    assert b"sales_target" in dashboard.data
+    assert b"Schema + Row Count + Data" in dashboard.data
 
     dashboard_data = client.get(
         f"/api/reports/{run_id}/dashboard-data?page=1&page_size=25"

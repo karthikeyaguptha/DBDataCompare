@@ -33,7 +33,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.9.0" in response.data
+    assert b"v0.10.0" in response.data
     assert b'id="openDashboard"' in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
@@ -57,7 +57,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.9.0-comparison-dashboard"
+    assert response.json["phase"] == "v0.10.0-dashboard-refinement"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -77,11 +77,17 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
 
     assert "Data comparison report" in template
     assert 'id="exportPdf"' in template
+    assert 'id="reportThemeToggle"' in template
+    assert "Back to workspace" not in template
+    assert "SQL Server · Source" in template
+    assert "Schema + Row Count + Data" in template
     assert 'id="tableFilter"' in template
     assert "requestSafeStop" in javascript
     assert "await state.comparisonPromise" in javascript
     assert "window.print()" in dashboard_js
+    assert "applyTheme" in dashboard_js
     assert "@media print" in dashboard_css
+    assert ':root[data-theme="dark"]' in dashboard_css
 
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():

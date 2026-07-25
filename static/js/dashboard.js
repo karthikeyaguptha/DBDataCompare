@@ -15,11 +15,24 @@ const elements = {
     next: document.querySelector("#nextPage"),
     pageStatus: document.querySelector("#pageStatus"),
     exportPdf: document.querySelector("#exportPdf"),
+    themeToggle: document.querySelector("#reportThemeToggle"),
     printBody: document.querySelector("#printBody"),
     printScope: document.querySelector("#printScope"),
     toast: document.querySelector("#dashboardToast"),
 };
 const state = { page: 1, totalPages: 1, timer: null, controller: null, facetsLoaded: false };
+
+function applyTheme(theme, persist = true) {
+    const selected = theme === "dark" ? "dark" : "light";
+    const dark = selected === "dark";
+    document.documentElement.dataset.theme = selected;
+    elements.themeToggle.querySelector(".theme-icon").textContent = dark ? "☀" : "☾";
+    elements.themeToggle.querySelector(".theme-label").textContent = dark ? "Light" : "Dark";
+    elements.themeToggle.setAttribute("aria-label", `Switch to ${dark ? "light" : "dark"} report theme`);
+    if (persist) {
+        try { localStorage.setItem("db-compare-theme", selected); } catch {}
+    }
+}
 
 function valueText(value) {
     if (value === null) return "NULL";
@@ -173,6 +186,9 @@ elements.next.addEventListener("click", () => {
         loadRows();
     }
 });
+elements.themeToggle.addEventListener("click", () => {
+    applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
 
 elements.exportPdf.addEventListener("click", async () => {
     elements.exportPdf.disabled = true;
@@ -200,4 +216,5 @@ elements.exportPdf.addEventListener("click", async () => {
     }
 });
 
+applyTheme(document.documentElement.dataset.theme || "light", false);
 loadRows();

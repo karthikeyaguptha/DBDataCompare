@@ -14,8 +14,8 @@
             document.documentElement.dataset.theme = saved || (dark ? "dark" : "light");
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.9.0') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='0.9.0') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.10.0') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='0.10.0') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -56,29 +56,28 @@
 
     <main class="workspace" id="workspace">
         <section class="intro" aria-labelledby="page-title">
-            <div>
+            <div class="intro-copy">
                 <p class="eyebrow">Database migration assurance</p>
                 <h2 id="page-title">Compare with confidence.</h2>
                 <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
             </div>
+            <nav class="stepper" aria-label="Comparison workflow">
+                <div class="step active" data-step="1">
+                    <span class="step-number">1</span>
+                    <span><strong>Connections</strong><small>Configure</small></span>
+                </div>
+                <span class="step-line" aria-hidden="true"></span>
+                <div class="step" data-step="2">
+                    <span class="step-number">2</span>
+                    <span><strong>Tables</strong><small>Select</small></span>
+                </div>
+                <span class="step-line" aria-hidden="true"></span>
+                <div class="step" data-step="3">
+                    <span class="step-number">3</span>
+                    <span><strong>Compare</strong><small>Review</small></span>
+                </div>
+            </nav>
         </section>
-
-        <nav class="stepper" aria-label="Comparison workflow">
-            <div class="step active" data-step="1">
-                <span class="step-number">1</span>
-                <span><strong>Connections</strong><small>Configure both databases</small></span>
-            </div>
-            <span class="step-line" aria-hidden="true"></span>
-            <div class="step" data-step="2">
-                <span class="step-number">2</span>
-                <span><strong>Select tables</strong><small>Choose comparison scope</small></span>
-            </div>
-            <span class="step-line" aria-hidden="true"></span>
-            <div class="step" data-step="3">
-                <span class="step-number">3</span>
-                <span><strong>Compare</strong><small>Run and review results</small></span>
-            </div>
-        </nav>
 
         <section class="section-block workflow-step" id="connectionsSection"
             data-step-panel="1" aria-labelledby="connections-title">
@@ -637,7 +636,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.9.0</b></span>
+        <span>DB Compare Studio <b>v0.10.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>
