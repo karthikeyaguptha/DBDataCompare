@@ -33,7 +33,9 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.10.1" in response.data
+    assert b"v0.10.2" in response.data
+    assert b'<details class="table-filter-options">' in response.data
+    assert b"<summary>More options</summary>" in response.data
     assert b'id="openDashboard"' in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
@@ -57,7 +59,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.10.1-dashboard-workflow-fixes"
+    assert response.json["phase"] == "v0.10.2-table-filters-pdf-pagination"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -91,7 +93,25 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     assert "applyTheme" in dashboard_js
     assert "@media print" in dashboard_css
     assert ':root[data-theme="dark"]' in dashboard_css
-    assert "@page { size: A4 landscape; margin: 0; }" in dashboard_css
+    assert 'content: "Page " counter(page) " / " counter(pages);' in dashboard_css
+    assert "margin: 14mm 10mm 13mm;" in dashboard_css
+
+
+def test_secondary_table_filters_are_grouped_under_more_options():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+
+    options_start = template.index('<details class="table-filter-options">')
+    options_end = template.index("</details>", options_start)
+    common_position = template.index('value="available"')
+    sql_only_position = template.index('value="sql_only"')
+    postgres_only_position = template.index('value="postgres_only"')
+
+    assert common_position < options_start
+    assert options_start < sql_only_position < options_end
+    assert options_start < postgres_only_position < options_end
 
 
 def test_start_comparison_action_is_in_table_selection_step():
@@ -237,7 +257,11 @@ def test_connection_cards_hide_defaults_under_more_options():
     )
 
     assert template.count('class="connection-more-options"') == 2
-    assert template.count("<summary>More options</summary>") == 2
+    connection_options = template.split('class="connection-more-options"')[1:]
+    assert all(
+        option.lstrip().startswith(">\n                            <summary>More options</summary>")
+        for option in connection_options
+    )
     assert template.index('id="sqlAuthentication"') > template.index(
         "<summary>More options</summary>"
     )

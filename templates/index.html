@@ -14,8 +14,8 @@
             document.documentElement.dataset.theme = saved || (dark ? "dark" : "light");
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.10.1') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='0.10.1') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.10.2') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='0.10.2') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -349,14 +349,20 @@
                         <input class="table-status-filter" type="checkbox" value="available" checked disabled>
                         <span>Common</span>
                     </label>
-                    <label class="filter-check sql-only">
-                        <input class="table-status-filter" type="checkbox" value="sql_only" disabled>
-                        <span>Only in SQL Server</span>
-                    </label>
-                    <label class="filter-check pg-only">
-                        <input class="table-status-filter" type="checkbox" value="postgres_only" disabled>
-                        <span>Only in PostgreSQL</span>
-                    </label>
+                    <details class="table-filter-options">
+                        <summary>More options</summary>
+                        <div class="table-filter-options-menu">
+                            <span class="options-label">Table availability</span>
+                            <label class="filter-check sql-only">
+                                <input class="table-status-filter" type="checkbox" value="sql_only" disabled>
+                                <span>Only in SQL Server</span>
+                            </label>
+                            <label class="filter-check pg-only">
+                                <input class="table-status-filter" type="checkbox" value="postgres_only" disabled>
+                                <span>Only in PostgreSQL</span>
+                            </label>
+                        </div>
+                    </details>
                 </div>
                 <div class="selection-actions">
                     <span class="selection-count" id="selectionCount">0 selected</span>
@@ -636,7 +642,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.10.1</b></span>
+        <span>DB Compare Studio <b>v0.10.2</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

@@ -169,16 +169,27 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 
 @media print {
-    @page { size: A4 landscape; margin: 0; }
+    @page {
+        size: A4 landscape;
+        margin: 14mm 10mm 13mm;
+
+        @bottom-right {
+            content: "Page " counter(page) " / " counter(pages);
+            color: var(--muted);
+            font-family: "Segoe UI", system-ui, sans-serif;
+            font-size: 7.5pt;
+            font-weight: 700;
+        }
+    }
     html, body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-    body { min-height: 100%; padding: 14mm 10mm 13mm; background: var(--canvas); color: var(--ink); font-size: 9pt; }
+    body { min-height: 100%; padding: 0; background: var(--canvas); color: var(--ink); font-size: 9pt; }
     .report-header, .report-actions, #mismatchSection, .toast, .report-footer { display: none !important; }
     .print-chrome {
-        position: fixed; left: 10mm; right: 10mm; z-index: 50; display: flex;
+        position: fixed; left: 0; right: 0; z-index: 50; display: flex;
         justify-content: space-between; color: var(--ink); font-size: 7.5pt;
     }
-    .print-page-header { top: 4mm; }
-    .print-page-footer { bottom: 4mm; color: var(--muted); }
+    .print-page-header { top: -10mm; }
+    .print-page-footer { right: 42mm; bottom: -9mm; color: var(--muted); }
     .report-page { width: 100%; margin: 0; }
     .report-hero { grid-template-columns: 1.25fr .75fr; padding: 12px; border-radius: 8px; box-shadow: none; break-inside: avoid; }
     h1 { font-size: 24pt; }

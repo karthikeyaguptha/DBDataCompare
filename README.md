@@ -18,7 +18,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v0.10.1 status
+## v0.10.2 status
 
 This checkpoint contains:
 
@@ -146,14 +146,14 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v0.10.1 workflow
+## v0.10.2 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
 3. Correct any friendly connection error shown in the card or execution log.
 4. When both tests succeed, click **Load tables**.
-5. Keep **Common** selected for migration comparisons, or include either
-   database-only filter to investigate missing tables.
+5. Keep **Common** selected for migration comparisons, or open **More options**
+   to include either database-only filter when investigating missing tables.
 6. Search or page through the cached table-name list.
 7. Select one or more tables.
 8. Keep **Schema + Row Count + Data** selected. If automatic key detection is unavailable,
@@ -341,20 +341,21 @@ run.bat
 | v0.9.0 | Readable comparison dashboard, active-run handoff, multi-table filters, and PDF-ready reporting |
 | v0.10.0 | Compact workflow tracker, connection-aware report metadata, matching comparison-mode labels, and theme-preserving dashboard/PDF export |
 | v0.10.1 | Compact completion metadata, conversational duration, theme-correct PDF headers, and the Start comparison action in Step 2 |
+| v0.10.2 | Compact Step 2 table filters and current-page/total-pages numbering on PDF exports |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.10.1 commit is:
+The suggested v0.10.2 commit is:
 
 ```text
-fix: refine report readability and comparison workflow
+fix: compact table filters and add PDF page numbers
 ```
 
-The suggested v0.10.1 tag is:
+The suggested v0.10.2 tag is:
 
 ```text
-v0.10.1-report-workflow-fixes
+v0.10.2-table-filters-pdf-pagination
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,
