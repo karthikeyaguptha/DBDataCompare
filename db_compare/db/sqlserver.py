@@ -36,7 +36,7 @@ def _connection_string(config: dict[str, Any]) -> str:
         f"DATABASE={_odbc_value(database)}",
         "Encrypt=yes",
         f"TrustServerCertificate={'yes' if config.get('trust_server_certificate') else 'no'}",
-        "APP=DB Compare Studio",
+        "APP=Data Sync Check",
     ]
 
     if authentication == "windows":

@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo.
-echo DB Compare Studio - First-time setup
+echo Data Sync Check - First-time setup
 echo ====================================
 
 where py >nul 2>nul
@@ -42,4 +42,3 @@ echo.
 echo Setup failed. Review the message above and try again.
 pause
 exit /b 1
-

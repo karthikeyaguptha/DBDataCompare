@@ -4,28 +4,43 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="description" content="Compare SQL Server and PostgreSQL tables from a local, read-only workspace.">
-    <title>DB Compare Studio</title>
+    <meta name="description" content="Data Sync Check compares SQL Server and PostgreSQL tables from a local, read-only workspace.">
+    <title>Data Sync Check</title>
     <script>
         (() => {
             let saved = "";
-            try { saved = localStorage.getItem("db-compare-theme") || ""; } catch {}
+            try {
+                saved = localStorage.getItem("data-sync-check-theme")
+                    || localStorage.getItem("db-compare-theme")
+                    || "";
+            } catch {}
             document.documentElement.dataset.theme = saved || "dark";
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='0.10.4') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='0.10.4') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.0.0') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='1.0.0') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
 
     <header class="topbar">
         <div class="brand">
-            <span class="brand-mark" aria-hidden="true">
-                <span></span><span></span><span></span>
-            </span>
-            <div>
-                <h1>DB Compare Studio</h1>
+            <div class="brand-identity">
+                <span class="brand-art" aria-hidden="true">
+                    <img class="brand-wordmark brand-for-light"
+                        src="{{ url_for('static', filename='img/branding/data-sync-check-wordmark-light.png') }}"
+                        alt="">
+                    <img class="brand-wordmark brand-for-dark"
+                        src="{{ url_for('static', filename='img/branding/data-sync-check-wordmark-dark.png') }}"
+                        alt="">
+                    <img class="brand-lettermark brand-for-light"
+                        src="{{ url_for('static', filename='img/branding/dsc-lettermark-light.png') }}"
+                        alt="">
+                    <img class="brand-lettermark brand-for-dark"
+                        src="{{ url_for('static', filename='img/branding/dsc-lettermark-dark.png') }}"
+                        alt="">
+                </span>
+                <h1 class="sr-only">Data Sync Check</h1>
                 <p>SQL Server <span aria-hidden="true">→</span> PostgreSQL</p>
             </div>
         </div>
@@ -56,7 +71,7 @@
     <main class="workspace" id="workspace">
         <section class="intro" aria-labelledby="page-title">
             <div class="intro-copy">
-                <p class="eyebrow">Database migration assurance</p>
+                <p class="eyebrow">Two sources. One truth.</p>
                 <h2 id="page-title">Compare with confidence.</h2>
                 <p>Connect two databases, choose the tables that matter, and review every difference from one focused workspace.</p>
             </div>
@@ -632,7 +647,7 @@
                     </div>
                 </div>
                 <div class="log-window" id="logWindow" role="log" aria-live="polite">
-                    <div><time>00:00:00</time><span class="log-level info">INFO</span><span>DB Compare Studio UI initialized.</span></div>
+                    <div><time>00:00:00</time><span class="log-level info">INFO</span><span>Data Sync Check UI initialized.</span></div>
                     <div><time>00:00:00</time><span class="log-level info">INFO</span><span>Waiting for database connection details.</span></div>
                 </div>
             </div>
@@ -646,7 +661,7 @@
     </button>
 
     <footer class="footer">
-        <span>DB Compare Studio <b>v0.10.4</b></span>
+        <span>Data Sync Check <b>v1.0.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

@@ -34,7 +34,7 @@ def connect(config: dict[str, Any]):
             password=_required(config, "password"),
             sslmode=str(config.get("sslmode") or "prefer"),
             connect_timeout=8,
-            application_name="DB Compare Studio",
+            application_name="Data Sync Check",
         )
     except DatabaseConfigurationError:
         raise

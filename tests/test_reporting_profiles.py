@@ -75,7 +75,7 @@ def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):
     assert started.status_code == 201
     run_id = started.json["run_id"]
     run_dir = tmp_path / "reports" / run_id
-    with (run_dir / "mismatches.jsonl").open("a", encoding="utf-8") as handle:
+    with (run_dir / "data-sync-check-mismatches.jsonl").open("a", encoding="utf-8") as handle:
         handle.write('{"table_id":"customers","kind":"different"}\n')
 
     finalized = client.post(
@@ -140,20 +140,20 @@ def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):
         "log",
         "dashboard",
     }
-    summary = json.loads((run_dir / "run-summary.json").read_text(encoding="utf-8"))
+    summary = json.loads((run_dir / "data-sync-check-run-summary.json").read_text(encoding="utf-8"))
     assert summary["totals"]["row_mismatches"] == 1
     assert summary["connections"]["sqlserver"]["database"] == "SalesSource"
     assert summary["connections"]["postgres"]["host"] == "pg-host"
     assert "password" not in summary["connections"]["sqlserver"]
     assert "username" not in summary["connections"]["postgres"]
-    assert "CustomerId" in (run_dir / "comparison-summary.csv").read_text(
+    assert "CustomerId" in (run_dir / "data-sync-check-comparison-summary.csv").read_text(
         encoding="utf-8-sig"
     )
-    assert "Finished." in (run_dir / "execution.log").read_text(encoding="utf-8")
+    assert "Finished." in (run_dir / "data-sync-check-execution.log").read_text(encoding="utf-8")
     assert client.get(f"/api/reports/{run_id}/mismatches").status_code == 200
     dashboard = client.get(f"/reports/{run_id}/dashboard")
     assert dashboard.status_code == 200
-    assert b"Data comparison report" in dashboard.data
+    assert b"Data Sync Check Comparison Report" in dashboard.data
     assert b"Export PDF" in dashboard.data
     assert b"SalesSource" in dashboard.data
     assert b"sales_target" in dashboard.data
@@ -181,7 +181,7 @@ def test_dashboard_filters_multi_table_mismatch_data(tmp_path):
         {"table_id": "a", "kind": "sql_only", "key": {"id": 2}},
         {"table_id": "b", "kind": "postgres_only", "key": {"id": 3}},
     ]
-    with (run_dir / "mismatches.jsonl").open("a", encoding="utf-8") as handle:
+    with (run_dir / "data-sync-check-mismatches.jsonl").open("a", encoding="utf-8") as handle:
         for record in records:
             handle.write(json.dumps(record) + "\n")
     client.post(
@@ -238,7 +238,7 @@ def test_csv_export_neutralizes_spreadsheet_formulas(tmp_path):
     )
 
     assert finalized.status_code == 200
-    csv_text = (tmp_path / "reports" / run_id / "comparison-summary.csv").read_text(
+    csv_text = (tmp_path / "reports" / run_id / "data-sync-check-comparison-summary.csv").read_text(
         encoding="utf-8-sig"
     )
     assert "'=unsafe" in csv_text

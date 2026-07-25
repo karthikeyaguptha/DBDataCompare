@@ -17,10 +17,10 @@ from .db.errors import DatabaseConfigurationError
 
 _RUN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{8,80}$")
 _REPORT_KINDS = {
-    "summary": "run-summary.json",
-    "mismatches": "mismatches.jsonl",
-    "csv": "comparison-summary.csv",
-    "log": "execution.log",
+    "summary": "data-sync-check-run-summary.json",
+    "mismatches": "data-sync-check-mismatches.jsonl",
+    "csv": "data-sync-check-comparison-summary.csv",
+    "log": "data-sync-check-execution.log",
 }
 _WRITE_LOCK = Lock()
 

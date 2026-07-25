@@ -30,7 +30,7 @@ function applyTheme(theme, persist = true) {
     elements.themeToggle.querySelector(".theme-label").textContent = dark ? "Light" : "Dark";
     elements.themeToggle.setAttribute("aria-label", `Switch to ${dark ? "light" : "dark"} report theme`);
     if (persist) {
-        try { localStorage.setItem("db-compare-theme", selected); } catch {}
+        try { localStorage.setItem("data-sync-check-theme", selected); } catch {}
     }
 }
 

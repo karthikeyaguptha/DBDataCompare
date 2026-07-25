@@ -131,7 +131,7 @@ function applyTheme(theme, persist = true) {
     );
     if (persist) {
         try {
-            localStorage.setItem("db-compare-theme", selected);
+            localStorage.setItem("data-sync-check-theme", selected);
         } catch {
             // Theme still applies for this session when browser storage is unavailable.
         }
@@ -185,7 +185,7 @@ function showServiceBanner(kind, title, message) {
     elements.serviceBanner.setAttribute("aria-live", kind === "offline" ? "assertive" : "polite");
     elements.serviceBanner.title = kind === "offline"
         ? "Restart run.bat, then use refresh and retest both database connections."
-        : "The local DB Compare Studio service is running.";
+        : "The local Data Sync Check service is running.";
 }
 
 function markBackendOffline() {

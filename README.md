@@ -1,4 +1,4 @@
-# DB Compare Studio
+# Data Sync Check
 
 A Windows-first, local browser application for comparing Microsoft SQL Server
 and PostgreSQL databases.
@@ -6,6 +6,8 @@ and PostgreSQL databases.
 The user interface opens in a browser, while a Python/Flask process runs locally
 and performs read-only database comparisons. Database credentials and data are
 not sent to an external web server.
+
+**Two sources. One truth.** Compare with confidence.
 
 ## Comparison scope
 
@@ -18,7 +20,7 @@ not sent to an external web server.
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## v0.10.4 status
+## v1.0.0 status
 
 This checkpoint contains:
 
@@ -100,6 +102,9 @@ This checkpoint contains:
 - Windows setup and launch scripts
 - Environment and Git safety rules
 - Health endpoint and automated page checks
+- Data Sync Check naming across the workspace, reports, database client identity,
+  setup/launch scripts, and documentation
+- Theme-aware Data Sync Check wordmark with a compact DSC lettermark
 
 Table-name metadata is read
 once and retained in a short-lived in-memory catalog for fast search, filtering,
@@ -148,7 +153,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## v0.10.4 workflow
+## v1.0.0 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -196,17 +201,17 @@ Every run creates a separate local folder:
 ```text
 reports/
   <run-id>/
-    run-summary.json
-    mismatches.jsonl
-    comparison-summary.csv
-    execution.log
+    data-sync-check-run-summary.json
+    data-sync-check-mismatches.jsonl
+    data-sync-check-comparison-summary.csv
+    data-sync-check-execution.log
     manifest.json
 ```
 
-- `run-summary.json` contains run settings, totals, and per-table summaries.
-- `mismatches.jsonl` contains one complete mismatch record per line.
-- `comparison-summary.csv` is a spreadsheet-friendly table summary.
-- `execution.log` contains the visible session log captured at finalization.
+- `data-sync-check-run-summary.json` contains run settings, totals, and per-table summaries.
+- `data-sync-check-mismatches.jsonl` contains one complete mismatch record per line.
+- `data-sync-check-comparison-summary.csv` is a spreadsheet-friendly table summary.
+- `data-sync-check-execution.log` contains the visible session log captured at finalization.
 - `manifest.json` records the run identity and complete/cancelled state.
 
 **Schema Only** and **Schema + Row Count** runs produce an empty mismatch JSONL
@@ -318,7 +323,7 @@ setup.bat
 run.bat
 ```
 
-## Planned milestones
+## Release history
 
 | Version | Milestone |
 |---|---|
@@ -347,20 +352,20 @@ run.bat
 | v0.10.2 | Compact Step 2 table filters and current-page/total-pages numbering on PDF exports |
 | v0.10.3 | Consistent plus/minus disclosure control and overlap-free PDF output with pagination only |
 | v0.10.4 | Header-free report layout, restart actions in Steps 2 and 3, and dark theme by default |
-| v1.0.0 | Windows release |
+| v1.0.0 | Data Sync Check Windows release with finalized naming, theme-aware branding, dashboard/PDF reporting, profiles, and SQL Server → PostgreSQL validation |
 
 ## GitHub checkpoint
 
-The suggested v0.10.4 commit is:
+The suggested v1.0.0 commit is:
 
 ```text
-fix: streamline report header, restart flow, and default theme
+feat: release Data Sync Check v1.0.0
 ```
 
-The suggested v0.10.4 tag is:
+The suggested v1.0.0 tag is:
 
 ```text
-v0.10.4-workflow-theme-cleanup
+v1.0.0
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

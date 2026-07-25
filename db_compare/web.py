@@ -49,9 +49,9 @@ def index():
 def health():
     return jsonify(
         {
-            "application": "DB Compare Studio",
+            "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v0.10.4-workflow-theme-cleanup",
+            "phase": "v1.0.0-data-sync-check-release",
         }
     )
 

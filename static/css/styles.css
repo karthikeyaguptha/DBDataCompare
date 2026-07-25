@@ -270,37 +270,46 @@ select:disabled {
     gap: 12px;
 }
 
-.brand-mark {
-    display: flex;
-    width: 40px;
-    height: 40px;
+.brand-identity {
+    display: grid;
     align-items: center;
-    justify-content: center;
-    gap: 3px;
-    border-radius: 12px;
-    background: var(--primary);
-    box-shadow: 0 7px 18px rgba(72, 86, 216, 0.26);
 }
 
-.brand-mark span {
-    width: 4px;
-    border-radius: 999px;
-    background: #fff;
+.brand-art {
+    display: block;
+    height: 26px;
 }
 
-.brand-mark span:nth-child(1) { height: 14px; opacity: 0.72; }
-.brand-mark span:nth-child(2) { height: 23px; }
-.brand-mark span:nth-child(3) { height: 18px; opacity: 0.86; }
+.brand-wordmark {
+    display: block;
+    width: auto;
+    height: 26px;
+    object-fit: contain;
+    object-position: left center;
+}
 
-.brand h1 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 720;
-    letter-spacing: -0.01em;
+.brand-lettermark {
+    display: none;
+    width: auto;
+    height: 28px;
+    object-fit: contain;
+    object-position: left center;
+}
+
+.brand-for-dark {
+    display: none;
+}
+
+:root[data-theme="dark"] .brand-for-light {
+    display: none;
+}
+
+:root[data-theme="dark"] .brand-wordmark.brand-for-dark {
+    display: block;
 }
 
 .brand p {
-    margin: 2px 0 0;
+    margin: 3px 0 0;
     color: var(--ink-faint);
     font-size: 12px;
 }
@@ -2626,6 +2635,26 @@ select:disabled {
     .brand p,
     .theme-label {
         display: none;
+    }
+
+    .brand-art {
+        height: 28px;
+    }
+
+    .brand-wordmark {
+        display: none !important;
+    }
+
+    .brand-lettermark.brand-for-light {
+        display: block;
+    }
+
+    :root[data-theme="dark"] .brand-lettermark.brand-for-light {
+        display: none;
+    }
+
+    :root[data-theme="dark"] .brand-lettermark.brand-for-dark {
+        display: block;
     }
 
     .topbar-actions {

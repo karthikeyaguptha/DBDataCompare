@@ -9,7 +9,7 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-echo Starting DB Compare Studio...
+echo Starting Data Sync Check...
 start "" "http://127.0.0.1:5000"
 ".venv\Scripts\python.exe" app.py
 
@@ -18,4 +18,3 @@ if errorlevel 1 (
     echo The application stopped because of an error.
     pause
 )
-
