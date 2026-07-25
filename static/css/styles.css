@@ -276,8 +276,15 @@ select:disabled {
 }
 
 .brand-art {
+    display: flex;
+    height: 28px;
+    align-items: center;
+    gap: 9px;
+}
+
+.brand-logo,
+.brand-name {
     display: block;
-    height: 26px;
 }
 
 .brand-wordmark {
@@ -289,7 +296,7 @@ select:disabled {
 }
 
 .brand-lettermark {
-    display: none;
+    display: block;
     width: auto;
     height: 28px;
     object-fit: contain;
@@ -304,7 +311,7 @@ select:disabled {
     display: none;
 }
 
-:root[data-theme="dark"] .brand-wordmark.brand-for-dark {
+:root[data-theme="dark"] .brand-for-dark {
     display: block;
 }
 
@@ -2326,38 +2333,11 @@ select:disabled {
 
 .notification-content {
     display: grid;
-    grid-template-columns: 28px 24px minmax(0, 1fr) 30px;
+    grid-template-columns: 24px minmax(0, 1fr) 30px;
     gap: 9px;
     align-items: center;
     min-height: 58px;
     padding: 10px 10px 11px 12px;
-}
-
-.notification-brand {
-    position: relative;
-    display: block;
-    width: 28px;
-    height: 28px;
-}
-
-.notification-brand img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-.notification-brand .brand-for-dark {
-    display: none;
-}
-
-:root[data-theme="dark"] .notification-brand .brand-for-light {
-    display: none;
-}
-
-:root[data-theme="dark"] .notification-brand .brand-for-dark {
-    display: block;
 }
 
 .notification-status-icon {

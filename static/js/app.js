@@ -117,7 +117,7 @@ const elements = {
     copySqlPortQuery: document.querySelector("#copySqlPortQuery"),
 };
 
-const NOTIFICATION_DURATION_MS = 1500;
+const NOTIFICATION_DURATION_MS = 5000;
 
 function applyTheme(theme, persist = true) {
     const selected = theme === "dark" ? "dark" : "light";
@@ -153,20 +153,6 @@ function showToast(message, type = "info") {
     const content = document.createElement("div");
     content.className = "notification-content";
 
-    const brand = document.createElement("span");
-    brand.className = "notification-brand";
-    brand.setAttribute("aria-hidden", "true");
-    [
-        ["brand-for-light", "/static/img/branding/dsc-lettermark-light.png"],
-        ["brand-for-dark", "/static/img/branding/dsc-lettermark-dark.png"],
-    ].forEach(([className, source]) => {
-        const image = document.createElement("img");
-        image.className = className;
-        image.src = source;
-        image.alt = "";
-        brand.append(image);
-    });
-
     const statusIcon = document.createElement("span");
     statusIcon.className = "notification-status-icon";
     statusIcon.setAttribute("aria-hidden", "true");
@@ -192,7 +178,7 @@ function showToast(message, type = "info") {
     progress.setAttribute("aria-hidden", "true");
     progress.style.animationDuration = `${NOTIFICATION_DURATION_MS}ms`;
 
-    content.append(brand, statusIcon, messageElement, closeButton);
+    content.append(statusIcon, messageElement, closeButton);
     notification.append(content, progress);
     elements.notificationStack.append(notification);
 

@@ -19,8 +19,8 @@
             document.documentElement.dataset.theme = theme;
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='1.1.0') }}">
-    <script src="{{ url_for('static', filename='js/dashboard.js', v='1.1.0') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='1.2.0') }}">
+    <script src="{{ url_for('static', filename='js/dashboard.js', v='1.2.0') }}" defer></script>
 </head>
 <body data-run-id="{{ summary.run_id }}">
     <main class="report-page">
@@ -38,9 +38,19 @@
             </button>
         </div>
         <section class="report-hero">
-            <div>
-                <p class="eyebrow">Data Sync Check · SQL Server → PostgreSQL</p>
-                <h1>Data Sync Check Comparison Report</h1>
+            <div class="report-title">
+                <div class="report-title-brand">
+                    <span class="report-title-logo" aria-hidden="true">
+                        <img class="brand-for-light"
+                            src="{{ url_for('static', filename='img/branding/dsc-lettermark-light.png') }}"
+                            alt="">
+                        <img class="brand-for-dark"
+                            src="{{ url_for('static', filename='img/branding/dsc-lettermark-dark.png') }}"
+                            alt="">
+                    </span>
+                    <span>Data Sync Check</span>
+                </div>
+                <h1>Comparison Report</h1>
                 <p class="hero-copy">A clear view of table structure, row counts, and record-level differences found during migration validation.</p>
             </div>
             {% set connections = summary.connections or {} %}

@@ -17,8 +17,8 @@
             document.documentElement.dataset.theme = saved || "dark";
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.1.0') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='1.1.0') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.2.0') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='1.2.0') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -27,18 +27,22 @@
         <div class="brand">
             <div class="brand-identity">
                 <span class="brand-art" aria-hidden="true">
-                    <img class="brand-wordmark brand-for-light"
-                        src="{{ url_for('static', filename='img/branding/data-sync-check-wordmark-light.png') }}"
-                        alt="">
-                    <img class="brand-wordmark brand-for-dark"
-                        src="{{ url_for('static', filename='img/branding/data-sync-check-wordmark-dark.png') }}"
-                        alt="">
-                    <img class="brand-lettermark brand-for-light"
-                        src="{{ url_for('static', filename='img/branding/dsc-lettermark-light.png') }}"
-                        alt="">
-                    <img class="brand-lettermark brand-for-dark"
-                        src="{{ url_for('static', filename='img/branding/dsc-lettermark-dark.png') }}"
-                        alt="">
+                    <span class="brand-logo">
+                        <img class="brand-lettermark brand-for-light"
+                            src="{{ url_for('static', filename='img/branding/dsc-lettermark-light.png') }}"
+                            alt="">
+                        <img class="brand-lettermark brand-for-dark"
+                            src="{{ url_for('static', filename='img/branding/dsc-lettermark-dark.png') }}"
+                            alt="">
+                    </span>
+                    <span class="brand-name">
+                        <img class="brand-wordmark brand-for-light"
+                            src="{{ url_for('static', filename='img/branding/data-sync-check-wordmark-light.png') }}"
+                            alt="">
+                        <img class="brand-wordmark brand-for-dark"
+                            src="{{ url_for('static', filename='img/branding/data-sync-check-wordmark-dark.png') }}"
+                            alt="">
+                    </span>
                 </span>
                 <h1 class="sr-only">Data Sync Check</h1>
                 <p>SQL Server <span aria-hidden="true">→</span> PostgreSQL</p>
@@ -662,7 +666,7 @@
     </button>
 
     <footer class="footer">
-        <span>Data Sync Check <b>v1.1.0</b></span>
+        <span>Data Sync Check <b>v1.2.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

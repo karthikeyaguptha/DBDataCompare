@@ -51,7 +51,7 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.1.0-notification-experience",
+            "phase": "v1.2.0-brand-placement",
         }
     )
 

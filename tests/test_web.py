@@ -38,7 +38,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.1.0" in response.data
+    assert b"v1.2.0" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'<details class="table-filter-options">' in response.data
     assert b"<summary>More options</summary>" in response.data
@@ -66,7 +66,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.1.0-notification-experience"
+    assert response.json["phase"] == "v1.2.0-brand-placement"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -85,6 +85,9 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     )
 
     assert "Data Sync Check Comparison Report" in template
+    assert 'class="report-title-logo"' in template
+    assert "<span>Data Sync Check</span>" in template
+    assert "<h1>Comparison Report</h1>" in template
     assert "<header" not in template
     assert "report-header" not in template
     assert "report-brand" not in template
@@ -424,7 +427,7 @@ def test_toast_has_theme_safe_contrast_tokens():
     assert "color: var(--toast-ink);" in source
 
 
-def test_notifications_use_top_right_stack_countdown_close_and_branding():
+def test_notifications_use_top_right_stack_five_second_countdown_and_close():
     project_root = Path(__file__).resolve().parents[1]
     template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
     dashboard_template = (project_root / "templates" / "dashboard.html").read_text(
@@ -446,11 +449,12 @@ def test_notifications_use_top_right_stack_countdown_close_and_branding():
     assert 'id="notificationStack"' in template
     assert 'id="notificationStack"' in dashboard_template
     for source in (javascript, dashboard_javascript):
-        assert "const NOTIFICATION_DURATION_MS = 1500;" in source
+        assert "const NOTIFICATION_DURATION_MS = 5000;" in source
         assert 'closeButton.setAttribute("aria-label", "Dismiss notification");' in source
         assert "notification-progress" in source
-        assert "dsc-lettermark-light.png" in source
-        assert "dsc-lettermark-dark.png" in source
+        assert "notification-brand" not in source
+        assert "dsc-lettermark-light.png" not in source
+        assert "dsc-lettermark-dark.png" not in source
         assert "notification.addEventListener" not in source
     for source in (css, dashboard_css):
         assert ".notification-stack" in source
@@ -458,6 +462,7 @@ def test_notifications_use_top_right_stack_countdown_close_and_branding():
         assert ".notification-success" in source
         assert ".notification-warning" in source
         assert ".notification-error" in source
+        assert ".notification-brand" not in source
 
 
 def test_cancel_unknown_operation_is_safe():

@@ -72,7 +72,12 @@ button, input, select { font: inherit; }
 .button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .report-page { width: min(1280px, calc(100% - 40px)); margin: 18px auto 54px; }
 .report-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(480px, 1fr); gap: 30px; align-items: end; padding: 28px 30px; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(135deg, var(--hero-start) 0%, var(--hero-end) 100%); box-shadow: 0 16px 45px rgba(10,15,30,.13); }
-.eyebrow { margin: 0 0 8px; color: var(--primary-dark); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.report-title-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; color: var(--primary-dark); font-size: 13px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.report-title-logo { position: relative; display: block; width: 46px; height: 25px; flex: 0 0 46px; }
+.report-title-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+.report-title-logo .brand-for-dark { display: none; }
+:root[data-theme="dark"] .report-title-logo .brand-for-light { display: none; }
+:root[data-theme="dark"] .report-title-logo .brand-for-dark { display: block; }
 h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); line-height: 1.08; letter-spacing: -.035em; }
 .hero-copy { max-width: 700px; margin: 13px 0 0; color: var(--muted); font-size: 16px; line-height: 1.55; }
 .run-meta { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 0; }
@@ -147,12 +152,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .notification-success { --notification-accent: var(--success); }
 .notification-warning { --notification-accent: var(--warning); }
 .notification-error { --notification-accent: var(--danger); }
-.notification-content { display: grid; grid-template-columns: 28px 24px minmax(0,1fr) 30px; gap: 9px; align-items: center; min-height: 58px; padding: 10px 10px 11px 12px; }
-.notification-brand { position: relative; display: block; width: 28px; height: 28px; }
-.notification-brand img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.notification-brand .brand-for-dark { display: none; }
-:root[data-theme="dark"] .notification-brand .brand-for-light { display: none; }
-:root[data-theme="dark"] .notification-brand .brand-for-dark { display: block; }
+.notification-content { display: grid; grid-template-columns: 24px minmax(0,1fr) 30px; gap: 9px; align-items: center; min-height: 58px; padding: 10px 10px 11px 12px; }
 .notification-status-icon { display: grid; width: 22px; height: 22px; place-items: center; border: 1.5px solid var(--notification-accent); border-radius: 50%; color: var(--notification-accent); font-size: 12px; font-weight: 850; }
 .notification-message { margin: 0; font-size: 12px; font-weight: 650; line-height: 1.45; }
 .notification-close { display: grid; width: 30px; height: 30px; padding: 0; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; }
