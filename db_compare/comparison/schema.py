@@ -9,55 +9,52 @@ from ..db import postgres, sqlserver
 from ..db.errors import DatabaseConfigurationError
 
 
-_TYPE_FAMILIES = {
-    "bigint": "integer64",
-    "int8": "integer64",
-    "integer": "integer32",
-    "int": "integer32",
-    "int4": "integer32",
-    "smallint": "integer16",
-    "int2": "integer16",
-    "tinyint": "integer8",
-    "bit": "boolean",
-    "boolean": "boolean",
+_PG_TYPE_ALIASES = {
+    "int8": "bigint",
+    "int4": "integer",
+    "int": "integer",
+    "int2": "smallint",
     "bool": "boolean",
-    "decimal": "decimal",
-    "numeric": "decimal",
-    "money": "decimal",
-    "smallmoney": "decimal",
-    "real": "float32",
-    "float": "float64",
-    "double precision": "float64",
-    "varchar": "text",
-    "character varying": "text",
-    "nvarchar": "text",
-    "char": "text",
-    "character": "text",
-    "nchar": "text",
-    "text": "text",
-    "ntext": "text",
-    "uniqueidentifier": "uuid",
-    "uuid": "uuid",
-    "date": "date",
-    "time": "time",
-    "time without time zone": "time",
-    "time with time zone": "time_tz",
-    "datetime": "timestamp",
-    "datetime2": "timestamp",
-    "smalldatetime": "timestamp",
-    # SQL Server timestamp is the legacy rowversion binary type, not date/time.
-    "timestamp": "binary",
-    "timestamp without time zone": "timestamp",
-    "datetimeoffset": "timestamp_tz",
-    "timestamp with time zone": "timestamp_tz",
-    "binary": "binary",
-    "varbinary": "binary",
-    "bytea": "binary",
-    "image": "binary",
-    "json": "json",
-    "jsonb": "json",
-    "xml": "xml",
+    "decimal": "numeric",
+    "float4": "real",
+    "float8": "double precision",
+    "varchar": "character varying",
+    "char": "character",
+    "timestamp": "timestamp without time zone",
+    "timestamptz": "timestamp with time zone",
+    "time": "time without time zone",
+    "timetz": "time with time zone",
 }
+
+_SIMPLE_TYPE_MAPPINGS = {
+    "bigint": ({"bigint"}, "BIGINT"),
+    "int": ({"integer"}, "INTEGER"),
+    "smallint": ({"smallint"}, "SMALLINT"),
+    "tinyint": ({"smallint"}, "SMALLINT"),
+    "bit": ({"boolean"}, "BOOLEAN"),
+    "real": ({"real"}, "REAL"),
+    "float": ({"double precision"}, "DOUBLE PRECISION"),
+    "date": ({"date"}, "DATE"),
+    "datetime": ({"timestamp without time zone"}, "TIMESTAMP"),
+    "datetime2": ({"timestamp without time zone"}, "TIMESTAMP"),
+    "smalldatetime": ({"timestamp without time zone"}, "TIMESTAMP"),
+    "datetimeoffset": ({"timestamp with time zone"}, "TIMESTAMP WITH TIME ZONE"),
+    "time": ({"time without time zone"}, "TIME"),
+    "uniqueidentifier": ({"uuid"}, "UUID"),
+    "binary": ({"bytea"}, "BYTEA"),
+    "varbinary": ({"bytea"}, "BYTEA"),
+    "image": ({"bytea"}, "BYTEA"),
+    # SQL Server timestamp/rowversion is binary, not a date-time value.
+    "timestamp": ({"bytea"}, "BYTEA"),
+    "rowversion": ({"bytea"}, "BYTEA"),
+    "text": ({"text"}, "TEXT"),
+    "ntext": ({"text"}, "TEXT"),
+    "xml": ({"xml"}, "XML"),
+}
+
+_NUMERIC_TYPES = {"decimal", "numeric"}
+_VARIABLE_TEXT_TYPES = {"varchar", "nvarchar"}
+_FIXED_TEXT_TYPES = {"char", "nchar"}
 
 
 def compare_table_schema(
@@ -99,18 +96,27 @@ def compare_table_schema(
     )
     columns = _compare_columns(sql_schema["columns"], pg_schema["columns"])
     comparison_key, key_status = _discover_comparison_key(sql_schema, pg_schema)
+    sql_primary_key = sql_schema.get("primary_key") or []
+    pg_primary_key = pg_schema.get("primary_key") or []
+    primary_key_matches = _same_key(sql_primary_key, pg_primary_key)
     counts = {
         "matched": sum(item["status"] == "match" for item in columns),
         "different": sum(item["status"] == "different" for item in columns),
         "missing": sum(item["status"] in {"sql_only", "postgres_only"} for item in columns),
     }
-    status = "match" if not counts["different"] and not counts["missing"] else "different"
+    column_differences = counts["different"] + counts["missing"]
+    status = "match" if not column_differences and primary_key_matches else "different"
+    schema_differences = []
+    if column_differences:
+        schema_differences.append(f"{column_differences} column difference(s)")
+    if not primary_key_matches:
+        schema_differences.append("Primary key")
     return {
         "status": status,
         "summary": (
-            "Column metadata matches."
+            f"Schema Match — {len(columns)} column(s) and primary key metadata match."
             if status == "match"
-            else f'{counts["different"] + counts["missing"]} column difference(s) found.'
+            else f'Schema Mismatch — {", ".join(schema_differences)}.'
         ),
         "sqlserver_table": sqlserver_table,
         "postgres_table": postgres_table,
@@ -120,8 +126,11 @@ def compare_table_schema(
         "postgres_column_count": len(pg_schema["columns"]),
         "comparison_key": comparison_key,
         "key_status": key_status,
-        "sqlserver_primary_key": sql_schema.get("primary_key") or [],
-        "postgres_primary_key": pg_schema.get("primary_key") or [],
+        "sqlserver_primary_key": sql_primary_key,
+        "postgres_primary_key": pg_primary_key,
+        "primary_key_matches": primary_key_matches,
+        "primary_key_status": "match" if primary_key_matches else "different",
+        "schema_differences": schema_differences,
     }
 
 
@@ -140,8 +149,11 @@ def _compare_columns(
             status, differences = "sql_only", ["Missing in PostgreSQL"]
         else:
             differences = []
-            if _type_signature(sql_column) != _type_signature(pg_column):
-                differences.append("Data type")
+            type_matches, type_reason, expected_postgres = _types_match(
+                sql_column, pg_column
+            )
+            if not type_matches:
+                differences.append(type_reason or "Data type")
             if bool(sql_column.get("nullable")) != bool(pg_column.get("nullable")):
                 differences.append("Nullability")
             status = "different" if differences else "match"
@@ -152,21 +164,91 @@ def _compare_columns(
                 "postgres": _column_view(pg_column),
                 "status": status,
                 "differences": differences,
+                "expected_postgres": (
+                    expected_postgres
+                    if sql_column is not None and pg_column is not None
+                    else None
+                ),
             }
         )
     return output
 
 
-def _type_signature(column: dict[str, Any]) -> tuple[Any, ...]:
-    raw_type = str(column.get("data_type", "")).casefold()
-    family = _TYPE_FAMILIES.get(raw_type, raw_type)
-    if family == "text":
-        return family, column.get("character_length")
-    if family == "decimal":
-        return family, column.get("numeric_precision"), column.get("numeric_scale")
-    if family in {"time", "time_tz", "timestamp", "timestamp_tz"}:
-        return family, column.get("datetime_precision")
-    return (family,)
+def _types_match(
+    sql_column: dict[str, Any], pg_column: dict[str, Any]
+) -> tuple[bool, str | None, str | None]:
+    sql_type = str(sql_column.get("data_type", "")).strip().casefold()
+    pg_type = _normalise_pg_type(pg_column.get("data_type"))
+
+    if sql_type in _SIMPLE_TYPE_MAPPINGS:
+        accepted, expected = _SIMPLE_TYPE_MAPPINGS[sql_type]
+        matches = pg_type in accepted
+        return matches, None if matches else f"Data type (expected {expected})", expected
+
+    if sql_type in _NUMERIC_TYPES:
+        precision = sql_column.get("numeric_precision")
+        scale = sql_column.get("numeric_scale")
+        expected = _numeric_label(precision, scale)
+        matches = (
+            pg_type == "numeric"
+            and pg_column.get("numeric_precision") == precision
+            and pg_column.get("numeric_scale") == scale
+        )
+        return matches, None if matches else f"Data type (expected {expected})", expected
+
+    if sql_type == "money":
+        return _fixed_numeric_match(pg_column, 19, 4)
+
+    if sql_type == "smallmoney":
+        return _fixed_numeric_match(pg_column, 10, 4)
+
+    if sql_type in _VARIABLE_TEXT_TYPES:
+        length = sql_column.get("character_length")
+        if length == -1:
+            expected = "TEXT"
+            matches = pg_type == "text"
+        else:
+            expected = f"VARCHAR({length})"
+            matches = (
+                pg_type == "character varying"
+                and pg_column.get("character_length") == length
+            )
+        return matches, None if matches else f"Data type (expected {expected})", expected
+
+    if sql_type in _FIXED_TEXT_TYPES:
+        length = sql_column.get("character_length")
+        expected = f"CHAR({length})"
+        matches = (
+            pg_type == "character"
+            and pg_column.get("character_length") == length
+        )
+        return matches, None if matches else f"Data type (expected {expected})", expected
+
+    reason = "No approved PostgreSQL datatype mapping found."
+    return False, reason, None
+
+
+def _normalise_pg_type(value: Any) -> str:
+    raw_type = str(value or "").strip().casefold()
+    return _PG_TYPE_ALIASES.get(raw_type, raw_type)
+
+
+def _fixed_numeric_match(
+    pg_column: dict[str, Any], precision: int, scale: int
+) -> tuple[bool, str | None, str]:
+    expected = f"NUMERIC({precision},{scale})"
+    matches = (
+        _normalise_pg_type(pg_column.get("data_type")) == "numeric"
+        and pg_column.get("numeric_precision") == precision
+        and pg_column.get("numeric_scale") == scale
+    )
+    return matches, None if matches else f"Data type (expected {expected})", expected
+
+
+def _numeric_label(precision: Any, scale: Any) -> str:
+    if precision is None:
+        return "NUMERIC"
+    return f"NUMERIC({precision},{scale or 0})"
 
 
 def _column_view(column: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -186,9 +268,20 @@ def _display_type(column: dict[str, Any]) -> str:
     scale = column.get("numeric_scale")
     if length is not None and data_type.casefold() not in {"text", "ntext"}:
         return f"{data_type}({'max' if length == -1 else length})"
-    if precision is not None and _TYPE_FAMILIES.get(data_type.casefold()) == "decimal":
+    if precision is not None and data_type.casefold() in {
+        "decimal",
+        "numeric",
+        "money",
+        "smallmoney",
+    }:
         return f"{data_type}({precision},{scale or 0})"
     return data_type
+
+
+def _same_key(sql_key: list[str], pg_key: list[str]) -> bool:
+    return tuple(name.casefold() for name in sql_key) == tuple(
+        name.casefold() for name in pg_key
+    )
 
 
 def _discover_comparison_key(

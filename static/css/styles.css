@@ -1996,6 +1996,45 @@ select:disabled {
     padding: 14px 18px 18px 54px;
 }
 
+.schema-verdict {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.schema-verdict.is-match {
+    border-color: rgba(18, 153, 103, 0.35);
+    background: rgba(18, 153, 103, 0.08);
+}
+
+.schema-verdict.is-mismatch {
+    border-color: rgba(218, 142, 36, 0.4);
+    background: rgba(218, 142, 36, 0.09);
+}
+
+.schema-verdict span,
+.primary-key-summary {
+    color: var(--muted);
+}
+
+.primary-key-summary {
+    margin: 0 0 14px;
+}
+
+.primary-key-summary.is-match {
+    color: var(--success);
+}
+
+.primary-key-summary.is-mismatch {
+    color: var(--warning);
+}
+
 .result-detail-stack h3 {
     margin: 4px 0 9px;
     color: var(--ink-soft);

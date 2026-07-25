@@ -948,7 +948,7 @@ function resultCheckBadges(result) {
             ? ["Schema error", "warning"]
             : result.status === "missing_table"
                 ? ["Schema unavailable", "warning"]
-                : ["Schema difference", "warning"];
+                : ["Schema mismatch", "warning"];
     const countLabel = result.row_counts?.status === "match"
         ? ["Count match", "ready"]
         : result.row_counts
@@ -1072,10 +1072,37 @@ function appendSchemaResult(tableId, result) {
 function buildResultDetails(result) {
     const wrap = document.createElement("div");
     wrap.className = "result-detail-stack";
+    if (result.status !== "error" && result.status !== "missing_table") {
+        const schemaSummary = document.createElement("div");
+        schemaSummary.className = `schema-verdict ${result.status === "match" ? "is-match" : "is-mismatch"}`;
+        const verdict = document.createElement("strong");
+        verdict.textContent = result.status === "match" ? "Schema Match" : "Schema Mismatch";
+        const explanation = document.createElement("span");
+        explanation.textContent = (result.summary || "").replace(
+            /^Schema (?:Match|Mismatch)\s*—\s*/,
+            "",
+        );
+        schemaSummary.append(verdict, explanation);
+        wrap.append(schemaSummary);
+    }
     if (result.columns?.length) {
         const heading = document.createElement("h3");
         heading.textContent = "Column comparison";
         wrap.append(heading, buildColumnDetails(result.columns));
+    }
+    if (result.primary_key_status) {
+        const heading = document.createElement("h3");
+        heading.textContent = "Primary key comparison";
+        const primaryKeySummary = document.createElement("p");
+        primaryKeySummary.className = result.primary_key_status === "match"
+            ? "primary-key-summary is-match"
+            : "primary-key-summary is-mismatch";
+        const sqlKey = result.sqlserver_primary_key?.join(", ") || "None";
+        const pgKey = result.postgres_primary_key?.join(", ") || "None";
+        primaryKeySummary.textContent = result.primary_key_status === "match"
+            ? `Match · ${sqlKey}`
+            : `Mismatch · SQL Server: ${sqlKey} · PostgreSQL: ${pgKey}`;
+        wrap.append(heading, primaryKeySummary);
     }
     if (result.data_result) {
         const heading = document.createElement("h3");

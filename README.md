@@ -11,12 +11,14 @@ not sent to an external web server.
 
 - Table names
 - Column names and metadata
+- Approved SQL Server → PostgreSQL datatype compatibility
+- Primary-key parity
 - Row counts
 - Key-based, row-level data comparison
 - Progress, Safe Stop and Stop Now controls, execution logs, and exportable reports
 - Batch streaming for large tables
 
-## Phase 6 status
+## v0.8.0 status
 
 This checkpoint contains:
 
@@ -38,8 +40,10 @@ This checkpoint contains:
 - Fixed-height Step 2 table viewport with a sticky header, stable sparse-page layout,
   First/Previous/Next/Last controls, and direct page entry
 - Live SQL Server and PostgreSQL column-metadata retrieval
-- Case-insensitive column matching with compatible cross-database type families
+- Case-insensitive column matching with directional SQL Server → PostgreSQL mappings
 - Column type, length, precision, scale, timestamp precision, and nullability checks
+- Explicit **Schema Match** / **Schema Mismatch** verdicts with expected target types
+- Primary-key comparison included in the schema verdict
 - Missing and database-only column detection
 - Primary-key and unique-key discovery, including composite keys
 - Automatic comparison-key matching when the same key exists on both sides
@@ -131,7 +135,7 @@ py -3.12 -m venv .venv
 
 Stop the application by returning to its command window and pressing `Ctrl+C`.
 
-## Phase 6 workflow
+## v0.8.0 workflow
 
 1. Enter SQL Server and PostgreSQL details.
 2. Click each **Test** button.
@@ -226,10 +230,14 @@ The table status values mean:
 - **SQL Server only**: the name exists only in the selected SQL Server schema.
 - **PostgreSQL only**: the name exists only in the selected PostgreSQL schema.
 
-The column count is shown as **SQL Server / PostgreSQL**. Type matching recognises
-common equivalents such as SQL Server `int` and PostgreSQL `integer`,
-`nvarchar` and `character varying`, and `bit` and `boolean`. Length, numeric
-precision/scale, timestamp precision, and nullability must also agree.
+The column count is shown as **SQL Server / PostgreSQL**. Type matching uses
+approved migration equivalents rather than requiring identical type names.
+Examples include `int → integer`, `tinyint → smallint`, `bit → boolean`,
+`datetime → timestamp`, `uniqueidentifier → uuid`, `varbinary → bytea`, and
+`varchar(max) → text`. Fixed and variable character lengths and numeric
+precision/scale must agree. Nullability and primary-key columns must also agree.
+An SQL Server type outside the approved mapping is reported as a schema mismatch
+instead of being accepted merely because PostgreSQL exposes a similarly named type.
 
 The comparison key is selected automatically when matching primary or unique
 keys exist on both databases. **Keys differ** means keys were discovered but do
@@ -318,20 +326,21 @@ run.bat
 | v0.7.7 | Compact local-service status, aligned profile actions, red delete icon, and consistent accordion header controls |
 | v0.7.8 | Simplified connection cards, advanced options, automatic profile loading, and icon-only profile actions |
 | v0.7.9 | Whole-header accordions, clearer selection and pagination controls, SQL port help, and reliable profile reset/loading |
+| v0.8.0 | Approved SQL Server → PostgreSQL datatype baseline, explicit schema verdicts, and primary-key validation |
 | v1.0.0 | Windows release |
 
 ## GitHub checkpoint
 
-The suggested v0.7.9 commit is:
+The suggested v0.8.0 commit is:
 
 ```text
-fix: refine table navigation accordions and profiles
+feat: validate schemas against migration datatype baseline
 ```
 
-The suggested v0.7.9 tag is:
+The suggested v0.8.0 tag is:
 
 ```text
-v0.7.9-navigation-profile-fixes
+v0.8.0-schema-baseline
 ```
 
 Keep the repository private until credentials, logs, screenshots, documentation,

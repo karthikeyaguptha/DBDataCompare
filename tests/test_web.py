@@ -33,7 +33,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v0.7.9" in response.data
+    assert b"v0.8.0" in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
     assert b"connection-options-row" in response.data
@@ -56,7 +56,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
 
     assert response.status_code == 200
     assert response.json["status"] == "ready"
-    assert response.json["phase"] == "v0.7.9-navigation-profile-fixes"
+    assert response.json["phase"] == "v0.8.0-schema-baseline"
 
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():

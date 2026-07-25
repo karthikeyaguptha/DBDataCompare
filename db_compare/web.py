@@ -49,7 +49,7 @@ def health():
         {
             "application": "DB Compare Studio",
             "status": "ready",
-            "phase": "v0.7.9-navigation-profile-fixes",
+            "phase": "v0.8.0-schema-baseline",
         }
     )
 
