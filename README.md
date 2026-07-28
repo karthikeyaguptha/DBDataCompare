@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.7
+# Data Sync Check v1.9.8
 
 Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
 
@@ -48,7 +48,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.9.7 setup completed successfully
+Data Sync Check v1.9.8 setup completed successfully
 ```
 
 ### Every normal launch
@@ -126,11 +126,13 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Reports should not contain passwords or authentication secrets.
 - Generated reports and exported mismatch data can contain business-sensitive information and should be handled accordingly.
 
-## Version 1.9.7 changes
+## Version 1.9.8 changes
 
 - Adds clickable **All**, **Matched**, and **Not Matched** filters to the report table overview.
 - Shows a clear count inside every report-result filter.
-- Keeps the on-screen overview to a fixed-height viewport of approximately 20 table results with a sticky header.
+- Keeps the on-screen overview at a fixed 10-row height with a sticky header.
+- Adds Previous/Next pagination and clear table-range/page information.
+- Resets overview pagination to page 1 whenever the result filter changes.
 - Exports every table overview record to PDF, regardless of the active result filter.
 - Loads every filtered row-level mismatch page for PDF export instead of limiting the export to the first 1,000 records.
 - Preserves comparison execution, reusable selections, profiles, report details, and theme behavior.

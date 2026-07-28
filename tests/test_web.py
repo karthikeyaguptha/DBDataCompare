@@ -47,7 +47,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.9.7" in response.data
+    assert b"v1.9.8" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'id="tableSetType"' in response.data
     assert b'id="exportTableSet"' not in response.data
@@ -81,7 +81,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.9.7-report-result-filters"
+    assert response.json["phase"] == "v1.9.8-report-overview-pagination"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -130,15 +130,22 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     assert 'data-overview-filter="all"' in template
     assert 'data-overview-filter="matched"' in template
     assert 'data-overview-filter="not-matched"' in template
+    assert 'data-overview-index="{{ loop.index0 }}"' in template
     assert 'data-overview-result="{{ \'matched\' if table.status == \'match\' else \'not-matched\' }}"' in template
     assert "function applyOverviewFilter(filter)" in dashboard_js
-    assert 'button.addEventListener("click", () => applyOverviewFilter' in dashboard_js
+    assert "state.overviewPage = 1;" in dashboard_js
     assert ".overview-filter.matched.is-active" in dashboard_css
     assert ".overview-filter.not-matched.is-active" in dashboard_css
     assert 'class="table-card overview-table-card"' in template
-    assert "max-height: 1165px" in dashboard_css
+    assert 'id="overviewPreviousPage"' in template
+    assert 'id="overviewNextPage"' in template
+    assert 'id="overviewPageStatus"' in template
+    assert 'id="overviewRange"' in template
+    assert "const OVERVIEW_PAGE_SIZE = 10;" in dashboard_js
+    assert "height: 625px" in dashboard_css
     assert ".overview-table-card .summary-table thead" in dashboard_css
-    assert ".overview-table-card { max-height: none; }" in dashboard_css
+    assert ".overview-table-card { height: auto; max-height: none; }" in dashboard_css
+    assert ".overview-pagination" in dashboard_css
     assert '[data-overview-result][hidden] { display: table-row !important; }' in dashboard_css
     assert "async function loadAllFilteredMismatchRows()" in dashboard_js
     assert "page <= firstPage.pagination.total_pages" in dashboard_js

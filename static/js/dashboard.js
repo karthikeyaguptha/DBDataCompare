@@ -21,10 +21,24 @@ const elements = {
     notificationStack: document.querySelector("#notificationStack"),
     overviewFilters: [...document.querySelectorAll("[data-overview-filter]")],
     overviewRows: [...document.querySelectorAll("[data-overview-result]")],
+    overviewResults: [...document.querySelectorAll(".overview-result-row")],
     emptyOverview: document.querySelector("#emptyOverview"),
+    overviewRange: document.querySelector("#overviewRange"),
+    overviewPrevious: document.querySelector("#overviewPreviousPage"),
+    overviewNext: document.querySelector("#overviewNextPage"),
+    overviewPageStatus: document.querySelector("#overviewPageStatus"),
 };
-const state = { page: 1, totalPages: 1, timer: null, controller: null, facetsLoaded: false };
+const state = {
+    page: 1,
+    totalPages: 1,
+    timer: null,
+    controller: null,
+    facetsLoaded: false,
+    overviewFilter: "all",
+    overviewPage: 1,
+};
 const NOTIFICATION_DURATION_MS = 5000;
+const OVERVIEW_PAGE_SIZE = 10;
 
 function applyTheme(theme, persist = true) {
     const selected = theme === "dark" ? "dark" : "light";
@@ -178,18 +192,36 @@ function resetToFirstPage() {
 }
 
 function applyOverviewFilter(filter) {
-    let visibleResults = 0;
+    state.overviewFilter = filter;
+    const filteredResults = elements.overviewResults.filter(
+        (row) => filter === "all" || row.dataset.overviewResult === filter
+    );
+    const total = filteredResults.length;
+    const totalPages = Math.max(1, Math.ceil(total / OVERVIEW_PAGE_SIZE));
+    state.overviewPage = Math.min(Math.max(1, state.overviewPage), totalPages);
+    const startIndex = (state.overviewPage - 1) * OVERVIEW_PAGE_SIZE;
+    const visibleIndexes = new Set(
+        filteredResults
+            .slice(startIndex, startIndex + OVERVIEW_PAGE_SIZE)
+            .map((row) => row.dataset.overviewIndex)
+    );
+
     elements.overviewRows.forEach((row) => {
-        const visible = filter === "all" || row.dataset.overviewResult === filter;
-        row.hidden = !visible;
-        if (visible && row.classList.contains("overview-result-row")) visibleResults += 1;
+        row.hidden = !visibleIndexes.has(row.dataset.overviewIndex);
     });
     elements.overviewFilters.forEach((button) => {
         const active = button.dataset.overviewFilter === filter;
         button.classList.toggle("is-active", active);
         button.setAttribute("aria-pressed", String(active));
     });
-    if (elements.emptyOverview) elements.emptyOverview.hidden = visibleResults > 0;
+    const visibleStart = total ? startIndex + 1 : 0;
+    const visibleEnd = Math.min(startIndex + OVERVIEW_PAGE_SIZE, total);
+    elements.overviewRange.textContent =
+        `Showing ${visibleStart}${visibleEnd > visibleStart ? `–${visibleEnd}` : ""} of ${total.toLocaleString("en-IN")} table(s)`;
+    elements.overviewPageStatus.textContent = `Page ${state.overviewPage} of ${totalPages}`;
+    elements.overviewPrevious.disabled = state.overviewPage <= 1;
+    elements.overviewNext.disabled = state.overviewPage >= totalPages;
+    if (elements.emptyOverview) elements.emptyOverview.hidden = total > 0;
 }
 
 function showToast(message, type = "error") {
@@ -244,7 +276,25 @@ function showToast(message, type = "error") {
 
 elements.filters.addEventListener("submit", (event) => event.preventDefault());
 elements.overviewFilters.forEach((button) => {
-    button.addEventListener("click", () => applyOverviewFilter(button.dataset.overviewFilter));
+    button.addEventListener("click", () => {
+        state.overviewPage = 1;
+        applyOverviewFilter(button.dataset.overviewFilter);
+    });
+});
+elements.overviewPrevious.addEventListener("click", () => {
+    if (state.overviewPage > 1) {
+        state.overviewPage -= 1;
+        applyOverviewFilter(state.overviewFilter);
+    }
+});
+elements.overviewNext.addEventListener("click", () => {
+    const filteredTotal = elements.overviewResults.filter(
+        (row) => state.overviewFilter === "all" || row.dataset.overviewResult === state.overviewFilter
+    ).length;
+    if (state.overviewPage < Math.max(1, Math.ceil(filteredTotal / OVERVIEW_PAGE_SIZE))) {
+        state.overviewPage += 1;
+        applyOverviewFilter(state.overviewFilter);
+    }
 });
 elements.tableFilter.addEventListener("change", resetToFirstPage);
 elements.kindFilter.addEventListener("change", resetToFirstPage);
@@ -296,4 +346,5 @@ elements.exportPdf.addEventListener("click", async () => {
 });
 
 applyTheme(document.documentElement.dataset.theme || "dark", false);
+applyOverviewFilter("all");
 loadRows();
