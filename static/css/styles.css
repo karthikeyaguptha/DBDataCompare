@@ -1280,7 +1280,7 @@ select:disabled {
 
 .table-scope-toolbar {
     display: grid;
-    grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.2fr);
+    grid-template-columns: minmax(250px, 0.7fr) minmax(560px, 1.3fr);
     align-items: end;
     gap: 16px;
     margin-bottom: 14px;
@@ -1311,13 +1311,15 @@ select:disabled {
 
 .table-set-tools {
     display: grid;
-    grid-template-columns: minmax(230px, 1fr) 40px 40px;
+    grid-template-columns: minmax(155px, 0.7fr) minmax(220px, 1fr) repeat(4, 40px);
     align-items: end;
     gap: 8px;
 }
 
 .save-table-set,
-.delete-table-set {
+.delete-table-set,
+.export-table-set,
+.import-table-set {
     width: 40px;
     height: 40px;
 }
@@ -1363,6 +1365,129 @@ select:disabled {
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
+}
+
+.export-table-set,
+.import-table-set {
+    border-color: var(--line);
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.export-table-set:hover:not(:disabled),
+.import-table-set:hover:not(:disabled) {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.reconciliation-dialog {
+    width: min(920px, calc(100vw - 32px));
+    max-height: min(760px, calc(100vh - 32px));
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 24px 80px rgb(0 0 0 / 38%);
+}
+
+.reconciliation-dialog::backdrop {
+    background: rgb(3 8 18 / 72%);
+    backdrop-filter: blur(3px);
+}
+
+.reconciliation-head,
+.dialog-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 22px;
+}
+
+.reconciliation-head {
+    border-bottom: 1px solid var(--line);
+}
+
+.reconciliation-head h2 {
+    margin: 2px 0 4px;
+}
+
+.reconciliation-head p:last-child {
+    margin: 0;
+    color: var(--ink-soft);
+}
+
+.dialog-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface-muted);
+    color: var(--ink);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.reconciliation-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 22px;
+}
+
+.reconciliation-count {
+    padding: 6px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.reconciliation-table-wrap {
+    max-height: 410px;
+    overflow: auto;
+    border-block: 1px solid var(--line);
+}
+
+.reconciliation-table {
+    min-width: 720px;
+}
+
+.reconciliation-status {
+    display: inline-flex;
+    padding: 5px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.reconciliation-status.available_in_both {
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.reconciliation-status.sqlserver_only,
+.reconciliation-status.postgres_only,
+.reconciliation-status.ambiguous {
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.reconciliation-status.missing {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.dialog-actions {
+    align-items: center;
+    justify-content: flex-end;
 }
 
 .search-box {
@@ -2638,7 +2763,12 @@ select:disabled {
     }
 
     .table-set-tools {
-        grid-template-columns: minmax(0, 1fr) 40px 40px;
+        grid-template-columns: minmax(0, 1fr) repeat(4, 40px);
+    }
+
+    .table-set-type-choice,
+    .table-set-choice {
+        grid-column: 1 / -1;
     }
 
     .selection-actions {

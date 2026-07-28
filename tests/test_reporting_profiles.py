@@ -1,8 +1,10 @@
 import json
+from unittest.mock import patch
 
 from db_compare import create_app
 from db_compare.comparison.data import compare_table_data
 from db_compare.reporting import format_duration
+from db_compare.table_sets import reconcile_table_set
 
 
 def make_client(tmp_path):
@@ -123,6 +125,112 @@ def test_named_table_selection_requires_at_least_one_table(tmp_path):
 
     assert response.status_code == 400
     assert "Select at least one table" in response.json["message"]
+
+
+def test_portable_template_round_trip_reconciliation_and_json_transfer(tmp_path):
+    client = make_client(tmp_path)
+    saved = client.post(
+        "/api/table-sets",
+        json={
+            "name": "Portable finance tables",
+            "selection_type": "portable",
+            "context": {
+                "sqlserver": {"server": "origin-sql", "database": "finance"},
+                "postgres": {"host": "origin-pg", "database": "finance_target"},
+            },
+            "selected_tables": ["customers", "orders", "legacy"],
+            "manual_keys": {"orders": ["OrderId"]},
+            "comparison_mode": "full",
+            "batch_size": 2000,
+            "password": "never-export-this",
+        },
+    )
+    assert saved.status_code == 200
+    table_set = saved.json["table_set"]
+    assert table_set["selection_type"] == "portable"
+    assert table_set["comparison_mode"] == "full"
+    assert table_set["batch_size"] == 2000
+
+    with patch(
+        "db_compare.web.load_table_names",
+        return_value=(["Customers", "Orders"], ["customers", "orders", "legacy"]),
+    ):
+        catalog = client.post(
+            "/api/tables",
+            json={
+                "sqlserver": {"server": "another-sql"},
+                "postgres": {"host": "another-pg"},
+                "statuses": ["available", "sql_only", "postgres_only"],
+                "page": 1,
+                "page_size": 10,
+            },
+        )
+    reconciled = client.post(
+        f'/api/table-sets/{table_set["id"]}/reconcile',
+        json={"catalog_token": catalog.json["catalog_token"]},
+    )
+    assert reconciled.status_code == 200
+    result = reconciled.json["reconciliation"]
+    assert result["counts"]["available_in_both"] == 2
+    assert result["counts"]["postgres_only"] == 1
+    assert result["applicable_table_ids"] == ["customers", "orders"]
+    assert result["applicable_manual_keys"] == {"orders": ["OrderId"]}
+
+    exported = client.get(f'/api/table-sets/{table_set["id"]}/export')
+    assert exported.status_code == 200
+    assert "attachment" in exported.headers["Content-Disposition"]
+    document = exported.json
+    raw = exported.get_data(as_text=True)
+    assert document["format"] == "data-sync-check-table-selection"
+    assert document["table_selection"]["selection_type"] == "portable"
+    assert "never-export-this" not in raw
+    assert '"password"' not in raw
+    document["table_selection"]["name"] = "Imported portable finance"
+
+    imported = client.post("/api/table-sets/import", json=document)
+    assert imported.status_code == 200
+    assert imported.json["table_set"]["name"] == "Imported portable finance"
+    assert imported.json["table_set"]["selection_type"] == "portable"
+
+
+def test_portable_reconciliation_reports_missing_and_ambiguous_tables():
+    result = reconcile_table_set(
+        {
+            "id": "table-set-test",
+            "name": "Cross database",
+            "selected_tables": ["dbo.Customer", "MissingTable"],
+            "manual_keys": {},
+        },
+        [
+            {
+                "id": "sales.customer",
+                "sqlserver": "sales.Customer",
+                "postgres": "sales.customer",
+                "status": "available",
+            },
+            {
+                "id": "archive.customer",
+                "sqlserver": "archive.Customer",
+                "postgres": "archive.customer",
+                "status": "available",
+            },
+        ],
+    )
+
+    assert result["counts"]["ambiguous"] == 1
+    assert result["counts"]["missing"] == 1
+    assert result["applicable_table_ids"] == []
+    assert result["can_apply"] is False
+
+
+def test_table_selection_import_rejects_unrelated_json(tmp_path):
+    response = make_client(tmp_path).post(
+        "/api/table-sets/import",
+        json={"name": "Not a Data Sync Check export", "password": "secret"},
+    )
+
+    assert response.status_code == 400
+    assert "supported Data Sync Check" in response.json["message"]
 
 
 def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):

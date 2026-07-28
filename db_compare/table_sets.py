@@ -19,6 +19,7 @@ _CONTEXT_FIELDS = {
     "sqlserver": {"server", "port", "database", "schema"},
     "postgres": {"host", "port", "database", "schema"},
 }
+_TABLE_SET_TYPES = {"connection_specific", "portable"}
 
 
 def list_table_sets(path: Path) -> list[dict[str, Any]]:
@@ -71,6 +72,129 @@ def save_table_set(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     return table_set
 
 
+def import_table_set(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    if (
+        not isinstance(payload, dict)
+        or payload.get("format") != "data-sync-check-table-selection"
+        or payload.get("format_version") != 1
+    ):
+        raise DatabaseConfigurationError(
+            "Choose a supported Data Sync Check table-selection JSON file."
+        )
+    document = payload.get("table_selection") if isinstance(payload, dict) else None
+    if not isinstance(document, dict):
+        raise DatabaseConfigurationError(
+            "Choose a valid Data Sync Check table-selection JSON file."
+        )
+    imported = dict(document)
+    imported.pop("id", None)
+    return save_table_set(path, imported)
+
+
+def export_table_set(table_set: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "format": "data-sync-check-table-selection",
+        "format_version": 1,
+        "application": "Data Sync Check",
+        "table_selection": {
+            key: table_set.get(key)
+            for key in (
+                "name",
+                "selection_type",
+                "context",
+                "selected_tables",
+                "manual_keys",
+                "comparison_mode",
+                "batch_size",
+            )
+        },
+    }
+
+
+def reconcile_table_set(
+    table_set: dict[str, Any],
+    catalog: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Resolve a portable template against the active table catalog."""
+    catalog_by_id = {str(row.get("id", "")).casefold(): row for row in catalog}
+    by_leaf: dict[str, list[dict[str, Any]]] = {}
+    for row in catalog:
+        leaf = _table_leaf(str(row.get("id", "")))
+        by_leaf.setdefault(leaf, []).append(row)
+
+    entries: list[dict[str, Any]] = []
+    applicable_ids: list[str] = []
+    applicable_manual_keys: dict[str, list[str]] = {}
+    saved_manual_keys = table_set.get("manual_keys", {})
+    for requested_id in table_set.get("selected_tables", []):
+        exact = catalog_by_id.get(str(requested_id).casefold())
+        candidates = [exact] if exact else by_leaf.get(_table_leaf(requested_id), [])
+        candidates = [candidate for candidate in candidates if candidate]
+        if len(candidates) > 1:
+            entries.append(
+                {
+                    "requested_id": requested_id,
+                    "resolved_id": None,
+                    "status": "ambiguous",
+                    "candidates": [candidate["id"] for candidate in candidates],
+                }
+            )
+            continue
+        if not candidates:
+            entries.append(
+                {
+                    "requested_id": requested_id,
+                    "resolved_id": None,
+                    "status": "missing",
+                    "candidates": [],
+                }
+            )
+            continue
+
+        row = candidates[0]
+        status = {
+            "available": "available_in_both",
+            "sql_only": "sqlserver_only",
+            "postgres_only": "postgres_only",
+        }.get(row.get("status"), "missing")
+        resolved_id = row["id"]
+        entries.append(
+            {
+                "requested_id": requested_id,
+                "resolved_id": resolved_id,
+                "sqlserver": row.get("sqlserver"),
+                "postgres": row.get("postgres"),
+                "status": status,
+                "candidates": [],
+            }
+        )
+        if status == "available_in_both":
+            applicable_ids.append(resolved_id)
+            keys = saved_manual_keys.get(requested_id) or saved_manual_keys.get(resolved_id)
+            if keys:
+                applicable_manual_keys[resolved_id] = keys
+
+    counts = {
+        status: sum(1 for entry in entries if entry["status"] == status)
+        for status in (
+            "available_in_both",
+            "sqlserver_only",
+            "postgres_only",
+            "missing",
+            "ambiguous",
+        )
+    }
+    return {
+        "table_set_id": table_set.get("id", ""),
+        "name": table_set.get("name", ""),
+        "entries": entries,
+        "counts": counts,
+        "applicable_table_ids": applicable_ids,
+        "applicable_manual_keys": applicable_manual_keys,
+        "can_apply": bool(applicable_ids),
+    }
+
+
 def delete_table_set(path: Path, table_set_id: str) -> None:
     if not _TABLE_SET_ID_PATTERN.fullmatch(str(table_set_id)):
         raise DatabaseConfigurationError("The table selection identifier is invalid.")
@@ -89,13 +213,38 @@ def _sanitize_table_set(payload: dict[str, Any]) -> dict[str, Any]:
     context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
     manual_keys = payload.get("manual_keys")
     return {
+        "selection_type": (
+            str(payload.get("selection_type", "connection_specific")).strip()
+            if str(payload.get("selection_type", "connection_specific")).strip()
+            in _TABLE_SET_TYPES
+            else "connection_specific"
+        ),
         "context": {
             database: _allowed_context_fields(context.get(database), fields)
             for database, fields in _CONTEXT_FIELDS.items()
         },
         "selected_tables": _safe_string_list(payload.get("selected_tables"), 10_000),
         "manual_keys": _safe_manual_keys(manual_keys),
+        "comparison_mode": _safe_comparison_mode(payload.get("comparison_mode")),
+        "batch_size": _safe_batch_size(payload.get("batch_size")),
     }
+
+
+def _safe_comparison_mode(value: Any) -> str:
+    selected = str(value or "full")
+    return selected if selected in {"full", "schema_and_counts", "schema_only"} else "full"
+
+
+def _safe_batch_size(value: Any) -> int:
+    try:
+        selected = int(value or 5000)
+    except (TypeError, ValueError):
+        selected = 5000
+    return selected if selected in {2000, 5000, 10000} else 5000
+
+
+def _table_leaf(value: str) -> str:
+    return str(value).strip().casefold().rsplit(".", 1)[-1]
 
 
 def _allowed_context_fields(value: Any, allowed: set[str]) -> dict[str, str]:

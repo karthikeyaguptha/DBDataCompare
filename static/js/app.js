@@ -40,6 +40,7 @@ const state = {
     currentTableSetId: "",
     tableSetDirty: false,
     applyingTableSet: false,
+    pendingReconciliation: null,
     backendOffline: false,
     runProcessedRows: 0,
     currentTableProcessedRows: 0,
@@ -102,8 +103,19 @@ const elements = {
     saveProfile: document.querySelector("#saveProfile"),
     deleteProfile: document.querySelector("#deleteProfile"),
     tableSetSelect: document.querySelector("#tableSetSelect"),
+    tableSetType: document.querySelector("#tableSetType"),
     saveTableSet: document.querySelector("#saveTableSet"),
     deleteTableSet: document.querySelector("#deleteTableSet"),
+    exportTableSet: document.querySelector("#exportTableSet"),
+    importTableSet: document.querySelector("#importTableSet"),
+    tableSetImportFile: document.querySelector("#tableSetImportFile"),
+    reconciliationDialog: document.querySelector("#reconciliationDialog"),
+    reconciliationSummary: document.querySelector("#reconciliationSummary"),
+    reconciliationCounts: document.querySelector("#reconciliationCounts"),
+    reconciliationBody: document.querySelector("#reconciliationBody"),
+    closeReconciliation: document.querySelector("#closeReconciliation"),
+    cancelReconciliation: document.querySelector("#cancelReconciliation"),
+    applyReconciliation: document.querySelector("#applyReconciliation"),
     reportType: document.querySelector("#reportType"),
     exportReport: document.querySelector("#exportReport"),
     openDashboard: document.querySelector("#openDashboard"),
@@ -482,9 +494,12 @@ function tableSetPayload(name, id = "") {
     return {
         id,
         name,
+        selection_type: elements.tableSetType.value,
         context: tableSetContext(),
         selected_tables: [...state.selectedTables],
         manual_keys: selectedManualKeys,
+        comparison_mode: elements.comparisonMode.value,
+        batch_size: Number(elements.batchSize.value),
     };
 }
 
@@ -497,8 +512,12 @@ async function refreshTableSets(selectId = "") {
         );
         state.tableSets.forEach((tableSet) => {
             const count = tableSet.selected_tables?.length || 0;
+            const type = tableSet.selection_type === "portable" ? "Portable" : "Connection";
             elements.tableSetSelect.add(
-                new Option(`${tableSet.name} · ${count} table${count === 1 ? "" : "s"}`, tableSet.id),
+                new Option(
+                    `${tableSet.name} · ${type} · ${count} table${count === 1 ? "" : "s"}`,
+                    tableSet.id,
+                ),
             );
         });
         elements.tableSetSelect.value = selectId
@@ -516,9 +535,12 @@ function updateTableSetButtons() {
     const selected = Boolean(elements.tableSetSelect.value);
     const workspaceReady = state.tablesLoaded && !state.backendOffline;
     elements.tableSetSelect.disabled = !workspaceReady || state.comparing;
+    elements.tableSetType.disabled = !workspaceReady || state.comparing;
     elements.saveTableSet.disabled =
         !workspaceReady || !state.selectedTables.size || state.comparing;
     elements.deleteTableSet.disabled = !workspaceReady || !selected || state.comparing;
+    elements.exportTableSet.disabled = !workspaceReady || !selected || state.comparing;
+    elements.importTableSet.disabled = !workspaceReady || state.comparing;
     elements.saveTableSet.classList.toggle(
         "is-dirty",
         selected && state.tableSetDirty,
@@ -536,6 +558,37 @@ function updateTableSetButtons() {
 }
 
 async function applyTableSet(tableSet) {
+    if (tableSet.selection_type === "portable") {
+        const response = await requestJson(
+            `/api/table-sets/${tableSet.id}/reconcile`,
+            {
+                method: "POST",
+                body: JSON.stringify({ catalog_token: state.catalogToken }),
+            },
+        );
+        const reconciliation = response.reconciliation;
+        const accepted = await showReconciliationPreview(reconciliation);
+        if (!accepted) {
+            elements.tableSetSelect.value = "";
+            state.currentTableSetId = "";
+            updateTableSetButtons();
+            return;
+        }
+        applyResolvedTableSet(
+            tableSet,
+            reconciliation.applicable_table_ids,
+            reconciliation.applicable_manual_keys,
+        );
+        const skipped = reconciliation.entries.length
+            - reconciliation.applicable_table_ids.length;
+        showToast(
+            skipped
+                ? `${reconciliation.applicable_table_ids.length} available table(s) selected; ${skipped} skipped.`
+                : `Portable template "${tableSet.name}" applied.`,
+            skipped ? "warning" : "success",
+        );
+        return;
+    }
     if (
         tableSetContextSignature(tableSet.context)
         !== tableSetContextSignature(tableSetContext())
@@ -550,11 +603,23 @@ async function applyTableSet(tableSet) {
         return;
     }
 
+    applyResolvedTableSet(
+        tableSet,
+        tableSet.selected_tables || [],
+        tableSet.manual_keys || {},
+    );
+    showToast(`Table selection "${tableSet.name}" applied.`, "success");
+}
+
+function applyResolvedTableSet(tableSet, selectedTables, manualKeys) {
     state.applyingTableSet = true;
-    state.selectedTables = new Set(tableSet.selected_tables || []);
-    state.manualKeys = new Map(Object.entries(tableSet.manual_keys || {}));
+    state.selectedTables = new Set(selectedTables);
+    state.manualKeys = new Map(Object.entries(manualKeys));
     state.currentTableSetId = tableSet.id;
     state.tableSetDirty = false;
+    elements.tableSetType.value = tableSet.selection_type || "connection_specific";
+    elements.comparisonMode.value = tableSet.comparison_mode || elements.comparisonMode.value;
+    elements.batchSize.value = String(tableSet.batch_size || elements.batchSize.value);
     elements.tablesBody.querySelectorAll("tr[data-id]").forEach((row) => {
         const tableId = row.dataset.id;
         const checkbox = row.querySelector(".table-checkbox");
@@ -575,7 +640,65 @@ async function applyTableSet(tableSet) {
         "INFO",
         `Loaded table selection "${tableSet.name}" with ${state.selectedTables.size} table(s).`,
     );
-    showToast(`Table selection "${tableSet.name}" applied.`, "success");
+    updateEstimatedWork();
+}
+
+function showReconciliationPreview(reconciliation) {
+    state.pendingReconciliation = reconciliation;
+    const labels = {
+        available_in_both: "Available in both",
+        sqlserver_only: "SQL Server only",
+        postgres_only: "PostgreSQL only",
+        missing: "Missing",
+        ambiguous: "Ambiguous",
+    };
+    elements.reconciliationSummary.textContent =
+        `"${reconciliation.name}" was checked against the currently loaded databases.`;
+    elements.reconciliationCounts.replaceChildren();
+    Object.entries(labels).forEach(([status, label]) => {
+        const count = reconciliation.counts[status] || 0;
+        const chip = document.createElement("span");
+        chip.className = "reconciliation-count";
+        chip.textContent = `${label}: ${count}`;
+        elements.reconciliationCounts.append(chip);
+    });
+    elements.reconciliationBody.replaceChildren();
+    reconciliation.entries.forEach((entry) => {
+        const row = document.createElement("tr");
+        const sqlName = entry.sqlserver || "—";
+        const pgName = entry.postgres || "—";
+        const detail = entry.status === "ambiguous" && entry.candidates?.length
+            ? `${labels[entry.status]}: ${entry.candidates.join(", ")}`
+            : labels[entry.status];
+        row.innerHTML = `
+            <td><strong></strong></td>
+            <td></td>
+            <td></td>
+            <td><span class="reconciliation-status ${entry.status}"></span></td>`;
+        row.children[0].querySelector("strong").textContent = entry.requested_id;
+        row.children[1].textContent = sqlName;
+        row.children[2].textContent = pgName;
+        row.children[3].querySelector("span").textContent = detail;
+        elements.reconciliationBody.append(row);
+    });
+    elements.applyReconciliation.disabled = !reconciliation.can_apply;
+    elements.applyReconciliation.textContent =
+        `Select ${reconciliation.applicable_table_ids.length} available table(s)`;
+    elements.reconciliationDialog.showModal();
+    return new Promise((resolve) => {
+        const finish = (accepted) => {
+            elements.reconciliationDialog.close();
+            state.pendingReconciliation = null;
+            resolve(accepted);
+        };
+        elements.applyReconciliation.onclick = () => finish(true);
+        elements.cancelReconciliation.onclick = () => finish(false);
+        elements.closeReconciliation.onclick = () => finish(false);
+        elements.reconciliationDialog.oncancel = (event) => {
+            event.preventDefault();
+            finish(false);
+        };
+    });
 }
 
 function markTableSetDirty() {
@@ -847,6 +970,7 @@ function lockTables() {
         .forEach((control) => { control.disabled = true; });
     elements.comparisonMode.disabled = true;
     elements.tableSetSelect.disabled = true;
+    elements.tableSetType.disabled = true;
     elements.tablesBody.replaceChildren();
     updateSelectionCount();
     updatePagination();
@@ -2088,8 +2212,18 @@ elements.tableSetSelect.addEventListener("change", async () => {
         showToast("Table selection cleared.", "info");
         return;
     }
-    await applyTableSet(tableSet);
+    elements.tableSetType.value = tableSet.selection_type || "connection_specific";
+    try {
+        await applyTableSet(tableSet);
+    } catch (error) {
+        elements.tableSetSelect.value = "";
+        state.currentTableSetId = "";
+        updateTableSetButtons();
+        addLog("WARN", error.message);
+        showToast(error.message, "error");
+    }
 });
+elements.tableSetType.addEventListener("change", markTableSetDirty);
 elements.saveTableSet.addEventListener("click", async () => {
     if (!state.tablesLoaded || !state.selectedTables.size) {
         showToast("Select at least one table before saving.", "warning");
@@ -2139,6 +2273,40 @@ elements.deleteTableSet.addEventListener("click", async () => {
     } catch (error) {
         addLog("WARN", error.message);
         showToast(error.message, "error");
+    }
+});
+elements.exportTableSet.addEventListener("click", () => {
+    const tableSetId = elements.tableSetSelect.value;
+    if (!tableSetId) return;
+    window.location.assign(`/api/table-sets/${tableSetId}/export`);
+});
+elements.importTableSet.addEventListener("click", () => {
+    elements.tableSetImportFile.value = "";
+    elements.tableSetImportFile.click();
+});
+elements.tableSetImportFile.addEventListener("change", async () => {
+    const file = elements.tableSetImportFile.files?.[0];
+    if (!file) return;
+    try {
+        if (file.size > 2 * 1024 * 1024) {
+            throw new Error("Choose a table-selection JSON file smaller than 2 MB.");
+        }
+        const document = JSON.parse(await file.text());
+        const result = await requestJson("/api/table-sets/import", {
+            method: "POST",
+            body: JSON.stringify(document),
+        });
+        await refreshTableSets(result.table_set.id);
+        elements.tableSetType.value =
+            result.table_set.selection_type || "connection_specific";
+        addLog("READY", result.message);
+        showToast(result.message, "success");
+    } catch (error) {
+        const message = error instanceof SyntaxError
+            ? "The selected file is not valid JSON."
+            : error.message;
+        addLog("WARN", message);
+        showToast(message, "error");
     }
 });
 

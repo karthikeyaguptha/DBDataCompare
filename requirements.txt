@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.1
+# Data Sync Check v1.9.2
 # Supported runtime: CPython 3.13 x64 on Windows.
 # setup.bat installs binary packages only to prevent local C/C++ compilation.
 Flask==3.1.3

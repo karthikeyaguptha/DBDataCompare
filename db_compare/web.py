@@ -5,7 +5,15 @@ from threading import Event, Lock, Thread
 from time import monotonic
 from typing import Any
 
-from flask import Blueprint, current_app, jsonify, render_template, request, send_file
+from flask import (
+    Blueprint,
+    current_app,
+    jsonify,
+    make_response,
+    render_template,
+    request,
+    send_file,
+)
 
 from .cancellation import CancellationController
 from .comparison import compare_table_data, compare_table_row_counts, compare_table_schema
@@ -16,7 +24,14 @@ from .db import (
     test_database_connection,
 )
 from .profiles import delete_profile, list_profiles, save_profile
-from .table_sets import delete_table_set, list_table_sets, save_table_set
+from .table_sets import (
+    delete_table_set,
+    export_table_set,
+    import_table_set,
+    list_table_sets,
+    reconcile_table_set,
+    save_table_set,
+)
 from .reporting import (
     create_report_run,
     finalize_report_run,
@@ -52,7 +67,7 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.9.1-step-two-selection-refinements",
+            "phase": "v1.9.2-portable-table-templates",
         }
     )
 
@@ -121,6 +136,57 @@ def remove_table_set(table_set_id: str):
     delete_table_set(Path(current_app.config["TABLE_SETS_FILE"]), table_set_id)
     return jsonify(
         {"status": "deleted", "message": "Saved table selection deleted."}
+    )
+
+
+@web.post("/api/table-sets/<table_set_id>/reconcile")
+def reconcile_saved_table_set(table_set_id: str):
+    payload = _json_body()
+    token = str(payload.get("catalog_token", "")).strip()
+    catalog = _get_table_catalog(token)
+    if catalog is None:
+        raise DatabaseConfigurationError(
+            "The table catalog expired. Reload tables before applying this template."
+        )
+    table_set = _table_set_by_id(table_set_id)
+    if table_set.get("selection_type") != "portable":
+        raise DatabaseConfigurationError(
+            "Reconciliation is available only for portable table templates."
+        )
+    return jsonify(
+        {
+            "status": "ready",
+            "reconciliation": reconcile_table_set(table_set, catalog),
+        }
+    )
+
+
+@web.get("/api/table-sets/<table_set_id>/export")
+def export_saved_table_set(table_set_id: str):
+    table_set = _table_set_by_id(table_set_id)
+    response = make_response(jsonify(export_table_set(table_set)))
+    safe_name = "".join(
+        character if character.isalnum() or character in {"-", "_"} else "-"
+        for character in table_set["name"].strip()
+    ).strip("-") or "table-selection"
+    response.headers["Content-Disposition"] = (
+        f'attachment; filename="{safe_name}-data-sync-check.json"'
+    )
+    return response
+
+
+@web.post("/api/table-sets/import")
+def import_saved_table_set():
+    table_set = import_table_set(
+        Path(current_app.config["TABLE_SETS_FILE"]),
+        _json_body(),
+    )
+    return jsonify(
+        {
+            "status": "saved",
+            "message": f'Table selection "{table_set["name"]}" imported.',
+            "table_set": table_set,
+        }
     )
 
 
@@ -690,6 +756,20 @@ def _json_body() -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise DatabaseConfigurationError("A valid JSON request is required.")
     return payload
+
+
+def _table_set_by_id(table_set_id: str) -> dict[str, Any]:
+    table_set = next(
+        (
+            item
+            for item in list_table_sets(Path(current_app.config["TABLE_SETS_FILE"]))
+            if item.get("id") == table_set_id
+        ),
+        None,
+    )
+    if table_set is None:
+        raise DatabaseConfigurationError("The saved table selection was not found.")
+    return table_set
 
 
 @web.app_errorhandler(DatabaseConfigurationError)
