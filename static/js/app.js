@@ -106,6 +106,7 @@ const elements = {
     tableSetType: document.querySelector("#tableSetType"),
     saveTableSet: document.querySelector("#saveTableSet"),
     deleteTableSet: document.querySelector("#deleteTableSet"),
+    reopenReconciliation: document.querySelector("#reopenReconciliation"),
     reconciliationDialog: document.querySelector("#reconciliationDialog"),
     reconciliationSummary: document.querySelector("#reconciliationSummary"),
     reconciliationCounts: document.querySelector("#reconciliationCounts"),
@@ -534,12 +535,18 @@ async function refreshTableSets(selectId = "") {
 
 function updateTableSetButtons() {
     const selected = Boolean(elements.tableSetSelect.value);
+    const selectedTableSet = state.tableSets.find(
+        (tableSet) => tableSet.id === elements.tableSetSelect.value,
+    );
+    const reusableSelected = selectedTableSet?.selection_type === "portable";
     const workspaceReady = state.tablesLoaded && !state.backendOffline;
     elements.tableSetSelect.disabled = !workspaceReady || state.comparing;
     elements.tableSetType.disabled = !workspaceReady || state.comparing;
     elements.saveTableSet.disabled =
         !workspaceReady || !state.selectedTables.size || state.comparing;
     elements.deleteTableSet.disabled = !workspaceReady || !selected || state.comparing;
+    elements.reopenReconciliation.disabled =
+        !workspaceReady || !reusableSelected || state.comparing;
     elements.saveTableSet.classList.toggle(
         "is-dirty",
         selected && state.tableSetDirty,
@@ -642,8 +649,12 @@ function applyResolvedTableSet(tableSet, selectedTables, manualKeys) {
     updateEstimatedWork();
 }
 
-function showReconciliationPreview(reconciliation) {
+function showReconciliationPreview(reconciliation, initialTableIds = null) {
     state.pendingReconciliation = reconciliation;
+    let activeStatusFilter = "";
+    const initialSelection = initialTableIds === null
+        ? null
+        : new Set(initialTableIds);
     const labels = {
         available_in_both: "Available in both",
         sqlserver_only: "SQL Server only",
@@ -656,8 +667,12 @@ function showReconciliationPreview(reconciliation) {
     elements.reconciliationCounts.replaceChildren();
     Object.entries(labels).forEach(([status, label]) => {
         const count = reconciliation.counts[status] || 0;
-        const chip = document.createElement("span");
+        const chip = document.createElement("button");
+        chip.type = "button";
         chip.className = "reconciliation-count";
+        chip.dataset.status = status;
+        chip.setAttribute("aria-pressed", "false");
+        chip.setAttribute("aria-label", `Filter reconciliation rows: ${label}`);
         chip.textContent = `${label}: ${count}`;
         elements.reconciliationCounts.append(chip);
     });
@@ -683,8 +698,13 @@ function showReconciliationPreview(reconciliation) {
             <td></td>
             <td></td>
             <td><span class="reconciliation-status ${entry.status}"></span></td>`;
+        row.dataset.reconciliationStatus = entry.status;
         const checkbox = row.querySelector(".reconciliation-checkbox");
-        checkbox.checked = selectable && selectedByDefault;
+        checkbox.checked = selectable && (
+            initialSelection === null
+                ? selectedByDefault
+                : initialSelection.has(entry.resolved_id)
+        );
         checkbox.disabled = !selectable;
         checkbox.dataset.tableId = entry.resolved_id || "";
         checkbox.setAttribute(
@@ -706,17 +726,24 @@ function showReconciliationPreview(reconciliation) {
             ".reconciliation-checkbox:not(:disabled)",
         ),
     ];
+    const visibleSelectableCheckboxes = () => selectableCheckboxes()
+        .filter((checkbox) => !checkbox.closest("tr").hidden);
     const selectedTables = () => selectableCheckboxes()
         .filter((checkbox) => checkbox.checked)
         .map((checkbox) => checkbox.dataset.tableId);
     const updateReconciliationSelection = () => {
-        const checkboxes = selectableCheckboxes();
-        const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
-        elements.selectAllReconciliation.disabled = !checkboxes.length;
+        const allCheckboxes = selectableCheckboxes();
+        const visibleCheckboxes = visibleSelectableCheckboxes();
+        const selectedCount = allCheckboxes.filter((checkbox) => checkbox.checked).length;
+        const visibleSelectedCount = visibleCheckboxes
+            .filter((checkbox) => checkbox.checked).length;
+        elements.selectAllReconciliation.disabled = !visibleCheckboxes.length;
         elements.selectAllReconciliation.checked =
-            Boolean(checkboxes.length) && selectedCount === checkboxes.length;
+            Boolean(visibleCheckboxes.length)
+            && visibleSelectedCount === visibleCheckboxes.length;
         elements.selectAllReconciliation.indeterminate =
-            selectedCount > 0 && selectedCount < checkboxes.length;
+            visibleSelectedCount > 0
+            && visibleSelectedCount < visibleCheckboxes.length;
         elements.applyReconciliation.disabled = selectedCount === 0;
         elements.applyReconciliation.textContent =
             `Apply ${selectedCount} selected table${selectedCount === 1 ? "" : "s"}`;
@@ -726,11 +753,31 @@ function showReconciliationPreview(reconciliation) {
     });
     elements.selectAllReconciliation.onchange = () => {
         const checked = elements.selectAllReconciliation.checked;
-        selectableCheckboxes().forEach((checkbox) => {
+        visibleSelectableCheckboxes().forEach((checkbox) => {
             checkbox.checked = checked;
         });
         updateReconciliationSelection();
     };
+    elements.reconciliationCounts.querySelectorAll(".reconciliation-count")
+        .forEach((chip) => {
+            chip.addEventListener("click", () => {
+                activeStatusFilter = activeStatusFilter === chip.dataset.status
+                    ? ""
+                    : chip.dataset.status;
+                elements.reconciliationCounts
+                    .querySelectorAll(".reconciliation-count")
+                    .forEach((candidate) => {
+                        const active = candidate.dataset.status === activeStatusFilter;
+                        candidate.classList.toggle("is-active", active);
+                        candidate.setAttribute("aria-pressed", String(active));
+                    });
+                elements.reconciliationBody.querySelectorAll("tr").forEach((row) => {
+                    row.hidden = Boolean(activeStatusFilter)
+                        && row.dataset.reconciliationStatus !== activeStatusFilter;
+                });
+                updateReconciliationSelection();
+            });
+        });
     updateReconciliationSelection();
     elements.reconciliationDialog.showModal();
     return new Promise((resolve) => {
@@ -2279,6 +2326,34 @@ elements.tableSetSelect.addEventListener("change", async () => {
     }
 });
 elements.tableSetType.addEventListener("change", markTableSetDirty);
+elements.reopenReconciliation.addEventListener("click", async () => {
+    const tableSet = state.tableSets.find(
+        (item) => item.id === elements.tableSetSelect.value,
+    );
+    if (!tableSet || tableSet.selection_type !== "portable") return;
+    try {
+        const response = await requestJson(
+            `/api/table-sets/${tableSet.id}/reconcile`,
+            {
+                method: "POST",
+                body: JSON.stringify({ catalog_token: state.catalogToken }),
+            },
+        );
+        const selected = await showReconciliationPreview(
+            response.reconciliation,
+            state.selectedTables,
+        );
+        if (!selected) return;
+        applyResolvedTableSet(tableSet, selected.tableIds, selected.manualKeys);
+        showToast(
+            `${selected.tableIds.length} table(s) applied from "${tableSet.name}".`,
+            "success",
+        );
+    } catch (error) {
+        addLog("WARN", error.message);
+        showToast(error.message, "error");
+    }
+});
 elements.saveTableSet.addEventListener("click", async () => {
     if (!state.tablesLoaded || !state.selectedTables.size) {
         showToast("Select at least one table before saving.", "warning");

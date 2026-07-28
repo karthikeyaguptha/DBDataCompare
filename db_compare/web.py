@@ -64,7 +64,7 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.9.4-reusable-table-reconciliation",
+            "phase": "v1.9.5-reusable-table-reconciliation",
         }
     )
 

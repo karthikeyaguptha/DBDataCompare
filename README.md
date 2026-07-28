@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.4
+# Data Sync Check v1.9.5
 
 Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
 
@@ -48,7 +48,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.9.4 setup completed successfully
+Data Sync Check v1.9.5 setup completed successfully
 ```
 
 ### Every normal launch
@@ -126,6 +126,14 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Reports should not contain passwords or authentication secrets.
 - Generated reports and exported mismatch data can contain business-sensitive information and should be handled accordingly.
 
+## Version 1.9.5 changes
+
+- Aligns reconciliation checkboxes in a dedicated fixed-width column.
+- Turns reconciliation result tags into clickable table filters with active-state feedback.
+- Keeps the header checkbox scoped to the currently visible filtered rows.
+- Adds **Edit reusable selection** to Step 2 so an applied reconciliation can be reopened.
+- Reopens with the tables currently applied in Step 2 already checked, allowing skipped tables to be added without resetting the selection.
+
 ## Version 1.9.4 changes
 
 - Removes the visible **Select All** text while retaining an accessible master checkbox.
@@ -134,7 +142,7 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Applies checked one-sided rows to Step 2, where a run reports the missing counterpart without attempting a normal comparison.
 - Keeps missing-in-both and ambiguous rows disabled because they cannot resolve to one table.
 
-## Version 1.9.4 changes
+## Version 1.9.3 changes
 
 - Renames Portable Template to **Reusable Tables Selection** and makes it the default save type.
 - Adds a checkbox to each applicable reconciliation row.

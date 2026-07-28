@@ -47,7 +47,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.9.4" in response.data
+    assert b"v1.9.5" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'id="tableSetType"' in response.data
     assert b'id="exportTableSet"' not in response.data
@@ -81,7 +81,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.9.4-reusable-table-reconciliation"
+    assert response.json["phase"] == "v1.9.5-reusable-table-reconciliation"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -244,6 +244,34 @@ def test_step_two_owns_comparison_mode_and_named_table_selections():
     assert "elements.selectAllReconciliation.onchange" in javascript
     assert 'requestJson("/api/table-sets/import"' not in javascript
     assert "tableSetContextSignature" in javascript
+
+
+def test_reconciliation_checkboxes_filters_and_reopen_workflow():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'class="reconciliation-selection-col"' in template
+    assert 'id="reopenReconciliation"' in template
+    assert "Edit reusable selection" in template
+    assert "chip.dataset.status = status;" in javascript
+    assert 'chip.setAttribute("aria-pressed", "false");' in javascript
+    assert "row.dataset.reconciliationStatus = entry.status;" in javascript
+    assert "row.hidden = Boolean(activeStatusFilter)" in javascript
+    assert "visibleSelectableCheckboxes()" in javascript
+    assert "state.selectedTables," in javascript
+    assert 'elements.reopenReconciliation.addEventListener("click"' in javascript
+    assert ".reconciliation-selection-col" in stylesheet
+    assert "width: 54px;" in stylesheet
+    assert ".reconciliation-count.is-active" in stylesheet
+    assert "margin: 0 auto;" in stylesheet
 
 
 def test_step_two_availability_filters_are_directly_accessible():

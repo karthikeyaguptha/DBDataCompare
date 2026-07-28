@@ -1423,13 +1423,29 @@ select:disabled {
 }
 
 .reconciliation-count {
+    appearance: none;
     padding: 6px 9px;
     border: 1px solid var(--line);
     border-radius: 999px;
     background: var(--surface-muted);
     color: var(--ink-soft);
+    font-family: inherit;
     font-size: 12px;
     font-weight: 700;
+    cursor: pointer;
+    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.reconciliation-count:hover {
+    border-color: color-mix(in srgb, var(--primary) 55%, var(--line));
+    color: var(--ink);
+}
+
+.reconciliation-count.is-active {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 .reconciliation-table-wrap {
@@ -1440,27 +1456,37 @@ select:disabled {
 
 .reconciliation-table {
     min-width: 790px;
+    table-layout: fixed;
 }
 
-.reconciliation-select-heading,
-.reconciliation-select-cell {
-    width: 112px;
+.reconciliation-selection-col {
+    width: 54px;
+}
+
+.reconciliation-table .reconciliation-select-heading,
+.reconciliation-table .reconciliation-select-cell {
+    width: 54px;
+    min-width: 54px;
+    max-width: 54px;
+    padding-inline: 12px;
     text-align: center;
+    vertical-align: middle;
 }
 
-.reconciliation-select-heading label {
-    display: inline-flex;
+.reconciliation-table .reconciliation-select-heading label {
+    display: grid;
     align-items: center;
-    gap: 7px;
+    justify-items: center;
+    width: 100%;
     cursor: pointer;
-    white-space: nowrap;
 }
 
-.reconciliation-select-heading input,
-.reconciliation-select-cell input {
+.reconciliation-table .reconciliation-select-heading input,
+.reconciliation-table .reconciliation-select-cell input {
+    display: block;
     width: 16px;
     height: 16px;
-    margin: 0;
+    margin: 0 auto;
     accent-color: var(--primary);
 }
 
