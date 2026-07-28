@@ -1,5 +1,6 @@
-# Data Sync Check v1.7.2 supported runtime: CPython 3.13 x64 on Windows.
-# Exact pins provide repeatable installation. Review and update deliberately per release.
+# Data Sync Check v1.8.0
+# Supported runtime: CPython 3.13 x64 on Windows.
+# setup.bat installs binary packages only to prevent local C/C++ compilation.
 Flask==3.1.3
 waitress==3.0.2
 python-dotenv==1.2.2

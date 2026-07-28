@@ -1,203 +1,124 @@
-# Data Sync Check
+# Data Sync Check v1.8.0
 
-Data Sync Check is a local Windows application for validating data migrations
-from Microsoft SQL Server to PostgreSQL. It compares table structures, exact row
-counts, and row-level values, then produces readable reports for review and
-sharing.
+Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, progress tracking, mismatch details, exports, and an HTML comparison report.
 
-Dark theme is the first-launch default. Light theme is available and the
-selected preference is remembered.
+## Windows prerequisites
 
-## Features
+- Windows 10 or Windows 11, 64-bit
+- Internet access during first-time setup
+- Python 3.13 x64
+  - `setup.bat` can install it through Windows Package Manager when it is missing
+- Microsoft ODBC Driver 18 or 17 for SQL Server
+  - Install this manually before testing SQL Server connections
+- Network access to the SQL Server and PostgreSQL instances
 
-### Database connections
+## Installation and startup
 
-- Connects to Microsoft SQL Server and PostgreSQL.
-- Tests each connection independently with clear error messages.
-- Supports SQL Server Authentication and Windows Authentication.
-- Provides optional ODBC, certificate, and PostgreSQL SSL settings.
-- Keeps passwords out of saved profiles, logs, and reports.
+### First time only
 
-### Table discovery and selection
-
-- Loads table names once and supports fast local search and pagination.
-- Shows tables available in both databases.
-- Offers SQL Server-only and PostgreSQL-only filters under **More options**.
-- Supports single-table and multi-table comparison runs.
-
-### Comparison modes
-
-- **Schema Only**
-- **Schema + Row Count**
-- **Schema + Row Count + Data**
-
-Schema validation covers approved SQL Server-to-PostgreSQL datatype mappings,
-length, precision, scale, nullability, and primary keys. Row counts are exact.
-Full data comparison reads both tables in key order and reports changed or
-missing rows.
-
-Primary or unique keys are detected automatically when compatible keys exist on
-both databases. A manual single or composite key can be supplied when needed.
-
-### Comparison controls
-
-- Recommended default batch size of 5,000 rows.
-- Strict or normalized value-comparison rules.
-- **Safe Stop** finishes the active query or batch before stopping.
-- **Stop Now** attempts immediate driver-level cancellation.
-- Completed work is retained for partial reports.
-- Comparison can be started or restarted from Step 2 or Step 3.
-
-### Profiles
-
-- Save and automatically load reusable comparison settings.
-- Stores connection preferences, filters, tables, keys, mode, batch size, and
-  comparison rules.
-- Never stores database passwords.
-- Selecting **No saved profile** restores the original defaults.
-
-### Results and reporting
-
-- Combined result grid with schema, count, and data verdicts.
-- Expandable schema differences and a bounded mismatch preview.
-- Readable HTML Comparison Report for single or multiple tables.
-- Report filters for table, issue type, key, and value.
-- Theme-aware PDF export with `Page X / Y` pagination.
-- Natural duration labels such as `4 min 4 sec`.
-- Complete JSON, JSONL, CSV, and execution-log exports.
-
-Each run is written to a separate local folder:
+Double-click:
 
 ```text
-reports/
-  <run-id>/
-    data-sync-check-run-summary.json
-    data-sync-check-mismatches.jsonl
-    data-sync-check-comparison-summary.csv
-    data-sync-check-execution.log
-    manifest.json
-```
-
-The browser preview is intentionally limited to the first 200 differences.
-Use the JSONL export for the complete mismatch set.
-
-## Requirements
-
-- Windows 10 or Windows 11
-- Python 3.11 or newer
-- Microsoft ODBC Driver 18 for SQL Server
-- Network access to the SQL Server and PostgreSQL instances
-- Read-only database accounts are strongly recommended
-
-## Setup
-
-Open Command Prompt or PowerShell in the project folder and run:
-
-```powershell
 setup.bat
 ```
 
-Start the application:
+The setup performs the complete Python installation workflow:
 
-```powershell
+1. Detects Python 3.13 x64.
+2. Offers to install Python 3.13 using `winget` when missing.
+3. Creates the local `.venv` environment.
+4. Installs packages from the single `requirements.txt` file.
+5. Prevents native source builds by using binary packages only.
+6. Checks dependency consistency and imports.
+7. Reports whether a supported SQL Server ODBC driver is installed.
+
+When setup finishes, it displays:
+
+```text
+Data Sync Check v1.8.0 setup completed successfully
+```
+
+### Every normal launch
+
+Double-click:
+
+```text
 run.bat
 ```
 
-Data Sync Check opens locally at:
+The browser opens at:
 
 ```text
 http://127.0.0.1:5000
 ```
 
-To set up manually:
+Keep the command window open while Data Sync Check is running. Press `Ctrl+C` in that window to stop it.
 
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe app.py
+## Files used for installation
+
+Only these installation files are required:
+
+```text
+setup.bat
+run.bat
+requirements.txt
 ```
 
-Stop the application with `Ctrl+C` in its command window.
+Do not create or maintain `requirements-runtime.txt`. All Python package versions are defined only in `requirements.txt`.
 
-## Typical workflow
+## SQL Server ODBC driver
 
-1. Enter and test both database connections.
-2. Load the available tables.
-3. Select one or more tables.
-4. Choose the comparison mode, batch size, and optional rules.
-5. Confirm or enter comparison keys when full data comparison is selected.
-6. Start the comparison from Step 2 or Step 3.
-7. Review results or stop the run when necessary.
-8. Open the Comparison Report or export JSON, JSONL, CSV, or the execution log.
-9. Export the HTML report to PDF when a shareable copy is required.
+The Python package `pyodbc` and the Microsoft SQL Server ODBC driver are separate components.
 
-## Important comparison notes
+`setup.bat` detects the external Windows driver but does not install it. Install Microsoft ODBC Driver 18 for SQL Server manually, restart Data Sync Check, and then test the SQL connection.
 
-- Keep source and target data stable while a comparison is running.
-- Use unique, indexed keys for reliable and efficient row comparison.
-- Text-key collations should have compatible ordering across both databases.
-- Matching row counts do not prove that row values match.
-- An unmapped SQL Server datatype is reported as a schema mismatch.
-- For ODBC Driver 18, enable **Trust server certificate** only for an approved
-  internal server using a self-signed certificate.
+To see the drivers visible to the application after setup:
+
+```bat
+.venv\Scripts\python.exe -c "import pyodbc; print(pyodbc.drivers())"
+```
+
+## Troubleshooting
+
+### Python was installed during setup
+
+When setup installs Python through `winget`, close the setup window and run `setup.bat` again. This allows Windows to refresh the Python launcher.
+
+### Dependency installation failed
+
+Check internet access, corporate proxy rules, and firewall restrictions. Then rerun:
+
+```text
+setup.bat
+```
+
+The script uses `--only-binary=:all:` and will not attempt to compile `pyodbc` or other native packages locally.
+
+### The `.venv` environment is damaged
+
+Delete the `.venv` folder and run:
+
+```text
+setup.bat
+```
+
+### `run.bat` says setup is incomplete
+
+Run `setup.bat` again. `run.bat` starts the application only after setup has completed its dependency checks.
 
 ## Security
 
-- The service binds to `127.0.0.1` and is local to the computer by default.
-- Do not expose port 5000 through a firewall or router.
-- Never commit passwords, connection strings, `.env`, saved profiles, logs, or
-  generated reports.
-- Credentials are sent only to the local Flask process and remain in the current
-  browser form session.
-- Reports include only limited connection identity such as server/host,
-  database, port, and schema—never credentials.
+- Credentials remain in the active browser session and are not intentionally written to logs.
+- Saved profiles must not store passwords.
+- Reports should not contain passwords or authentication secrets.
+- Generated reports and exported mismatch data can contain business-sensitive information and should be handled accordingly.
 
-## Development
+## Version 1.8.0 installation changes
 
-Run the test suite:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest
-```
-
-Run the development server:
-
-```powershell
-.\.venv\Scripts\python.exe app.py
-```
-
-Project layout:
-
-```text
-app.py
-db_compare/
-  comparison/
-  db/
-  profiles.py
-  reporting.py
-  web.py
-templates/
-static/
-tests/
-config/
-reports/
-```
-
-## v1.6.0
-
-- Enlarged the Data Sync Check branding on the Comparison Report.
-- Long report metadata now wraps cleanly instead of being shortened with `...`.
-- Reorganized this README around the current product features and usage.
-- Home-page branding and all established workflows remain unchanged.
-
-## Git checkpoint
-
-```text
-docs: refine report branding and product documentation
-```
-
-```bash
-git tag -a v1.6.0 -m "Refine report branding and documentation"
-git push origin v1.6.0
-```
+- Replaced the layered PowerShell launcher flow with two direct batch files.
+- Standardized first-time setup on CPython 3.13 x64.
+- Retained only one dependency file: `requirements.txt`.
+- Added automatic recreation of incomplete or incompatible `.venv` environments.
+- Enforced binary-only dependency installation.
+- Added dependency, import, and ODBC-driver verification.
+- Added clear first-time setup and normal-launch instructions.
