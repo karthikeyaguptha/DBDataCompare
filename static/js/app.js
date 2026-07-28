@@ -36,6 +36,10 @@ const state = {
     profileDirty: false,
     applyingProfile: false,
     pendingProfileSelection: new Set(),
+    tableSets: [],
+    currentTableSetId: "",
+    tableSetDirty: false,
+    applyingTableSet: false,
     backendOffline: false,
     runProcessedRows: 0,
     currentTableProcessedRows: 0,
@@ -68,6 +72,7 @@ const elements = {
     estimatedWork: document.querySelector("#estimatedWork"),
     comparisonVolume: document.querySelector("#comparisonVolume"),
     comparisonMode: document.querySelector("#comparisonMode"),
+    selectedModeSummary: document.querySelector("#selectedModeSummary"),
     batchSize: document.querySelector("#batchSize"),
     ignoreTrailingSpaces: document.querySelector("#ignoreTrailingSpaces"),
     caseSensitiveText: document.querySelector("#caseSensitiveText"),
@@ -96,6 +101,9 @@ const elements = {
     profileSelect: document.querySelector("#profileSelect"),
     saveProfile: document.querySelector("#saveProfile"),
     deleteProfile: document.querySelector("#deleteProfile"),
+    tableSetSelect: document.querySelector("#tableSetSelect"),
+    saveTableSet: document.querySelector("#saveTableSet"),
+    deleteTableSet: document.querySelector("#deleteTableSet"),
     reportType: document.querySelector("#reportType"),
     exportReport: document.querySelector("#exportReport"),
     openDashboard: document.querySelector("#openDashboard"),
@@ -243,6 +251,9 @@ function markBackendOffline() {
     state.currentMatchingIds = [];
     state.selectedTables.clear();
     state.manualKeys.clear();
+    elements.tableSetSelect.value = "";
+    state.currentTableSetId = "";
+    state.tableSetDirty = false;
     state.tableRequestController?.abort();
     state.compareController?.abort();
     state.comparing = false;
@@ -427,6 +438,152 @@ function updateProfileButtons() {
         : "Save as a new profile";
 }
 
+function tableSetContext() {
+    const sqlserver = connectionConfigWithoutPassword("sql");
+    const postgres = connectionConfigWithoutPassword("pg");
+    return {
+        sqlserver: {
+            server: sqlserver.server || "",
+            port: sqlserver.port || "",
+            database: sqlserver.database || "",
+            schema: sqlserver.schema || "dbo",
+        },
+        postgres: {
+            host: postgres.host || "",
+            port: postgres.port || "",
+            database: postgres.database || "",
+            schema: postgres.schema || "public",
+        },
+    };
+}
+
+function tableSetContextSignature(context) {
+    const sqlserver = context?.sqlserver || {};
+    const postgres = context?.postgres || {};
+    return JSON.stringify([
+        sqlserver.server,
+        sqlserver.port,
+        sqlserver.database,
+        sqlserver.schema || "dbo",
+        postgres.host,
+        postgres.port,
+        postgres.database,
+        postgres.schema || "public",
+    ].map((value) => String(value || "").trim().toLocaleLowerCase()));
+}
+
+function tableSetPayload(name, id = "") {
+    const selectedManualKeys = {};
+    state.selectedTables.forEach((tableId) => {
+        if (state.manualKeys.has(tableId)) {
+            selectedManualKeys[tableId] = state.manualKeys.get(tableId);
+        }
+    });
+    return {
+        id,
+        name,
+        context: tableSetContext(),
+        selected_tables: [...state.selectedTables],
+        manual_keys: selectedManualKeys,
+    };
+}
+
+async function refreshTableSets(selectId = "") {
+    try {
+        const result = await requestJson("/api/table-sets", { method: "GET" });
+        state.tableSets = result.table_sets || [];
+        elements.tableSetSelect.replaceChildren(
+            new Option("No saved table selection", ""),
+        );
+        state.tableSets.forEach((tableSet) => {
+            const count = tableSet.selected_tables?.length || 0;
+            elements.tableSetSelect.add(
+                new Option(`${tableSet.name} · ${count} table${count === 1 ? "" : "s"}`, tableSet.id),
+            );
+        });
+        elements.tableSetSelect.value = selectId
+            && state.tableSets.some((tableSet) => tableSet.id === selectId)
+            ? selectId
+            : "";
+        state.currentTableSetId = elements.tableSetSelect.value;
+        updateTableSetButtons();
+    } catch (error) {
+        addLog("WARN", error.message);
+    }
+}
+
+function updateTableSetButtons() {
+    const selected = Boolean(elements.tableSetSelect.value);
+    const workspaceReady = state.tablesLoaded && !state.backendOffline;
+    elements.tableSetSelect.disabled = !workspaceReady || state.comparing;
+    elements.saveTableSet.disabled =
+        !workspaceReady || !state.selectedTables.size || state.comparing;
+    elements.deleteTableSet.disabled = !workspaceReady || !selected || state.comparing;
+    elements.saveTableSet.classList.toggle(
+        "is-dirty",
+        selected && state.tableSetDirty,
+    );
+    const tableSetName =
+        elements.tableSetSelect.selectedOptions[0]?.text?.split(" · ")[0]
+        || "table selection";
+    elements.saveTableSet.setAttribute(
+        "aria-label",
+        selected ? `Save changes to ${tableSetName}` : "Save named table selection",
+    );
+    elements.saveTableSet.title = selected
+        ? (state.tableSetDirty ? "Save table selection changes" : "Save current table selection")
+        : "Save as a named table selection";
+}
+
+async function applyTableSet(tableSet) {
+    if (
+        tableSetContextSignature(tableSet.context)
+        !== tableSetContextSignature(tableSetContext())
+    ) {
+        elements.tableSetSelect.value = "";
+        state.currentTableSetId = "";
+        updateTableSetButtons();
+        showToast(
+            "This table selection belongs to different database or schema details.",
+            "warning",
+        );
+        return;
+    }
+
+    state.applyingTableSet = true;
+    state.selectedTables = new Set(tableSet.selected_tables || []);
+    state.manualKeys = new Map(Object.entries(tableSet.manual_keys || {}));
+    state.currentTableSetId = tableSet.id;
+    state.tableSetDirty = false;
+    elements.tablesBody.querySelectorAll("tr[data-id]").forEach((row) => {
+        const tableId = row.dataset.id;
+        const checkbox = row.querySelector(".table-checkbox");
+        const keyInput = row.querySelector(".key-input");
+        const keyHint = row.querySelector(".key-hint");
+        checkbox.checked = state.selectedTables.has(tableId);
+        const manualKey = state.manualKeys.get(tableId) || [];
+        keyInput.value = manualKey.join(", ");
+        if (manualKey.length) {
+            keyHint.textContent = `Manual: ${manualKey.join(", ")}`;
+            keyHint.classList.remove("muted-value");
+        }
+    });
+    updateSelectionCount();
+    state.applyingTableSet = false;
+    updateTableSetButtons();
+    addLog(
+        "INFO",
+        `Loaded table selection "${tableSet.name}" with ${state.selectedTables.size} table(s).`,
+    );
+    showToast(`Table selection "${tableSet.name}" applied.`, "success");
+}
+
+function markTableSetDirty() {
+    if (state.applyingTableSet || !elements.tableSetSelect.value) return;
+    state.tableSetDirty = true;
+    updateTableSetButtons();
+}
+
 function applyProfile(profile) {
     state.applyingProfile = true;
     const savedManualKeys = new Map(Object.entries(profile.manual_keys || {}));
@@ -447,6 +604,9 @@ function applyProfile(profile) {
     state.pendingProfileSelection = new Set(profile.selected_tables || []);
     state.currentProfileId = profile.id;
     state.profileDirty = false;
+    elements.tableSetSelect.value = "";
+    state.currentTableSetId = "";
+    state.tableSetDirty = false;
     state.sqlValidated = false;
     state.pgValidated = false;
     state.sqlSignature = "";
@@ -492,6 +652,9 @@ function resetProfileDefaults() {
     state.tablePageSize = 10;
     state.currentProfileId = "";
     state.profileDirty = false;
+    elements.tableSetSelect.value = "";
+    state.currentTableSetId = "";
+    state.tableSetDirty = false;
     state.pendingProfileSelection.clear();
     state.sqlValidated = false;
     state.pgValidated = false;
@@ -639,6 +802,9 @@ function lockTables() {
     state.currentMatchingIds = [];
     state.selectedTables.clear();
     state.manualKeys.clear();
+    elements.tableSetSelect.value = "";
+    state.currentTableSetId = "";
+    state.tableSetDirty = false;
     state.schemaResults.clear();
     resetSchemaResults();
     elements.tablesOverlay.classList.remove("is-hidden");
@@ -655,9 +821,12 @@ function lockTables() {
         elements.tablePageInput,
     ]
         .forEach((control) => { control.disabled = true; });
+    elements.comparisonMode.disabled = true;
+    elements.tableSetSelect.disabled = true;
     elements.tablesBody.replaceChildren();
     updateSelectionCount();
     updatePagination();
+    updateTableSetButtons();
 }
 
 function unlockTableWorkspace() {
@@ -677,6 +846,7 @@ function unlockTableWorkspace() {
     elements.batchSize.disabled = elements.comparisonMode.value !== "full";
     document.querySelector("[data-step='2']").classList.add("complete");
     document.querySelector("[data-step='3']").classList.add("active");
+    updateTableSetButtons();
 }
 
 function activeTableStatuses() {
@@ -690,10 +860,13 @@ async function loadTables({ resetPage = false, scroll = false, refreshCatalog = 
         showToast("Test both connections again before loading tables.", "warning");
         return;
     }
-    if (refreshCatalog) {
+        if (refreshCatalog) {
         state.catalogToken = "";
         state.currentMatchingIds = [];
         state.selectedTables.clear();
+        elements.tableSetSelect.value = "";
+        state.currentTableSetId = "";
+        state.tableSetDirty = false;
     }
     if (resetPage) state.tablePage = 1;
     state.tableRequestController?.abort();
@@ -795,6 +968,7 @@ function renderTableRows(rows) {
                 state.selectedTables.delete(table.id);
             }
             markProfileDirty();
+            markTableSetDirty();
             updateSelectionCount();
         });
         const cells = row.querySelectorAll("td");
@@ -816,6 +990,7 @@ function renderTableRows(rows) {
             if (values.length) state.manualKeys.set(table.id, values);
             else state.manualKeys.delete(table.id);
             markProfileDirty();
+            markTableSetDirty();
             keyHint.textContent = values.length
                 ? `Manual: ${values.join(", ")}`
                 : priorResult?.comparison_key?.length
@@ -851,11 +1026,14 @@ function updateSelectionCount() {
         && selectedMatchingCount === state.currentMatchingIds.length;
     elements.selectAllTables.indeterminate = selectedMatchingCount > 0
         && selectedMatchingCount < state.currentMatchingIds.length;
+    updateTableSetButtons();
 }
 
 function updateEstimatedWork() {
     const selectedCount = state.selectedTables.size;
     const mode = elements.comparisonMode.value;
+    elements.selectedModeSummary.textContent =
+        elements.comparisonMode.selectedOptions[0]?.text || "Schema + Row Count + Data";
     elements.estimatedWork.textContent = selectedCount
         ? mode === "full"
             ? `${selectedCount * 3} checks across ${selectedCount} table${selectedCount === 1 ? "" : "s"}`
@@ -1520,6 +1698,7 @@ async function runSchemaComparison() {
     state.comparing = true;
     elements.openDashboard.disabled = false;
     updateProfileButtons();
+    updateTableSetButtons();
     state.stopRequested = false;
     state.stopMode = "";
     state.runProcessedRows = 0;
@@ -1692,6 +1871,7 @@ async function runSchemaComparison() {
     const stopped = state.stopRequested;
     state.comparing = false;
     updateProfileButtons();
+    updateTableSetButtons();
     state.compareController = null;
     state.activeOperationId = "";
     window.clearInterval(state.elapsedTimer);
@@ -1847,6 +2027,7 @@ elements.selectAllTables.addEventListener("change", () => {
         checkbox.checked = elements.selectAllTables.checked;
     });
     markProfileDirty();
+    markTableSetDirty();
     updateSelectionCount();
 });
 elements.tablePageSize.addEventListener("change", () => {
@@ -1870,6 +2051,7 @@ elements.clearSelection.addEventListener("click", () => {
     state.selectedTables.clear();
     currentCheckboxes().forEach((checkbox) => { checkbox.checked = false; });
     markProfileDirty();
+    markTableSetDirty();
     updateSelectionCount();
 });
 elements.comparisonMode.addEventListener("change", () => {
@@ -1877,6 +2059,69 @@ elements.comparisonMode.addEventListener("change", () => {
     updateEstimatedWork();
 });
 elements.batchSize.addEventListener("change", updateEstimatedWork);
+elements.tableSetSelect.addEventListener("change", async () => {
+    const tableSet = state.tableSets.find(
+        (item) => item.id === elements.tableSetSelect.value,
+    );
+    if (!tableSet) {
+        state.currentTableSetId = "";
+        state.tableSetDirty = false;
+        updateTableSetButtons();
+        return;
+    }
+    await applyTableSet(tableSet);
+});
+elements.saveTableSet.addEventListener("click", async () => {
+    if (!state.tablesLoaded || !state.selectedTables.size) {
+        showToast("Select at least one table before saving.", "warning");
+        return;
+    }
+    const existing = state.tableSets.find(
+        (item) => item.id === elements.tableSetSelect.value,
+    );
+    const name = existing?.name || window.prompt("Table selection name", "");
+    if (name === null) return;
+    if (!name.trim()) {
+        showToast("Enter a name before saving the table selection.", "warning");
+        return;
+    }
+    try {
+        const result = await requestJson("/api/table-sets", {
+            method: "POST",
+            body: JSON.stringify(tableSetPayload(name.trim(), existing?.id || "")),
+        });
+        state.currentTableSetId = result.table_set.id;
+        state.tableSetDirty = false;
+        await refreshTableSets(result.table_set.id);
+        addLog("READY", result.message);
+        showToast(result.message, "success");
+    } catch (error) {
+        addLog("WARN", error.message);
+        showToast(error.message, "error");
+    }
+});
+elements.deleteTableSet.addEventListener("click", async () => {
+    const tableSet = state.tableSets.find(
+        (item) => item.id === elements.tableSetSelect.value,
+    );
+    if (
+        !tableSet
+        || !window.confirm(`Delete saved table selection "${tableSet.name}"?`)
+    ) return;
+    try {
+        const result = await requestJson(`/api/table-sets/${tableSet.id}`, {
+            method: "DELETE",
+        });
+        state.currentTableSetId = "";
+        state.tableSetDirty = false;
+        await refreshTableSets();
+        addLog("INFO", result.message);
+        showToast(result.message, "success");
+    } catch (error) {
+        addLog("WARN", error.message);
+        showToast(error.message, "error");
+    }
+});
 
 elements.startCompareButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -2076,4 +2321,5 @@ setAccordion(3, false);
 updatePagination();
 setReportExports();
 refreshProfiles();
+refreshTableSets();
 checkBackendHealth();

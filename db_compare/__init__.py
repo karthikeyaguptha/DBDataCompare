@@ -19,6 +19,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
         REPORTS_DIR=project_root / "reports",
         PROFILES_FILE=project_root / "config" / "profiles.json",
+        TABLE_SETS_FILE=project_root / "config" / "table-sets.json",
     )
 
     if test_config:

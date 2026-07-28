@@ -16,6 +16,7 @@ from .db import (
     test_database_connection,
 )
 from .profiles import delete_profile, list_profiles, save_profile
+from .table_sets import delete_table_set, list_table_sets, save_table_set
 from .reporting import (
     create_report_run,
     finalize_report_run,
@@ -51,7 +52,7 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.8.0-report-readability-and-documentation",
+            "phase": "v1.9.0-step-two-and-saved-table-selections",
         }
     )
 
@@ -85,6 +86,42 @@ def store_profile():
 def remove_profile(profile_id: str):
     delete_profile(Path(current_app.config["PROFILES_FILE"]), profile_id)
     return jsonify({"status": "deleted", "message": "Saved profile deleted."})
+
+
+@web.get("/api/table-sets")
+def table_sets():
+    return jsonify(
+        {
+            "status": "ready",
+            "table_sets": list_table_sets(Path(current_app.config["TABLE_SETS_FILE"])),
+        }
+    )
+
+
+@web.post("/api/table-sets")
+def store_table_set():
+    table_set = save_table_set(
+        Path(current_app.config["TABLE_SETS_FILE"]),
+        _json_body(),
+    )
+    return jsonify(
+        {
+            "status": "saved",
+            "message": (
+                f'Table selection "{table_set["name"]}" saved with '
+                f'{len(table_set["selected_tables"])} table(s).'
+            ),
+            "table_set": table_set,
+        }
+    )
+
+
+@web.delete("/api/table-sets/<table_set_id>")
+def remove_table_set(table_set_id: str):
+    delete_table_set(Path(current_app.config["TABLE_SETS_FILE"]), table_set_id)
+    return jsonify(
+        {"status": "deleted", "message": "Saved table selection deleted."}
+    )
 
 
 @web.post("/api/reports/runs")

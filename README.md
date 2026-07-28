@@ -1,6 +1,17 @@
-# Data Sync Check v1.8.0
+# Data Sync Check v1.9.0
 
-Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, progress tracking, mismatch details, exports, and an HTML comparison report.
+Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
+
+## Comparison workflow
+
+1. Enter and test both database connections.
+2. Load the table catalog.
+3. In Step 2, choose the comparison mode and select tables.
+4. Optionally save the selected tables with a memorable name.
+5. Start the comparison from Step 2 or Step 3.
+6. Review results in the workspace or open the shareable HTML/PDF report.
+
+Saved table selections restore tables across every pagination page in one action. They are tied to the SQL Server and PostgreSQL database/schema context in which they were saved, preventing accidental use against a different environment. Saved connection profiles and saved table selections remain independent.
 
 ## Windows prerequisites
 
@@ -35,7 +46,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.8.0 setup completed successfully
+Data Sync Check v1.9.0 setup completed successfully
 ```
 
 ### Every normal launch
@@ -112,6 +123,15 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Saved profiles must not store passwords.
 - Reports should not contain passwords or authentication secrets.
 - Generated reports and exported mismatch data can contain business-sensitive information and should be handled accordingly.
+
+## Version 1.9.0 changes
+
+- Moved Comparison Mode into Step 2 beside table-selection scope.
+- Grouped Common, SQL Server-only, and PostgreSQL-only availability filters under More options.
+- Added named reusable table selections with automatic multi-page restoration.
+- Restores saved manual comparison keys with a named table selection.
+- Validates the database and schema context before applying a saved selection.
+- Keeps saved table selections separate from password-free connection profiles.
 
 ## Version 1.8.0 installation changes
 

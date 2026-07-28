@@ -17,8 +17,8 @@
             document.documentElement.dataset.theme = saved || "dark";
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.8.0') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='1.8.0') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.9.0') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='1.9.0') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -355,6 +355,38 @@
             </div>
 
             <div class="step-content" id="tablesContent">
+            <div class="table-scope-toolbar" aria-label="Table comparison scope">
+                <label class="scope-choice comparison-mode-choice">
+                    <span>Comparison mode</span>
+                    <select id="comparisonMode" disabled>
+                        <option value="full" selected>Schema + Row Count + Data</option>
+                        <option value="schema_and_counts">Schema + Row Count</option>
+                        <option value="schema_only">Schema Only</option>
+                    </select>
+                </label>
+                <div class="table-set-tools" aria-label="Saved table selections">
+                    <label class="scope-choice table-set-choice">
+                        <span>Saved table selection</span>
+                        <select id="tableSetSelect" aria-label="Saved table selection" disabled>
+                            <option value="">No saved table selection</option>
+                        </select>
+                    </label>
+                    <button class="icon-button save-table-set" id="saveTableSet" type="button" disabled
+                        aria-label="Save table selection" title="Save as a named table selection">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 4h11l3 3v13H5z"/>
+                            <path d="M8 4v6h8V4M8 20v-6h8v6"/>
+                        </svg>
+                    </button>
+                    <button class="icon-button delete-table-set" id="deleteTableSet" type="button" disabled
+                        aria-label="Delete selected table selection" title="Delete selected table selection">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/>
+                            <path d="M10 11v5M14 11v5"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
             <div class="table-toolbar">
                 <label class="search-box">
                     <span class="sr-only">Search tables</span>
@@ -363,14 +395,14 @@
                         aria-label="Clear table search" title="Clear search" disabled>×</button>
                 </label>
                 <div class="status-filters" role="group" aria-label="Filter tables by availability">
-                    <label class="filter-check common">
-                        <input class="table-status-filter" type="checkbox" value="available" checked disabled>
-                        <span>Common</span>
-                    </label>
                     <details class="table-filter-options">
                         <summary>More options</summary>
                         <div class="table-filter-options-menu">
                             <span class="options-label">Table availability</span>
+                            <label class="filter-check common">
+                                <input class="table-status-filter" type="checkbox" value="available" checked disabled>
+                                <span>Common</span>
+                            </label>
                             <label class="filter-check sql-only">
                                 <input class="table-status-filter" type="checkbox" value="sql_only" disabled>
                                 <span>Only in SQL Server</span>
@@ -504,14 +536,10 @@
 
             <div class="step-content" id="compareContent">
             <div class="run-settings">
-                <label>
+                <div class="run-summary">
                     <span>Comparison mode</span>
-                    <select id="comparisonMode" disabled>
-                        <option value="full" selected>Schema + Row Count + Data</option>
-                        <option value="schema_and_counts">Schema + Row Count</option>
-                        <option value="schema_only">Schema Only</option>
-                    </select>
-                </label>
+                    <strong id="selectedModeSummary">Schema + Row Count + Data</strong>
+                </div>
                 <label>
                     <span>Batch size</span>
                     <select id="batchSize" disabled>
@@ -666,7 +694,7 @@
     </button>
 
     <footer class="footer">
-        <span>Data Sync Check <b>v1.8.0</b></span>
+        <span>Data Sync Check <b>v1.9.0</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

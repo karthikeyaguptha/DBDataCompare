@@ -11,6 +11,7 @@ def make_client(tmp_path):
             "TESTING": True,
             "REPORTS_DIR": tmp_path / "reports",
             "PROFILES_FILE": tmp_path / "config" / "profiles.json",
+            "TABLE_SETS_FILE": tmp_path / "config" / "table-sets.json",
         }
     )
     return app.test_client()
@@ -64,6 +65,64 @@ def test_profile_round_trip_never_persists_passwords(tmp_path):
     deleted = client.delete(f"/api/profiles/{profile_id}")
     assert deleted.status_code == 200
     assert client.get("/api/profiles").json["profiles"] == []
+
+
+def test_named_table_selection_round_trip_is_database_aware(tmp_path):
+    client = make_client(tmp_path)
+    saved = client.post(
+        "/api/table-sets",
+        json={
+            "name": "Monthly reconciliation",
+            "context": {
+                "sqlserver": {
+                    "server": "sql-host",
+                    "port": "1433",
+                    "database": "billing",
+                    "schema": "dbo",
+                    "password": "must-not-be-stored",
+                },
+                "postgres": {
+                    "host": "pg-host",
+                    "port": "5432",
+                    "database": "billing_target",
+                    "schema": "public",
+                },
+            },
+            "selected_tables": ["dbo.customers", "dbo.orders", "dbo.customers"],
+            "manual_keys": {"dbo.orders": ["OrderId"]},
+        },
+    )
+
+    assert saved.status_code == 200
+    table_set = saved.json["table_set"]
+    assert table_set["selected_tables"] == ["dbo.customers", "dbo.orders"]
+    assert table_set["context"]["sqlserver"]["database"] == "billing"
+    assert table_set["context"]["postgres"]["schema"] == "public"
+    assert table_set["manual_keys"] == {"dbo.orders": ["OrderId"]}
+    assert "password" not in table_set["context"]["sqlserver"]
+
+    listed = client.get("/api/table-sets")
+    assert listed.status_code == 200
+    assert listed.json["table_sets"][0]["id"] == table_set["id"]
+
+    raw = (tmp_path / "config" / "table-sets.json").read_text(encoding="utf-8")
+    assert "must-not-be-stored" not in raw
+    assert '"password"' not in raw
+
+    deleted = client.delete(f'/api/table-sets/{table_set["id"]}')
+    assert deleted.status_code == 200
+    assert client.get("/api/table-sets").json["table_sets"] == []
+
+
+def test_named_table_selection_requires_at_least_one_table(tmp_path):
+    client = make_client(tmp_path)
+    response = client.post(
+        "/api/table-sets",
+        json={"name": "Empty selection", "selected_tables": []},
+    )
+
+    assert response.status_code == 400
+    assert "Select at least one table" in response.json["message"]
 
 
 def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):

@@ -36,6 +36,9 @@ def test_home_page_loads():
     assert b"Only in SQL Server" in response.data
     assert b"Only in PostgreSQL" in response.data
     assert b'id="profileSelect"' in response.data
+    assert b'id="tableSetSelect"' in response.data
+    assert b'id="saveTableSet"' in response.data
+    assert b'id="deleteTableSet"' in response.data
     assert b'id="exportReport"' in response.data
     assert b'id="clearTableSearch"' in response.data
     assert b'id="selectAllTables"' in response.data
@@ -44,7 +47,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.6.0" in response.data
+    assert b"v1.9.0" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'<details class="table-filter-options">' in response.data
     assert b"<summary>More options</summary>" in response.data
@@ -72,7 +75,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.6.0-report-readability-and-documentation"
+    assert response.json["phase"] == "v1.9.0-step-two-and-saved-table-selections"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -138,7 +141,7 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     )[1].split(".run-meta .completed-meta", 1)[0]
 
 
-def test_secondary_table_filters_are_grouped_under_more_options():
+def test_all_table_availability_filters_are_grouped_under_more_options():
     project_root = Path(__file__).resolve().parents[1]
     template = (project_root / "templates" / "index.html").read_text(
         encoding="utf-8"
@@ -150,9 +153,34 @@ def test_secondary_table_filters_are_grouped_under_more_options():
     sql_only_position = template.index('value="sql_only"')
     postgres_only_position = template.index('value="postgres_only"')
 
-    assert common_position < options_start
+    assert options_start < common_position < options_end
     assert options_start < sql_only_position < options_end
     assert options_start < postgres_only_position < options_end
+
+
+def test_step_two_owns_comparison_mode_and_named_table_selections():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    step_two = template.index('id="tablesSection"')
+    step_three = template.index('id="compareSection"')
+    comparison_mode = template.index('id="comparisonMode"')
+    assert step_two < comparison_mode < step_three
+    assert template.count('id="comparisonMode"') == 1
+    assert 'id="selectedModeSummary"' in template
+    assert 'class="table-scope-toolbar"' in template
+    assert 'id="tableSetSelect"' in template
+    assert 'id="saveTableSet"' in template
+    assert 'id="deleteTableSet"' in template
+    assert 'requestJson("/api/table-sets"' in javascript
+    assert "async function applyTableSet(tableSet)" in javascript
+    assert "state.selectedTables = new Set(tableSet.selected_tables || []);" in javascript
+    assert "tableSetContextSignature" in javascript
 
 
 def test_step_two_more_options_uses_connection_card_plus_minus_indicator():

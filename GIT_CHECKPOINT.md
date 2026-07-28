@@ -1,12 +1,12 @@
-# Data Sync Check v1.8.0 Git checkpoint
+# Data Sync Check v1.9.0 Git checkpoint
 
-Use one checkpoint for the complete installation cleanup:
+Use one checkpoint for the Step 2 workflow and saved table-selection enhancement:
 
 ```bash
 git add .
-git commit -m "release: simplify Windows setup and launcher for v1.8.0"
+git commit -m "feat: revamp Step 2 and add saved table selections"
 git push origin main
 
-git tag -a v1.8.0 -m "Clean Windows setup with a single requirements file"
-git push origin v1.8.0
+git tag -a v1.9.0 -m "Revamp Step 2 and add saved table selections"
+git push origin v1.9.0
 ```
