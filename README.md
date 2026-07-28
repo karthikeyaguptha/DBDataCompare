@@ -122,3 +122,36 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Enforced binary-only dependency installation.
 - Added dependency, import, and ODBC-driver verification.
 - Added clear first-time setup and normal-launch instructions.
+
+## Launching on Windows and macOS
+
+### Windows
+
+First-time setup:
+
+```bat
+setup.bat
+```
+
+Normal startup:
+
+```bat
+run.bat
+```
+
+### macOS
+
+First-time setup:
+
+```bash
+chmod +x setup.command run.command
+./setup.command
+```
+
+Normal startup:
+
+```bash
+./run.command
+```
+
+The application opens `http://127.0.0.1:5000` in the default browser. Windows and macOS use separate launcher files because `.bat` files cannot run natively on macOS. SQL Server ODBC system drivers are installed separately on each operating system.
