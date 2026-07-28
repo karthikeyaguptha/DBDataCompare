@@ -1311,15 +1311,13 @@ select:disabled {
 
 .table-set-tools {
     display: grid;
-    grid-template-columns: minmax(155px, 0.7fr) minmax(220px, 1fr) repeat(4, 40px);
+    grid-template-columns: minmax(190px, 0.82fr) minmax(260px, 1.18fr) repeat(2, 40px);
     align-items: end;
     gap: 8px;
 }
 
 .save-table-set,
-.delete-table-set,
-.export-table-set,
-.import-table-set {
+.delete-table-set {
     width: 40px;
     height: 40px;
 }
@@ -1365,22 +1363,6 @@ select:disabled {
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
-}
-
-.export-table-set,
-.import-table-set {
-    border-color: var(--line);
-    background: var(--surface);
-    color: var(--ink-soft);
-    font-size: 19px;
-    font-weight: 800;
-}
-
-.export-table-set:hover:not(:disabled),
-.import-table-set:hover:not(:disabled) {
-    border-color: var(--primary);
-    background: var(--primary-soft);
-    color: var(--primary);
 }
 
 .reconciliation-dialog {
@@ -1457,7 +1439,37 @@ select:disabled {
 }
 
 .reconciliation-table {
-    min-width: 720px;
+    min-width: 790px;
+}
+
+.reconciliation-select-heading,
+.reconciliation-select-cell {
+    width: 112px;
+    text-align: center;
+}
+
+.reconciliation-select-heading label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.reconciliation-select-heading input,
+.reconciliation-select-cell input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--primary);
+}
+
+.reconciliation-row-unavailable {
+    opacity: 0.72;
+}
+
+.reconciliation-row-unavailable .reconciliation-select-cell input {
+    cursor: not-allowed;
 }
 
 .reconciliation-status {
@@ -2763,7 +2775,7 @@ select:disabled {
     }
 
     .table-set-tools {
-        grid-template-columns: minmax(0, 1fr) repeat(4, 40px);
+        grid-template-columns: minmax(0, 1fr) repeat(2, 40px);
     }
 
     .table-set-type-choice,

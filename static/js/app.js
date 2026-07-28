@@ -106,13 +106,11 @@ const elements = {
     tableSetType: document.querySelector("#tableSetType"),
     saveTableSet: document.querySelector("#saveTableSet"),
     deleteTableSet: document.querySelector("#deleteTableSet"),
-    exportTableSet: document.querySelector("#exportTableSet"),
-    importTableSet: document.querySelector("#importTableSet"),
-    tableSetImportFile: document.querySelector("#tableSetImportFile"),
     reconciliationDialog: document.querySelector("#reconciliationDialog"),
     reconciliationSummary: document.querySelector("#reconciliationSummary"),
     reconciliationCounts: document.querySelector("#reconciliationCounts"),
     reconciliationBody: document.querySelector("#reconciliationBody"),
+    selectAllReconciliation: document.querySelector("#selectAllReconciliation"),
     closeReconciliation: document.querySelector("#closeReconciliation"),
     cancelReconciliation: document.querySelector("#cancelReconciliation"),
     applyReconciliation: document.querySelector("#applyReconciliation"),
@@ -512,7 +510,7 @@ async function refreshTableSets(selectId = "") {
         );
         state.tableSets.forEach((tableSet) => {
             const count = tableSet.selected_tables?.length || 0;
-            const type = tableSet.selection_type === "portable" ? "Portable" : "Connection";
+            const type = tableSet.selection_type === "portable" ? "Reusable" : "Connection";
             elements.tableSetSelect.add(
                 new Option(
                     `${tableSet.name} · ${type} · ${count} table${count === 1 ? "" : "s"}`,
@@ -525,6 +523,9 @@ async function refreshTableSets(selectId = "") {
             ? selectId
             : "";
         state.currentTableSetId = elements.tableSetSelect.value;
+        if (!state.currentTableSetId) {
+            elements.tableSetType.value = "portable";
+        }
         updateTableSetButtons();
     } catch (error) {
         addLog("WARN", error.message);
@@ -539,8 +540,6 @@ function updateTableSetButtons() {
     elements.saveTableSet.disabled =
         !workspaceReady || !state.selectedTables.size || state.comparing;
     elements.deleteTableSet.disabled = !workspaceReady || !selected || state.comparing;
-    elements.exportTableSet.disabled = !workspaceReady || !selected || state.comparing;
-    elements.importTableSet.disabled = !workspaceReady || state.comparing;
     elements.saveTableSet.classList.toggle(
         "is-dirty",
         selected && state.tableSetDirty,
@@ -567,8 +566,8 @@ async function applyTableSet(tableSet) {
             },
         );
         const reconciliation = response.reconciliation;
-        const accepted = await showReconciliationPreview(reconciliation);
-        if (!accepted) {
+        const selected = await showReconciliationPreview(reconciliation);
+        if (!selected) {
             elements.tableSetSelect.value = "";
             state.currentTableSetId = "";
             updateTableSetButtons();
@@ -576,15 +575,15 @@ async function applyTableSet(tableSet) {
         }
         applyResolvedTableSet(
             tableSet,
-            reconciliation.applicable_table_ids,
-            reconciliation.applicable_manual_keys,
+            selected.tableIds,
+            selected.manualKeys,
         );
         const skipped = reconciliation.entries.length
-            - reconciliation.applicable_table_ids.length;
+            - selected.tableIds.length;
         showToast(
             skipped
-                ? `${reconciliation.applicable_table_ids.length} available table(s) selected; ${skipped} skipped.`
-                : `Portable template "${tableSet.name}" applied.`,
+                ? `${selected.tableIds.length} selected table(s) applied; ${skipped} skipped.`
+                : `Reusable Tables Selection "${tableSet.name}" applied.`,
             skipped ? "warning" : "success",
         );
         return;
@@ -665,31 +664,81 @@ function showReconciliationPreview(reconciliation) {
     elements.reconciliationBody.replaceChildren();
     reconciliation.entries.forEach((entry) => {
         const row = document.createElement("tr");
+        const selectable = entry.status === "available_in_both" && Boolean(entry.resolved_id);
         const sqlName = entry.sqlserver || "—";
         const pgName = entry.postgres || "—";
         const detail = entry.status === "ambiguous" && entry.candidates?.length
             ? `${labels[entry.status]}: ${entry.candidates.join(", ")}`
             : labels[entry.status];
         row.innerHTML = `
+            <td class="reconciliation-select-cell">
+                <input class="reconciliation-checkbox" type="checkbox">
+            </td>
             <td><strong></strong></td>
             <td></td>
             <td></td>
             <td><span class="reconciliation-status ${entry.status}"></span></td>`;
-        row.children[0].querySelector("strong").textContent = entry.requested_id;
-        row.children[1].textContent = sqlName;
-        row.children[2].textContent = pgName;
-        row.children[3].querySelector("span").textContent = detail;
+        const checkbox = row.querySelector(".reconciliation-checkbox");
+        checkbox.checked = selectable;
+        checkbox.disabled = !selectable;
+        checkbox.dataset.tableId = entry.resolved_id || "";
+        checkbox.setAttribute(
+            "aria-label",
+            selectable
+                ? `Select ${entry.requested_id}`
+                : `${entry.requested_id} is unavailable for comparison`,
+        );
+        row.classList.toggle("reconciliation-row-unavailable", !selectable);
+        row.children[1].querySelector("strong").textContent = entry.requested_id;
+        row.children[2].textContent = sqlName;
+        row.children[3].textContent = pgName;
+        row.children[4].querySelector("span").textContent = detail;
         elements.reconciliationBody.append(row);
     });
-    elements.applyReconciliation.disabled = !reconciliation.can_apply;
-    elements.applyReconciliation.textContent =
-        `Select ${reconciliation.applicable_table_ids.length} available table(s)`;
+
+    const selectableCheckboxes = () => [
+        ...elements.reconciliationBody.querySelectorAll(
+            ".reconciliation-checkbox:not(:disabled)",
+        ),
+    ];
+    const selectedTables = () => selectableCheckboxes()
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.dataset.tableId);
+    const updateReconciliationSelection = () => {
+        const checkboxes = selectableCheckboxes();
+        const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+        elements.selectAllReconciliation.disabled = !checkboxes.length;
+        elements.selectAllReconciliation.checked =
+            Boolean(checkboxes.length) && selectedCount === checkboxes.length;
+        elements.selectAllReconciliation.indeterminate =
+            selectedCount > 0 && selectedCount < checkboxes.length;
+        elements.applyReconciliation.disabled = selectedCount === 0;
+        elements.applyReconciliation.textContent =
+            `Apply ${selectedCount} selected table${selectedCount === 1 ? "" : "s"}`;
+    };
+    selectableCheckboxes().forEach((checkbox) => {
+        checkbox.addEventListener("change", updateReconciliationSelection);
+    });
+    elements.selectAllReconciliation.onchange = () => {
+        const checked = elements.selectAllReconciliation.checked;
+        selectableCheckboxes().forEach((checkbox) => {
+            checkbox.checked = checked;
+        });
+        updateReconciliationSelection();
+    };
+    updateReconciliationSelection();
     elements.reconciliationDialog.showModal();
     return new Promise((resolve) => {
         const finish = (accepted) => {
+            const tableIds = accepted ? selectedTables() : [];
+            const manualKeys = {};
+            tableIds.forEach((tableId) => {
+                const keys = reconciliation.applicable_manual_keys?.[tableId];
+                if (keys?.length) manualKeys[tableId] = keys;
+            });
             elements.reconciliationDialog.close();
             state.pendingReconciliation = null;
-            resolve(accepted);
+            resolve(accepted ? { tableIds, manualKeys } : null);
         };
         elements.applyReconciliation.onclick = () => finish(true);
         elements.cancelReconciliation.onclick = () => finish(false);
@@ -724,6 +773,7 @@ function clearCurrentTableSelection({ clearSavedSet = false } = {}) {
     if (clearSavedSet) {
         state.currentTableSetId = "";
         state.tableSetDirty = false;
+        elements.tableSetType.value = "portable";
     } else {
         markTableSetDirty();
     }
@@ -2275,41 +2325,6 @@ elements.deleteTableSet.addEventListener("click", async () => {
         showToast(error.message, "error");
     }
 });
-elements.exportTableSet.addEventListener("click", () => {
-    const tableSetId = elements.tableSetSelect.value;
-    if (!tableSetId) return;
-    window.location.assign(`/api/table-sets/${tableSetId}/export`);
-});
-elements.importTableSet.addEventListener("click", () => {
-    elements.tableSetImportFile.value = "";
-    elements.tableSetImportFile.click();
-});
-elements.tableSetImportFile.addEventListener("change", async () => {
-    const file = elements.tableSetImportFile.files?.[0];
-    if (!file) return;
-    try {
-        if (file.size > 2 * 1024 * 1024) {
-            throw new Error("Choose a table-selection JSON file smaller than 2 MB.");
-        }
-        const document = JSON.parse(await file.text());
-        const result = await requestJson("/api/table-sets/import", {
-            method: "POST",
-            body: JSON.stringify(document),
-        });
-        await refreshTableSets(result.table_set.id);
-        elements.tableSetType.value =
-            result.table_set.selection_type || "connection_specific";
-        addLog("READY", result.message);
-        showToast(result.message, "success");
-    } catch (error) {
-        const message = error instanceof SyntaxError
-            ? "The selected file is not valid JSON."
-            : error.message;
-        addLog("WARN", message);
-        showToast(message, "error");
-    }
-});
-
 elements.startCompareButtons.forEach((button) => {
     button.addEventListener("click", () => {
         if (state.comparisonPromise) return;

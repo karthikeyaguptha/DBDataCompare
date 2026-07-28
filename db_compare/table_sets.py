@@ -72,50 +72,11 @@ def save_table_set(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     return table_set
 
 
-def import_table_set(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
-    if (
-        not isinstance(payload, dict)
-        or payload.get("format") != "data-sync-check-table-selection"
-        or payload.get("format_version") != 1
-    ):
-        raise DatabaseConfigurationError(
-            "Choose a supported Data Sync Check table-selection JSON file."
-        )
-    document = payload.get("table_selection") if isinstance(payload, dict) else None
-    if not isinstance(document, dict):
-        raise DatabaseConfigurationError(
-            "Choose a valid Data Sync Check table-selection JSON file."
-        )
-    imported = dict(document)
-    imported.pop("id", None)
-    return save_table_set(path, imported)
-
-
-def export_table_set(table_set: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "format": "data-sync-check-table-selection",
-        "format_version": 1,
-        "application": "Data Sync Check",
-        "table_selection": {
-            key: table_set.get(key)
-            for key in (
-                "name",
-                "selection_type",
-                "context",
-                "selected_tables",
-                "manual_keys",
-                "comparison_mode",
-                "batch_size",
-            )
-        },
-    }
-
-
 def reconcile_table_set(
     table_set: dict[str, Any],
     catalog: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Resolve a portable template against the active table catalog."""
+    """Resolve a reusable table selection against the active table catalog."""
     catalog_by_id = {str(row.get("id", "")).casefold(): row for row in catalog}
     by_leaf: dict[str, list[dict[str, Any]]] = {}
     for row in catalog:
@@ -214,10 +175,10 @@ def _sanitize_table_set(payload: dict[str, Any]) -> dict[str, Any]:
     manual_keys = payload.get("manual_keys")
     return {
         "selection_type": (
-            str(payload.get("selection_type", "connection_specific")).strip()
-            if str(payload.get("selection_type", "connection_specific")).strip()
+            str(payload.get("selection_type", "portable")).strip()
+            if str(payload.get("selection_type", "portable")).strip()
             in _TABLE_SET_TYPES
-            else "connection_specific"
+            else "portable"
         ),
         "context": {
             database: _allowed_context_fields(context.get(database), fields)

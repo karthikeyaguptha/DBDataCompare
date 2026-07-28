@@ -47,11 +47,13 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.9.2" in response.data
+    assert b"v1.9.3" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'id="tableSetType"' in response.data
-    assert b'id="exportTableSet"' in response.data
-    assert b'id="importTableSet"' in response.data
+    assert b'id="exportTableSet"' not in response.data
+    assert b'id="importTableSet"' not in response.data
+    assert b"Reusable Tables Selection" in response.data
+    assert b'id="selectAllReconciliation"' in response.data
     assert b'id="reconciliationDialog"' in response.data
     assert b'<details class="table-filter-options">' not in response.data
     assert response.data.count(b"<summary>More options</summary>") == 2
@@ -79,7 +81,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.9.2-portable-table-templates"
+    assert response.json["phase"] == "v1.9.3-reusable-table-reconciliation"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -223,14 +225,19 @@ def test_step_two_owns_comparison_mode_and_named_table_selections():
     assert 'id="deleteTableSet"' in template
     assert 'id="tableSetType"' in template
     assert 'value="portable"' in template
-    assert 'id="exportTableSet"' in template
-    assert 'id="importTableSet"' in template
+    assert '<option value="portable" selected>Reusable Tables Selection</option>' in template
+    assert 'id="exportTableSet"' not in template
+    assert 'id="importTableSet"' not in template
+    assert 'id="tableSetImportFile"' not in template
     assert 'id="reconciliationDialog"' in template
+    assert 'id="selectAllReconciliation"' in template
     assert 'requestJson("/api/table-sets"' in javascript
     assert "async function applyTableSet(tableSet)" in javascript
     assert "showReconciliationPreview(reconciliation)" in javascript
-    assert "reconciliation.applicable_table_ids" in javascript
-    assert 'requestJson("/api/table-sets/import"' in javascript
+    assert 'class="reconciliation-checkbox"' in javascript
+    assert "selected.tableIds" in javascript
+    assert "elements.selectAllReconciliation.onchange" in javascript
+    assert 'requestJson("/api/table-sets/import"' not in javascript
     assert "tableSetContextSignature" in javascript
 
 

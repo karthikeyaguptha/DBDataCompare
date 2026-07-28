@@ -20,7 +20,7 @@ fail() {
   || fail "The Python environment is damaged or incomplete. Run setup.command again."
 
 printf '%s\n' "============================================================"
-printf '%s\n' " Starting Data Sync Check v1.9.2"
+printf '%s\n' " Starting Data Sync Check v1.9.3"
 printf '%s\n' "============================================================"
 printf '%s\n' "Application URL: http://127.0.0.1:5000"
 printf '%s\n' "The browser will open automatically."

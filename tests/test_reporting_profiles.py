@@ -75,6 +75,7 @@ def test_named_table_selection_round_trip_is_database_aware(tmp_path):
         "/api/table-sets",
         json={
             "name": "Monthly reconciliation",
+            "selection_type": "connection_specific",
             "context": {
                 "sqlserver": {
                     "server": "sql-host",
@@ -127,12 +128,12 @@ def test_named_table_selection_requires_at_least_one_table(tmp_path):
     assert "Select at least one table" in response.json["message"]
 
 
-def test_portable_template_round_trip_reconciliation_and_json_transfer(tmp_path):
+def test_reusable_selection_round_trip_and_reconciliation(tmp_path):
     client = make_client(tmp_path)
     saved = client.post(
         "/api/table-sets",
         json={
-            "name": "Portable finance tables",
+            "name": "Reusable finance tables",
             "selection_type": "portable",
             "context": {
                 "sqlserver": {"server": "origin-sql", "database": "finance"},
@@ -142,7 +143,6 @@ def test_portable_template_round_trip_reconciliation_and_json_transfer(tmp_path)
             "manual_keys": {"orders": ["OrderId"]},
             "comparison_mode": "full",
             "batch_size": 2000,
-            "password": "never-export-this",
         },
     )
     assert saved.status_code == 200
@@ -176,24 +176,7 @@ def test_portable_template_round_trip_reconciliation_and_json_transfer(tmp_path)
     assert result["applicable_table_ids"] == ["customers", "orders"]
     assert result["applicable_manual_keys"] == {"orders": ["OrderId"]}
 
-    exported = client.get(f'/api/table-sets/{table_set["id"]}/export')
-    assert exported.status_code == 200
-    assert "attachment" in exported.headers["Content-Disposition"]
-    document = exported.json
-    raw = exported.get_data(as_text=True)
-    assert document["format"] == "data-sync-check-table-selection"
-    assert document["table_selection"]["selection_type"] == "portable"
-    assert "never-export-this" not in raw
-    assert '"password"' not in raw
-    document["table_selection"]["name"] = "Imported portable finance"
-
-    imported = client.post("/api/table-sets/import", json=document)
-    assert imported.status_code == 200
-    assert imported.json["table_set"]["name"] == "Imported portable finance"
-    assert imported.json["table_set"]["selection_type"] == "portable"
-
-
-def test_portable_reconciliation_reports_missing_and_ambiguous_tables():
+def test_reusable_reconciliation_reports_missing_and_ambiguous_tables():
     result = reconcile_table_set(
         {
             "id": "table-set-test",
@@ -223,14 +206,20 @@ def test_portable_reconciliation_reports_missing_and_ambiguous_tables():
     assert result["can_apply"] is False
 
 
-def test_table_selection_import_rejects_unrelated_json(tmp_path):
-    response = make_client(tmp_path).post(
-        "/api/table-sets/import",
-        json={"name": "Not a Data Sync Check export", "password": "secret"},
+def test_table_selection_json_transfer_routes_are_removed(tmp_path):
+    client = make_client(tmp_path)
+    saved = client.post(
+        "/api/table-sets",
+        json={
+            "name": "Reusable set",
+            "selection_type": "portable",
+            "selected_tables": ["customers"],
+        },
     )
+    table_set_id = saved.json["table_set"]["id"]
 
-    assert response.status_code == 400
-    assert "supported Data Sync Check" in response.json["message"]
+    assert client.get(f"/api/table-sets/{table_set_id}/export").status_code == 404
+    assert client.post("/api/table-sets/import", json={}).status_code in {404, 405}
 
 
 def test_report_run_writes_summary_csv_jsonl_and_log(tmp_path):

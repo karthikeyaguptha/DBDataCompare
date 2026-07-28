@@ -17,8 +17,8 @@
             document.documentElement.dataset.theme = saved || "dark";
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.9.2') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='1.9.2') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.9.3') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='1.9.3') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -368,8 +368,8 @@
                     <label class="scope-choice table-set-type-choice">
                         <span>Save as</span>
                         <select id="tableSetType" aria-label="Table selection type" disabled>
-                            <option value="connection_specific" selected>Connection-specific</option>
-                            <option value="portable">Portable template</option>
+                            <option value="portable" selected>Reusable Tables Selection</option>
+                            <option value="connection_specific">Connection-specific</option>
                         </select>
                     </label>
                     <label class="scope-choice table-set-choice">
@@ -392,16 +392,6 @@
                             <path d="M10 11v5M14 11v5"/>
                         </svg>
                     </button>
-                    <button class="icon-button export-table-set" id="exportTableSet" type="button" disabled
-                        aria-label="Export selected table selection as JSON" title="Export selection as JSON">
-                        <span aria-hidden="true">↓</span>
-                    </button>
-                    <button class="icon-button import-table-set" id="importTableSet" type="button" disabled
-                        aria-label="Import table selection from JSON" title="Import selection from JSON">
-                        <span aria-hidden="true">↑</span>
-                    </button>
-                    <input class="sr-only" id="tableSetImportFile" type="file"
-                        accept="application/json,.json" tabindex="-1">
                 </div>
             </div>
             <div class="table-toolbar">
@@ -703,7 +693,7 @@
         aria-labelledby="reconciliationTitle">
         <div class="reconciliation-head">
             <div>
-                <p class="section-kicker">Portable template check</p>
+                <p class="section-kicker">Reusable Tables Selection check</p>
                 <h2 id="reconciliationTitle">Reconcile table selection</h2>
                 <p id="reconciliationSummary"></p>
             </div>
@@ -715,6 +705,12 @@
             <table class="data-table reconciliation-table">
                 <thead>
                     <tr>
+                        <th class="reconciliation-select-heading">
+                            <label>
+                                <input id="selectAllReconciliation" type="checkbox">
+                                <span>Select All</span>
+                            </label>
+                        </th>
                         <th>Requested table</th>
                         <th>SQL Server</th>
                         <th>PostgreSQL</th>
@@ -737,7 +733,7 @@
     </button>
 
     <footer class="footer">
-        <span>Data Sync Check <b>v1.9.2</b></span>
+        <span>Data Sync Check <b>v1.9.3</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

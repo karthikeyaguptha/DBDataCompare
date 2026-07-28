@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.2
+# Data Sync Check v1.9.3
 
 Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
 
@@ -7,13 +7,13 @@ Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across sc
 1. Enter and test both database connections.
 2. Load the table catalog.
 3. In Step 2, choose the comparison mode and select tables.
-4. Optionally save the selected tables as a connection-specific selection or portable template.
+4. Optionally save the selected tables as a Reusable Tables Selection or connection-specific selection.
 5. Start the comparison from Step 2 or Step 3.
 6. Review results in the workspace or open the shareable HTML/PDF report.
 
-Connection-specific selections restore tables across every pagination page and remain tied to the SQL Server/PostgreSQL context in which they were saved. Portable templates can be reused with another database pair. Before a portable template is applied, Data Sync Check shows a reconciliation preview for tables available in both databases, available on only one side, missing, or ambiguous. Only tables available in both are selected.
+**Reusable Tables Selection** is the default save type and can be used with another database pair. Before it changes the active selection, Data Sync Check shows a reconciliation table containing available, one-sided, missing, and ambiguous results. Available rows start selected; users can select all, clear all, or choose individual rows and apply that exact subset to the main table grid.
 
-Saved selections can be exported as Data Sync Check JSON and imported on another installation. Exported selection files contain table references, manual keys, comparison mode, batch size, and origin context; they never contain passwords or credentials.
+Connection-specific selections restore tables across every pagination page and remain tied to the SQL Server/PostgreSQL context in which they were saved.
 
 ## Windows prerequisites
 
@@ -48,7 +48,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.9.2 setup completed successfully
+Data Sync Check v1.9.3 setup completed successfully
 ```
 
 ### Every normal launch
@@ -126,14 +126,23 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Reports should not contain passwords or authentication secrets.
 - Generated reports and exported mismatch data can contain business-sensitive information and should be handled accordingly.
 
+## Version 1.9.3 changes
+
+- Renames Portable Template to **Reusable Tables Selection** and makes it the default save type.
+- Adds a checkbox to each applicable reconciliation row.
+- Adds a Select All checkbox with checked, unchecked, and partial-selection states.
+- Applies only the user-confirmed reconciliation rows to the main table grid.
+- Keeps unavailable, missing, and ambiguous rows visible but disabled.
+- Removes table-selection JSON import and export controls and endpoints.
+- Expands the remaining saved-selection fields into the recovered Step 2 space.
+
 ## Version 1.9.2 changes
 
-- Adds connection-specific and portable saved-selection types.
-- Reconciles portable templates against the currently loaded database pair before applying them.
+- Adds connection-specific and reusable saved-selection types.
+- Reconciles reusable selections against the currently loaded database pair before applying them.
 - Shows available-in-both, SQL-only, PostgreSQL-only, missing, and ambiguous outcomes.
 - Selects only valid tables after explicit user confirmation; skipped tables remain visible in the preview.
 - Restores applicable manual keys, comparison mode, and batch size.
-- Adds credential-free JSON export and import for saved table selections.
 
 ## Version 1.9.0 changes
 

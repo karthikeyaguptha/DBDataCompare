@@ -23,7 +23,7 @@ fail() {
 [ -f "app.py" ] || fail "app.py was not found."
 
 printf '%s\n' "============================================================"
-printf '%s\n' " Data Sync Check v1.9.2 - First-time Setup for macOS"
+printf '%s\n' " Data Sync Check v1.9.3 - First-time Setup for macOS"
 printf '%s\n' "============================================================"
 
 if [ -d ".venv" ]; then
@@ -44,7 +44,7 @@ VENV_PYTHON="$PWD/.venv/bin/python"
 
 touch .venv/.data-sync-check-ready
 
-printf '\n%s\n' "[OK] Data Sync Check v1.9.2 setup completed successfully."
+printf '\n%s\n' "[OK] Data Sync Check v1.9.3 setup completed successfully."
 printf '%s\n' "Run run.command to start the application."
 printf '%s\n' "SQL Server ODBC system drivers must be installed separately on macOS."
 read -r -p "Press Enter to close..." _
