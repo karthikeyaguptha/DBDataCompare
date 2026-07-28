@@ -127,17 +127,14 @@ exit /b 0
 
 :check_odbc
 set "ODBC_FILE=%TEMP%\dsc_odbc_drivers_%RANDOM%.txt"
-set "ODBC_DRIVERS="
-"%VENV_PYTHON%" -c "import pyodbc; print(' | '.join(pyodbc.drivers()))" > "%ODBC_FILE%" 2>nul
-if exist "%ODBC_FILE%" set /p ODBC_DRIVERS=<"%ODBC_FILE%"
+"%VENV_PYTHON%" -c "import pyodbc; d=pyodbc.drivers(); print('Installed ODBC drivers: ' + (', '.join(d) if d else 'None')); raise SystemExit(0 if any(x in d for x in ('ODBC Driver 18 for SQL Server','ODBC Driver 17 for SQL Server')) else 1)" > "%ODBC_FILE%" 2>nul
+set "ODBC_STATUS=%ERRORLEVEL%"
+type "%ODBC_FILE%"
 del /q "%ODBC_FILE%" >nul 2>&1
-
-echo %ODBC_DRIVERS% | findstr /I /C:"ODBC Driver 18 for SQL Server" /C:"ODBC Driver 17 for SQL Server" >nul
-if not errorlevel 1 goto :odbc_found
+if "%ODBC_STATUS%"=="0" goto :odbc_found
 
 echo [WARNING] Microsoft ODBC Driver 17 or 18 for SQL Server was not detected.
 echo           Python setup is complete. Install the SQL Server ODBC driver manually before testing SQL Server connections.
-if defined ODBC_DRIVERS echo           Installed ODBC drivers: %ODBC_DRIVERS%
 exit /b 0
 
 :odbc_found
