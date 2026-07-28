@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
-title Data Sync Check v1.9.3
+title Data Sync Check v1.9.4
 
 set "VENV_PYTHON=%CD%\.venv\Scripts\python.exe"
 set "READY_MARKER=%CD%\.venv\.data-sync-check-ready"
@@ -15,7 +15,7 @@ if not exist "%ENTRY_POINT%" goto :missing_app
 if errorlevel 1 goto :broken_env
 
 echo ============================================================
-echo  Starting Data Sync Check v1.9.3
+echo  Starting Data Sync Check v1.9.4
 echo ============================================================
 echo Application URL: http://127.0.0.1:5000
 echo The browser will open automatically.

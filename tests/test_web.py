@@ -47,7 +47,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.9.3" in response.data
+    assert b"v1.9.4" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'id="tableSetType"' in response.data
     assert b'id="exportTableSet"' not in response.data
@@ -81,7 +81,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.9.3-reusable-table-reconciliation"
+    assert response.json["phase"] == "v1.9.4-reusable-table-reconciliation"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -231,10 +231,15 @@ def test_step_two_owns_comparison_mode_and_named_table_selections():
     assert 'id="tableSetImportFile"' not in template
     assert 'id="reconciliationDialog"' in template
     assert 'id="selectAllReconciliation"' in template
+    assert "<span>Select All</span>" not in template
+    assert 'aria-label="Select or clear all selectable tables"' in template
     assert 'requestJson("/api/table-sets"' in javascript
     assert "async function applyTableSet(tableSet)" in javascript
     assert "showReconciliationPreview(reconciliation)" in javascript
     assert 'class="reconciliation-checkbox"' in javascript
+    assert '"sqlserver_only",' in javascript
+    assert '"postgres_only",' in javascript
+    assert 'const selectedByDefault = entry.status === "available_in_both"' in javascript
     assert "selected.tableIds" in javascript
     assert "elements.selectAllReconciliation.onchange" in javascript
     assert 'requestJson("/api/table-sets/import"' not in javascript

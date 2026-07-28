@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.3
+# Data Sync Check v1.9.4
 
 Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
 
@@ -11,7 +11,7 @@ Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across sc
 5. Start the comparison from Step 2 or Step 3.
 6. Review results in the workspace or open the shareable HTML/PDF report.
 
-**Reusable Tables Selection** is the default save type and can be used with another database pair. Before it changes the active selection, Data Sync Check shows a reconciliation table containing available, one-sided, missing, and ambiguous results. Available rows start selected; users can select all, clear all, or choose individual rows and apply that exact subset to the main table grid.
+**Reusable Tables Selection** is the default save type and can be used with another database pair. Before it changes the active selection, Data Sync Check shows a reconciliation table containing available, one-sided, missing, and ambiguous results. Common rows start selected; SQL-only and PostgreSQL-only rows remain selectable; users can select all, clear all, or choose individual rows and apply that exact subset to the main table grid.
 
 Connection-specific selections restore tables across every pagination page and remain tied to the SQL Server/PostgreSQL context in which they were saved.
 
@@ -48,7 +48,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.9.3 setup completed successfully
+Data Sync Check v1.9.4 setup completed successfully
 ```
 
 ### Every normal launch
@@ -126,13 +126,21 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Reports should not contain passwords or authentication secrets.
 - Generated reports and exported mismatch data can contain business-sensitive information and should be handled accordingly.
 
-## Version 1.9.3 changes
+## Version 1.9.4 changes
+
+- Removes the visible **Select All** text while retaining an accessible master checkbox.
+- Allows SQL Server-only and PostgreSQL-only reconciliation rows to be selected.
+- Keeps common rows selected by default and one-sided rows available as explicit opt-ins.
+- Applies checked one-sided rows to Step 2, where a run reports the missing counterpart without attempting a normal comparison.
+- Keeps missing-in-both and ambiguous rows disabled because they cannot resolve to one table.
+
+## Version 1.9.4 changes
 
 - Renames Portable Template to **Reusable Tables Selection** and makes it the default save type.
 - Adds a checkbox to each applicable reconciliation row.
 - Adds a Select All checkbox with checked, unchecked, and partial-selection states.
 - Applies only the user-confirmed reconciliation rows to the main table grid.
-- Keeps unavailable, missing, and ambiguous rows visible but disabled.
+- Keeps missing and ambiguous rows visible but disabled.
 - Removes table-selection JSON import and export controls and endpoints.
 - Expands the remaining saved-selection fields into the recovered Step 2 space.
 

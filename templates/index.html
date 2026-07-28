@@ -17,8 +17,8 @@
             document.documentElement.dataset.theme = saved || "dark";
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.9.3') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='1.9.3') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.9.4') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='1.9.4') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -707,8 +707,8 @@
                     <tr>
                         <th class="reconciliation-select-heading">
                             <label>
-                                <input id="selectAllReconciliation" type="checkbox">
-                                <span>Select All</span>
+                                <input id="selectAllReconciliation" type="checkbox"
+                                    aria-label="Select or clear all selectable tables">
                             </label>
                         </th>
                         <th>Requested table</th>
@@ -733,7 +733,7 @@
     </button>
 
     <footer class="footer">
-        <span>Data Sync Check <b>v1.9.3</b></span>
+        <span>Data Sync Check <b>v1.9.4</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

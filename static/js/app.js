@@ -664,7 +664,12 @@ function showReconciliationPreview(reconciliation) {
     elements.reconciliationBody.replaceChildren();
     reconciliation.entries.forEach((entry) => {
         const row = document.createElement("tr");
-        const selectable = entry.status === "available_in_both" && Boolean(entry.resolved_id);
+        const selectable = [
+            "available_in_both",
+            "sqlserver_only",
+            "postgres_only",
+        ].includes(entry.status) && Boolean(entry.resolved_id);
+        const selectedByDefault = entry.status === "available_in_both";
         const sqlName = entry.sqlserver || "—";
         const pgName = entry.postgres || "—";
         const detail = entry.status === "ambiguous" && entry.candidates?.length
@@ -679,14 +684,14 @@ function showReconciliationPreview(reconciliation) {
             <td></td>
             <td><span class="reconciliation-status ${entry.status}"></span></td>`;
         const checkbox = row.querySelector(".reconciliation-checkbox");
-        checkbox.checked = selectable;
+        checkbox.checked = selectable && selectedByDefault;
         checkbox.disabled = !selectable;
         checkbox.dataset.tableId = entry.resolved_id || "";
         checkbox.setAttribute(
             "aria-label",
             selectable
                 ? `Select ${entry.requested_id}`
-                : `${entry.requested_id} is unavailable for comparison`,
+                : `${entry.requested_id} cannot be resolved in the current databases`,
         );
         row.classList.toggle("reconciliation-row-unavailable", !selectable);
         row.children[1].querySelector("strong").textContent = entry.requested_id;
