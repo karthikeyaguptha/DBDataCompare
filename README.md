@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.0
+# Data Sync Check v1.9.1
 
 Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
 
@@ -46,7 +46,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.9.0 setup completed successfully
+Data Sync Check v1.9.1 setup completed successfully
 ```
 
 ### Every normal launch
@@ -124,10 +124,15 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Reports should not contain passwords or authentication secrets.
 - Generated reports and exported mismatch data can contain business-sensitive information and should be handled accordingly.
 
+## Version 1.9.1 changes
+
+- Keeps Common, SQL Server-only, and PostgreSQL-only availability checkboxes visible in Step 2.
+- Selecting No saved table selection clears all selected tables and manual comparison keys.
+- Gives every Step 3 run-setting item the same summary-card design.
+
 ## Version 1.9.0 changes
 
 - Moved Comparison Mode into Step 2 beside table-selection scope.
-- Grouped Common, SQL Server-only, and PostgreSQL-only availability filters under More options.
 - Added named reusable table selections with automatic multi-page restoration.
 - Restores saved manual comparison keys with a named table selection.
 - Validates the database and schema context before applying a saved selection.

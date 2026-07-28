@@ -17,8 +17,8 @@
             document.documentElement.dataset.theme = saved || "dark";
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.9.0') }}">
-    <script src="{{ url_for('static', filename='js/app.js', v='1.9.0') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='1.9.1') }}">
+    <script src="{{ url_for('static', filename='js/app.js', v='1.9.1') }}" defer></script>
 </head>
 <body>
     <a class="skip-link" href="#workspace">Skip to workspace</a>
@@ -395,24 +395,18 @@
                         aria-label="Clear table search" title="Clear search" disabled>×</button>
                 </label>
                 <div class="status-filters" role="group" aria-label="Filter tables by availability">
-                    <details class="table-filter-options">
-                        <summary>More options</summary>
-                        <div class="table-filter-options-menu">
-                            <span class="options-label">Table availability</span>
-                            <label class="filter-check common">
-                                <input class="table-status-filter" type="checkbox" value="available" checked disabled>
-                                <span>Common</span>
-                            </label>
-                            <label class="filter-check sql-only">
-                                <input class="table-status-filter" type="checkbox" value="sql_only" disabled>
-                                <span>Only in SQL Server</span>
-                            </label>
-                            <label class="filter-check pg-only">
-                                <input class="table-status-filter" type="checkbox" value="postgres_only" disabled>
-                                <span>Only in PostgreSQL</span>
-                            </label>
-                        </div>
-                    </details>
+                    <label class="filter-check common">
+                        <input class="table-status-filter" type="checkbox" value="available" checked disabled>
+                        <span>Common</span>
+                    </label>
+                    <label class="filter-check sql-only">
+                        <input class="table-status-filter" type="checkbox" value="sql_only" disabled>
+                        <span>Only in SQL Server</span>
+                    </label>
+                    <label class="filter-check pg-only">
+                        <input class="table-status-filter" type="checkbox" value="postgres_only" disabled>
+                        <span>Only in PostgreSQL</span>
+                    </label>
                 </div>
                 <div class="selection-actions">
                     <span class="selection-count" id="selectionCount">0 selected</span>
@@ -540,7 +534,7 @@
                     <span>Comparison mode</span>
                     <strong id="selectedModeSummary">Schema + Row Count + Data</strong>
                 </div>
-                <label>
+                <label class="run-summary batch-size-summary">
                     <span>Batch size</span>
                     <select id="batchSize" disabled>
                         <option value="5000" selected>5,000 rows</option>
@@ -694,7 +688,7 @@
     </button>
 
     <footer class="footer">
-        <span>Data Sync Check <b>v1.9.0</b></span>
+        <span>Data Sync Check <b>v1.9.1</b></span>
         <span>Local access only · <code>127.0.0.1</code> · No credentials stored</span>
     </footer>
 </body>

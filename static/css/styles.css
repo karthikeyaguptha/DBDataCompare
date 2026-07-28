@@ -1422,80 +1422,10 @@ select:disabled {
 
 .status-filters {
     display: flex;
-    flex: 0 0 auto;
-    flex-wrap: nowrap;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-}
-
-.table-filter-options {
-    position: relative;
-}
-
-.table-filter-options summary {
-    display: inline-flex;
-    min-height: 38px;
-    align-items: center;
-    gap: 7px;
-    padding: 7px 12px;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--surface);
-    color: var(--ink-soft);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
-    list-style: none;
-    white-space: nowrap;
-}
-
-.table-filter-options summary::-webkit-details-marker {
-    display: none;
-}
-
-.table-filter-options summary::after {
-    content: "+";
-    color: var(--ink-faint);
-    font-size: 16px;
-    line-height: 1;
-}
-
-.table-filter-options[open] summary {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-soft);
-    color: var(--primary);
-}
-
-.table-filter-options[open] summary::after {
-    content: "−";
-}
-
-.table-filter-options-menu {
-    position: absolute;
-    z-index: 8;
-    top: calc(100% + 8px);
-    left: 0;
-    display: grid;
-    min-width: 224px;
-    gap: 8px;
-    padding: 12px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: var(--surface);
-    box-shadow: var(--shadow-lg);
-}
-
-.options-label {
-    color: var(--ink-faint);
-    font-size: 10px;
-    font-weight: 750;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-
-.table-filter-options-menu .filter-check {
-    width: 100%;
-    border-radius: 8px;
 }
 
 .filter-check {
@@ -1868,6 +1798,8 @@ select:disabled {
 }
 
 .run-settings select {
+    width: 100%;
+    min-height: 40px;
     margin: 0;
 }
 
@@ -1946,6 +1878,16 @@ select:disabled {
 .run-summary strong {
     color: var(--ink-soft);
     font-size: 13px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.batch-size-summary {
+    margin: 0;
+}
+
+.batch-size-summary > span {
+    margin-bottom: 5px;
 }
 
 .progress-panel {
@@ -2703,11 +2645,6 @@ select:disabled {
         justify-content: flex-start;
         margin-left: 0;
         flex-wrap: wrap;
-    }
-
-    .table-filter-options-menu {
-        right: auto;
-        left: 0;
     }
 
     .intro {

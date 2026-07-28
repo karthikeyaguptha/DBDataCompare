@@ -52,7 +52,7 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.9.0-step-two-and-saved-table-selections",
+            "phase": "v1.9.1-step-two-selection-refinements",
         }
     )
 

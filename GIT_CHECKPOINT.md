@@ -1,12 +1,12 @@
-# Data Sync Check v1.9.0 Git checkpoint
+# Data Sync Check v1.9.1 Git checkpoint
 
-Use one checkpoint for the Step 2 workflow and saved table-selection enhancement:
+Use one checkpoint for the Step 2 and Step 3 refinement:
 
 ```bash
 git add .
-git commit -m "feat: revamp Step 2 and add saved table selections"
+git commit -m "fix: refine table selection and Step 3 settings"
 git push origin main
 
-git tag -a v1.9.0 -m "Revamp Step 2 and add saved table selections"
-git push origin v1.9.0
+git tag -a v1.9.1 -m "Refine table selection and Step 3 settings"
+git push origin v1.9.1
 ```

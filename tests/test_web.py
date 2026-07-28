@@ -47,10 +47,10 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.9.0" in response.data
+    assert b"v1.9.1" in response.data
     assert b'id="notificationStack"' in response.data
-    assert b'<details class="table-filter-options">' in response.data
-    assert b"<summary>More options</summary>" in response.data
+    assert b'<details class="table-filter-options">' not in response.data
+    assert response.data.count(b"<summary>More options</summary>") == 2
     assert b'id="openDashboard"' in response.data
     assert b"microsoftsqlserver-original.svg" in response.data
     assert b"postgresql-original.svg" in response.data
@@ -75,7 +75,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.9.0-step-two-and-saved-table-selections"
+    assert response.json["phase"] == "v1.9.1-step-two-selection-refinements"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -141,21 +141,61 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
     )[1].split(".run-meta .completed-meta", 1)[0]
 
 
-def test_all_table_availability_filters_are_grouped_under_more_options():
+def test_all_table_availability_filters_are_visible_outside_more_options():
     project_root = Path(__file__).resolve().parents[1]
     template = (project_root / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
 
-    options_start = template.index('<details class="table-filter-options">')
-    options_end = template.index("</details>", options_start)
+    filters_start = template.index(
+        '<div class="status-filters" role="group" aria-label="Filter tables by availability">'
+    )
+    filters_end = template.index("</div>", filters_start)
     common_position = template.index('value="available"')
     sql_only_position = template.index('value="sql_only"')
     postgres_only_position = template.index('value="postgres_only"')
 
-    assert options_start < common_position < options_end
-    assert options_start < sql_only_position < options_end
-    assert options_start < postgres_only_position < options_end
+    assert filters_start < common_position < filters_end
+    assert filters_start < sql_only_position < filters_end
+    assert filters_start < postgres_only_position < filters_end
+    assert 'class="table-filter-options"' not in template
+
+
+def test_no_saved_table_selection_clears_tables_and_manual_keys():
+    project_root = Path(__file__).resolve().parents[1]
+    javascript = (project_root / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    helper = javascript.split(
+        "function clearCurrentTableSelection", 1
+    )[1].split("function applyProfile", 1)[0]
+    change_handler = javascript.split(
+        'elements.tableSetSelect.addEventListener("change"', 1
+    )[1].split('elements.saveTableSet.addEventListener', 1)[0]
+
+    assert "state.selectedTables.clear();" in helper
+    assert "state.manualKeys.clear();" in helper
+    assert "keyInput.value = \"\";" in helper
+    assert "clearCurrentTableSelection({ clearSavedSet: true });" in change_handler
+
+
+def test_step_three_run_settings_use_identical_summary_cards():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+
+    run_settings = template.split('<div class="run-settings">', 1)[1].split(
+        "</div>\n\n            <details", 1
+    )[0]
+    assert run_settings.count('class="run-summary') == 5
+    assert 'class="run-summary batch-size-summary"' in run_settings
+    assert ".batch-size-summary" in stylesheet
+    assert ".run-settings select" in stylesheet
 
 
 def test_step_two_owns_comparison_mode_and_named_table_selections():
@@ -183,20 +223,19 @@ def test_step_two_owns_comparison_mode_and_named_table_selections():
     assert "tableSetContextSignature" in javascript
 
 
-def test_step_two_more_options_uses_connection_card_plus_minus_indicator():
+def test_step_two_availability_filters_are_directly_accessible():
     project_root = Path(__file__).resolve().parents[1]
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    template = (project_root / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
 
-    table_options = stylesheet[
-        stylesheet.index(".table-filter-options summary::after"):
-        stylesheet.index(".table-filter-options-menu")
-    ]
-    assert 'content: "+";' in table_options
-    assert 'content: "−";' in table_options
-    assert 'content: "⌄";' not in table_options
-    assert "rotate(" not in table_options
+    toolbar = template.split(
+        '<div class="status-filters" role="group" aria-label="Filter tables by availability">',
+        1,
+    )[1].split("</div>", 1)[0]
+    assert toolbar.count('class="filter-check') == 3
+    assert "<details" not in toolbar
+    assert "<summary" not in toolbar
 
 
 def test_start_comparison_action_is_available_in_steps_two_and_three():

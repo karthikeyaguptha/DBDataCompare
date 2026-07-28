@@ -584,6 +584,30 @@ function markTableSetDirty() {
     updateTableSetButtons();
 }
 
+function clearCurrentTableSelection({ clearSavedSet = false } = {}) {
+    state.selectedTables.clear();
+    state.manualKeys.clear();
+    currentCheckboxes().forEach((checkbox) => {
+        const row = checkbox.closest("tr");
+        checkbox.checked = false;
+        const keyInput = row?.querySelector(".key-input");
+        const keyHint = row?.querySelector(".key-hint");
+        if (keyInput) keyInput.value = "";
+        if (keyHint) {
+            keyHint.textContent = "Leave blank for automatic detection";
+            keyHint.classList.add("muted-value");
+        }
+    });
+    if (clearSavedSet) {
+        state.currentTableSetId = "";
+        state.tableSetDirty = false;
+    } else {
+        markTableSetDirty();
+    }
+    markProfileDirty();
+    updateSelectionCount();
+}
+
 function applyProfile(profile) {
     state.applyingProfile = true;
     const savedManualKeys = new Map(Object.entries(profile.manual_keys || {}));
@@ -2048,11 +2072,7 @@ elements.tablePageInput.addEventListener("keydown", (event) => {
     goToTablePage(elements.tablePageInput.value);
 });
 elements.clearSelection.addEventListener("click", () => {
-    state.selectedTables.clear();
-    currentCheckboxes().forEach((checkbox) => { checkbox.checked = false; });
-    markProfileDirty();
-    markTableSetDirty();
-    updateSelectionCount();
+    clearCurrentTableSelection();
 });
 elements.comparisonMode.addEventListener("change", () => {
     elements.batchSize.disabled = elements.comparisonMode.value !== "full";
@@ -2064,9 +2084,8 @@ elements.tableSetSelect.addEventListener("change", async () => {
         (item) => item.id === elements.tableSetSelect.value,
     );
     if (!tableSet) {
-        state.currentTableSetId = "";
-        state.tableSetDirty = false;
-        updateTableSetButtons();
+        clearCurrentTableSelection({ clearSavedSet: true });
+        showToast("Table selection cleared.", "info");
         return;
     }
     await applyTableSet(tableSet);
