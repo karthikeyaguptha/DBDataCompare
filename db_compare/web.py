@@ -64,7 +64,7 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.9.6-step-two-layout",
+            "phase": "v1.9.7-report-result-filters",
         }
     )
 

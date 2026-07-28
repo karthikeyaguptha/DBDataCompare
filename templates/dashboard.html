@@ -19,8 +19,8 @@
             document.documentElement.dataset.theme = theme;
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='1.9.6') }}">
-    <script src="{{ url_for('static', filename='js/dashboard.js', v='1.9.6') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css', v='1.9.7') }}">
+    <script src="{{ url_for('static', filename='js/dashboard.js', v='1.9.7') }}" defer></script>
 </head>
 <body data-run-id="{{ summary.run_id }}">
     <main class="report-page">
@@ -122,7 +122,18 @@
                 </div>
                 <p>SQL and PG counts are shown side by side. Expand a table to review schema details.</p>
             </div>
-            <div class="table-card">
+            <div class="overview-filters" role="group" aria-label="Filter table overview by result">
+                <button class="overview-filter is-active" type="button" data-overview-filter="all" aria-pressed="true">
+                    All <span>{{ totals.tables }}</span>
+                </button>
+                <button class="overview-filter matched" type="button" data-overview-filter="matched" aria-pressed="false">
+                    Matched <span>{{ totals.matches }}</span>
+                </button>
+                <button class="overview-filter not-matched" type="button" data-overview-filter="not-matched" aria-pressed="false">
+                    Not Matched <span>{{ totals.tables - totals.matches }}</span>
+                </button>
+            </div>
+            <div class="table-card overview-table-card">
                 <table class="summary-table">
                     <thead>
                         <tr>
@@ -138,7 +149,7 @@
                     <tbody>
                     {% for table in summary.tables %}
                         {% set data_issues = table.value_mismatches + table.sqlserver_only_rows + table.postgres_only_rows %}
-                        <tr>
+                        <tr class="overview-result-row" data-overview-result="{{ 'matched' if table.status == 'match' else 'not-matched' }}">
                             <td><strong>{{ table.sqlserver_table or table.table_id }}</strong><small>{{ table.postgres_table or 'Not available in PostgreSQL' }}</small></td>
                             <td>
                                 <span class="status {{ 'success' if table.column_differences == 0 and table.primary_key_status != 'different' else 'warning' }}">
@@ -152,7 +163,7 @@
                             <td><span class="status {{ 'success' if table.status == 'match' else 'warning' if table.status not in ['error', 'missing_table'] else 'danger' }}">{{ table.status.replace("_", " ").title() }}</span></td>
                         </tr>
                         {% if table.schema_differences or table.primary_key_status == "different" %}
-                        <tr class="schema-detail">
+                        <tr class="schema-detail overview-detail-row" data-overview-result="{{ 'matched' if table.status == 'match' else 'not-matched' }}">
                             <td colspan="7">
                                 <details>
                                     <summary>Review schema differences for {{ table.table_id }}</summary>
@@ -181,6 +192,7 @@
                     {% endfor %}
                     </tbody>
                 </table>
+                <div class="empty-overview" id="emptyOverview" hidden>No tables match the selected result filter.</div>
             </div>
         </section>
 

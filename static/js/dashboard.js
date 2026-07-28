@@ -19,6 +19,9 @@ const elements = {
     printBody: document.querySelector("#printBody"),
     printScope: document.querySelector("#printScope"),
     notificationStack: document.querySelector("#notificationStack"),
+    overviewFilters: [...document.querySelectorAll("[data-overview-filter]")],
+    overviewRows: [...document.querySelectorAll("[data-overview-result]")],
+    emptyOverview: document.querySelector("#emptyOverview"),
 };
 const state = { page: 1, totalPages: 1, timer: null, controller: null, facetsLoaded: false };
 const NOTIFICATION_DURATION_MS = 5000;
@@ -100,6 +103,24 @@ function query(page = state.page, pageSize = 50) {
     return `/api/reports/${encodeURIComponent(runId)}/dashboard-data?${parameters}`;
 }
 
+async function loadAllFilteredMismatchRows() {
+    const pageSize = 1000;
+    const firstResponse = await fetch(query(1, pageSize), { cache: "no-store" });
+    const firstPage = await firstResponse.json();
+    if (!firstResponse.ok) {
+        throw new Error(firstPage.message || "PDF data could not be prepared.");
+    }
+
+    const rows = [...firstPage.rows];
+    for (let page = 2; page <= firstPage.pagination.total_pages; page += 1) {
+        const response = await fetch(query(page, pageSize), { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "PDF data could not be prepared.");
+        rows.push(...data.rows);
+    }
+    return { rows, total: firstPage.pagination.total };
+}
+
 function renderFacets(facets) {
     if (!state.facetsLoaded) {
         facets.tables.forEach((item) => {
@@ -156,6 +177,21 @@ function resetToFirstPage() {
     loadRows();
 }
 
+function applyOverviewFilter(filter) {
+    let visibleResults = 0;
+    elements.overviewRows.forEach((row) => {
+        const visible = filter === "all" || row.dataset.overviewResult === filter;
+        row.hidden = !visible;
+        if (visible && row.classList.contains("overview-result-row")) visibleResults += 1;
+    });
+    elements.overviewFilters.forEach((button) => {
+        const active = button.dataset.overviewFilter === filter;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", String(active));
+    });
+    if (elements.emptyOverview) elements.emptyOverview.hidden = visibleResults > 0;
+}
+
 function showToast(message, type = "error") {
     const supportedTypes = new Set(["success", "warning", "error", "info"]);
     const selectedType = supportedTypes.has(type) ? type : "info";
@@ -207,6 +243,9 @@ function showToast(message, type = "error") {
 }
 
 elements.filters.addEventListener("submit", (event) => event.preventDefault());
+elements.overviewFilters.forEach((button) => {
+    button.addEventListener("click", () => applyOverviewFilter(button.dataset.overviewFilter));
+});
 elements.tableFilter.addEventListener("change", resetToFirstPage);
 elements.kindFilter.addEventListener("change", resetToFirstPage);
 elements.search.addEventListener("input", () => {
@@ -239,16 +278,11 @@ elements.exportPdf.addEventListener("click", async () => {
     elements.exportPdf.disabled = true;
     elements.exportPdf.textContent = "Preparing PDF…";
     try {
-        const response = await fetch(query(1, 1000), { cache: "no-store" });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || "PDF data could not be prepared.");
+        const data = await loadAllFilteredMismatchRows();
         elements.printBody.replaceChildren();
         appendRows(elements.printBody, data.rows);
-        const limitNote = data.pagination.total > data.rows.length
-            ? ` The first ${data.rows.length.toLocaleString("en-IN")} detailed rows are included; the overview totals remain complete.`
-            : "";
         elements.printScope.textContent =
-            `${data.pagination.total.toLocaleString("en-IN")} mismatch row(s) match the selected filters.${limitNote}`;
+            `${data.total.toLocaleString("en-IN")} mismatch row(s) match the selected filters.`;
         document.body.classList.add("printing");
         window.print();
     } catch (error) {
