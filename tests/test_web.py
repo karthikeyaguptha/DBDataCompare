@@ -47,7 +47,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.9.5" in response.data
+    assert b"v1.9.6" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'id="tableSetType"' in response.data
     assert b'id="exportTableSet"' not in response.data
@@ -81,7 +81,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.9.5-reusable-table-reconciliation"
+    assert response.json["phase"] == "v1.9.6-step-two-layout"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -272,6 +272,30 @@ def test_reconciliation_checkboxes_filters_and_reopen_workflow():
     assert "width: 54px;" in stylesheet
     assert ".reconciliation-count.is-active" in stylesheet
     assert "margin: 0 auto;" in stylesheet
+
+
+def test_step_two_compact_scope_layout_and_visible_total_count():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+        encoding="utf-8"
+    )
+
+    comparison_mode = template.index('id="comparisonMode"')
+    saved_selection = template.index('id="tableSetSelect"')
+    edit_selection = template.index('id="reopenReconciliation"')
+    save_selection = template.index('id="saveTableSet"')
+    table_toolbar = template.index('class="table-toolbar"')
+
+    assert comparison_mode < saved_selection < edit_selection < save_selection < table_toolbar
+    assert "grid-template-columns: 240px minmax(0, 1fr);" in stylesheet
+    assert "minmax(280px, 1.2fr) auto repeat(2, 40px)" in stylesheet
+    page_range_styles = stylesheet.split(".page-range {", 1)[1].split("}", 1)[0]
+    assert "color: var(--ink);" in page_range_styles
+    assert "font-weight: 750;" in page_range_styles
+    assert "background: var(--surface-strong);" in page_range_styles
 
 
 def test_step_two_availability_filters_are_directly_accessible():

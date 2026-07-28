@@ -1,9 +1,9 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
-title Data Sync Check v1.9.5 - First-time Setup
+title Data Sync Check v1.9.6 - First-time Setup
 
-set "APP_VERSION=1.9.5"
+set "APP_VERSION=1.9.6"
 set "PYTHON_EXE="
 set "PYTHON_ARGS="
 set "VENV_DIR=%CD%\.venv"
@@ -175,7 +175,7 @@ goto :failed
 
 :dependency_failed
 call :error "Dependency installation failed. Review the package error shown above."
-echo Confirm that requirements.txt contains the v1.9.5 package versions.
+echo Confirm that requirements.txt contains the v1.9.6 package versions.
 goto :failed
 
 :pip_check_failed
