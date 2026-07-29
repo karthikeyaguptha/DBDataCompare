@@ -47,7 +47,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.9.8" in response.data
+    assert b"v1.9.9" in response.data
     assert b'id="notificationStack"' in response.data
     assert b'id="tableSetType"' in response.data
     assert b'id="exportTableSet"' not in response.data
@@ -81,21 +81,21 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.9.8-report-overview-pagination"
+    assert response.json["phase"] == "v1.9.9-organized-project-structure"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "dashboard.html").read_text(
+    template = (project_root / "web" / "templates" / "dashboard.html").read_text(
         encoding="utf-8"
     )
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
-    dashboard_js = (project_root / "static" / "js" / "dashboard.js").read_text(
+    dashboard_js = (project_root / "web" / "static" / "js" / "dashboard.js").read_text(
         encoding="utf-8"
     )
-    dashboard_css = (project_root / "static" / "css" / "dashboard.css").read_text(
+    dashboard_css = (project_root / "web" / "static" / "css" / "dashboard.css").read_text(
         encoding="utf-8"
     )
 
@@ -173,7 +173,7 @@ def test_dashboard_assets_and_active_run_handoff_are_present():
 
 def test_all_table_availability_filters_are_visible_outside_more_options():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
 
@@ -193,7 +193,7 @@ def test_all_table_availability_filters_are_visible_outside_more_options():
 
 def test_no_saved_table_selection_clears_tables_and_manual_keys():
     project_root = Path(__file__).resolve().parents[1]
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
 
@@ -212,10 +212,10 @@ def test_no_saved_table_selection_clears_tables_and_manual_keys():
 
 def test_step_three_run_settings_use_identical_summary_cards():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
 
@@ -230,10 +230,10 @@ def test_step_three_run_settings_use_identical_summary_cards():
 
 def test_step_two_owns_comparison_mode_and_named_table_selections():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
 
@@ -272,13 +272,13 @@ def test_step_two_owns_comparison_mode_and_named_table_selections():
 
 def test_reconciliation_checkboxes_filters_and_reopen_workflow():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
 
@@ -300,10 +300,10 @@ def test_reconciliation_checkboxes_filters_and_reopen_workflow():
 
 def test_step_two_compact_scope_layout_and_visible_total_count():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
 
@@ -324,7 +324,7 @@ def test_step_two_compact_scope_layout_and_visible_total_count():
 
 def test_step_two_availability_filters_are_directly_accessible():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
 
@@ -339,7 +339,7 @@ def test_step_two_availability_filters_are_directly_accessible():
 
 def test_start_comparison_action_is_available_in_steps_two_and_three():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
 
@@ -351,17 +351,17 @@ def test_start_comparison_action_is_available_in_steps_two_and_three():
 
 def test_dark_theme_is_the_default_across_workspace_and_report():
     project_root = Path(__file__).resolve().parents[1]
-    index_template = (project_root / "templates" / "index.html").read_text(
+    index_template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    dashboard_template = (project_root / "templates" / "dashboard.html").read_text(
+    dashboard_template = (project_root / "web" / "templates" / "dashboard.html").read_text(
         encoding="utf-8"
     )
-    app_javascript = (project_root / "static" / "js" / "app.js").read_text(
+    app_javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
     dashboard_javascript = (
-        project_root / "static" / "js" / "dashboard.js"
+        project_root / "web" / "static" / "js" / "dashboard.js"
     ).read_text(encoding="utf-8")
 
     assert '<html lang="en" data-theme="dark">' in index_template
@@ -374,7 +374,7 @@ def test_dark_theme_is_the_default_across_workspace_and_report():
 
 def test_locked_table_overlay_has_theme_safe_contrast_tokens():
     project_root = Path(__file__).resolve().parents[1]
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
 
@@ -399,8 +399,8 @@ def test_database_icons_are_bundled_static_assets():
 
 def test_connection_feedback_has_persistent_success_treatment():
     project_root = Path(__file__).resolve().parents[1]
-    javascript = (project_root / "static" / "js" / "app.js").read_text(encoding="utf-8")
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(encoding="utf-8")
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(encoding="utf-8")
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(encoding="utf-8")
 
     assert "SQL Server connection verified successfully." in javascript
     assert "PostgreSQL connection verified successfully." in javascript
@@ -410,7 +410,7 @@ def test_connection_feedback_has_persistent_success_treatment():
 
 def test_result_status_ui_describes_each_matching_layer():
     project_root = Path(__file__).resolve().parents[1]
-    with (project_root / "static" / "js" / "app.js").open(encoding="utf-8") as handle:
+    with (project_root / "web" / "static" / "js" / "app.js").open(encoding="utf-8") as handle:
         source = handle.read()
 
     assert '{ name: "Schema", ran: true' in source
@@ -422,10 +422,10 @@ def test_result_status_ui_describes_each_matching_layer():
 
 def test_result_ui_renders_three_independent_vertical_badges():
     project_root = Path(__file__).resolve().parents[1]
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
 
@@ -442,10 +442,10 @@ def test_result_ui_renders_three_independent_vertical_badges():
 
 def test_workflow_accordions_and_fixed_table_viewport_are_present():
     project_root = Path(__file__).resolve().parents[1]
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
 
@@ -459,13 +459,13 @@ def test_workflow_accordions_and_fixed_table_viewport_are_present():
 
 def test_service_status_is_compact_and_refreshable_from_header():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
 
@@ -479,10 +479,10 @@ def test_service_status_is_compact_and_refreshable_from_header():
 
 def test_profile_actions_and_accordion_headers_use_aligned_controls():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
 
@@ -499,7 +499,7 @@ def test_profile_actions_and_accordion_headers_use_aligned_controls():
 
 def test_connection_cards_hide_defaults_under_more_options():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
 
@@ -519,10 +519,10 @@ def test_connection_cards_hide_defaults_under_more_options():
 
 def test_accordion_controls_are_text_only_and_profiles_auto_load():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
 
@@ -537,7 +537,7 @@ def test_accordion_controls_are_text_only_and_profiles_auto_load():
 
 def test_pagination_supports_first_last_and_direct_page_jump():
     project_root = Path(__file__).resolve().parents[1]
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
 
@@ -550,13 +550,13 @@ def test_pagination_supports_first_last_and_direct_page_jump():
 
 def test_selection_pagination_accordion_and_port_hint_polish():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(
         encoding="utf-8"
     )
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
-    stylesheet = (project_root / "static" / "css" / "styles.css").read_text(
+    stylesheet = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
 
@@ -578,7 +578,7 @@ def test_selection_pagination_accordion_and_port_hint_polish():
 
 def test_backend_offline_state_invalidates_stale_connections():
     project_root = Path(__file__).resolve().parents[1]
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
 
@@ -593,7 +593,7 @@ def test_backend_offline_state_invalidates_stale_connections():
 
 def test_comparison_volume_tracks_discovered_and_processed_rows():
     project_root = Path(__file__).resolve().parents[1]
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
 
@@ -605,7 +605,7 @@ def test_comparison_volume_tracks_discovered_and_processed_rows():
 
 def test_toast_has_theme_safe_contrast_tokens():
     project_root = Path(__file__).resolve().parents[1]
-    with (project_root / "static" / "css" / "styles.css").open(
+    with (project_root / "web" / "static" / "css" / "styles.css").open(
         encoding="utf-8"
     ) as handle:
         source = handle.read()
@@ -618,21 +618,21 @@ def test_toast_has_theme_safe_contrast_tokens():
 
 def test_notifications_use_top_right_stack_five_second_countdown_and_close():
     project_root = Path(__file__).resolve().parents[1]
-    template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
-    dashboard_template = (project_root / "templates" / "dashboard.html").read_text(
+    template = (project_root / "web" / "templates" / "index.html").read_text(encoding="utf-8")
+    dashboard_template = (project_root / "web" / "templates" / "dashboard.html").read_text(
         encoding="utf-8"
     )
-    javascript = (project_root / "static" / "js" / "app.js").read_text(
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
         encoding="utf-8"
     )
     dashboard_javascript = (
-        project_root / "static" / "js" / "dashboard.js"
+        project_root / "web" / "static" / "js" / "dashboard.js"
     ).read_text(encoding="utf-8")
-    css = (project_root / "static" / "css" / "styles.css").read_text(
+    css = (project_root / "web" / "static" / "css" / "styles.css").read_text(
         encoding="utf-8"
     )
     dashboard_css = (
-        project_root / "static" / "css" / "dashboard.css"
+        project_root / "web" / "static" / "css" / "dashboard.css"
     ).read_text(encoding="utf-8")
 
     assert 'id="notificationStack"' in template

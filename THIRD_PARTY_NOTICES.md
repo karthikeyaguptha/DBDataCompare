@@ -1,6 +1,6 @@
 # Third-party assets
 
-The SQL Server and PostgreSQL interface icons in `static/img/` are sourced from
+The SQL Server and PostgreSQL interface icons in `web/static/img/` are sourced from
 the [Devicon](https://github.com/devicons/devicon) project, which is distributed
 under the MIT License.
 
