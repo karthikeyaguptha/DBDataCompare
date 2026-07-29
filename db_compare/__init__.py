@@ -21,6 +21,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         REPORTS_DIR=project_root / "data" / "reports",
         PROFILES_FILE=project_root / "data" / "config" / "profiles.json",
         TABLE_SETS_FILE=project_root / "data" / "config" / "table-sets.json",
+        SETTINGS_FILE=project_root / "data" / "config" / "app-settings.json",
     )
 
     if test_config:
@@ -41,6 +42,9 @@ def _prepare_runtime_storage(
     reports_dir = Path(app.config["REPORTS_DIR"])
     profiles_file = Path(app.config["PROFILES_FILE"])
     table_sets_file = Path(app.config["TABLE_SETS_FILE"])
+    settings_file = Path(
+        app.config.get("SETTINGS_FILE", profiles_file.parent / "app-settings.json")
+    )
 
     reports_dir.mkdir(parents=True, exist_ok=True)
     profiles_file.parent.mkdir(parents=True, exist_ok=True)
@@ -52,6 +56,7 @@ def _prepare_runtime_storage(
     for legacy_file, destination in (
         (legacy_config / "profiles.json", profiles_file),
         (legacy_config / "table-sets.json", table_sets_file),
+        (legacy_config / "app-settings.json", settings_file),
     ):
         if legacy_file.is_file() and not destination.exists():
             shutil.move(str(legacy_file), str(destination))

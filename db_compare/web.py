@@ -37,6 +37,12 @@ from .reporting import (
     report_file,
     report_summary,
 )
+from .settings import (
+    datatype_mapping_lookup,
+    default_settings,
+    load_settings,
+    save_settings,
+)
 
 
 web = Blueprint("web", __name__)
@@ -64,7 +70,28 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.9.9-organized-project-structure",
+            "phase": "v1.10.0-configurable-validation-and-report-filters",
+        }
+    )
+
+
+@web.get("/api/settings")
+def application_settings():
+    settings = load_settings(Path(current_app.config["SETTINGS_FILE"]))
+    return jsonify({"status": "ready", "settings": settings, "defaults": default_settings()})
+
+
+@web.put("/api/settings")
+def update_application_settings():
+    settings = save_settings(
+        Path(current_app.config["SETTINGS_FILE"]),
+        _json_body(),
+    )
+    return jsonify(
+        {
+            "status": "saved",
+            "message": "Application settings saved.",
+            "settings": settings,
         }
     )
 
@@ -323,6 +350,7 @@ def compare_schema():
             postgres_config,
             table["sqlserver"],
             table["postgres"],
+            datatype_mappings=_datatype_mappings(),
             **kwargs,
         )
     finally:
@@ -445,6 +473,7 @@ def start_data_compare():
             )
         _DATA_JOBS[job_id] = job
 
+    datatype_mappings = _datatype_mappings()
     worker = Thread(
         target=_run_data_job,
         args=(
@@ -455,6 +484,7 @@ def start_data_compare():
             [value.strip() for value in manual_key],
             batch_size,
             comparison_options,
+            datatype_mappings,
             writer,
         ),
         daemon=True,
@@ -571,6 +601,7 @@ def _run_data_job(
     manual_key: list[str],
     batch_size: int,
     options: dict[str, Any],
+    datatype_mappings: dict[str, set[str]],
     writer,
 ) -> None:
     job = _get_data_job(job_id)
@@ -589,6 +620,7 @@ def _run_data_job(
             postgres_config,
             table["sqlserver"],
             table["postgres"],
+            datatype_mappings=datatype_mappings,
             cancellation=job["cancellation"],
         )
         comparison_key = manual_key or schema_result.get("comparison_key") or []
@@ -676,6 +708,11 @@ def _operation_id(payload: dict[str, Any]) -> str:
     if value and (len(value) > 80 or not all(char.isalnum() or char in "-_" for char in value)):
         raise DatabaseConfigurationError("The comparison operation identifier is invalid.")
     return value
+
+
+def _datatype_mappings() -> dict[str, set[str]]:
+    settings = load_settings(Path(current_app.config["SETTINGS_FILE"]))
+    return datatype_mapping_lookup(settings)
 
 
 def _begin_operation(operation_id: str) -> CancellationController:

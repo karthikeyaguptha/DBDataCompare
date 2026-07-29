@@ -193,3 +193,39 @@ def test_unapproved_source_type_is_a_schema_mismatch():
     assert result["columns"][0]["differences"] == [
         "No approved PostgreSQL datatype mapping found."
     ]
+
+
+def test_user_configured_datatype_mapping_can_be_added_and_removed():
+    sql_schema = {
+        "columns": [column("Shape", "geography")],
+        "primary_key": [],
+        "unique_keys": [],
+    }
+    pg_schema = {
+        "columns": [column("shape", "geography")],
+        "primary_key": [],
+        "unique_keys": [],
+    }
+
+    configured = compare_table_schema(
+        {},
+        {},
+        "Location",
+        "location",
+        sql_loader=lambda *_: sql_schema,
+        pg_loader=lambda *_: pg_schema,
+        datatype_mappings={"geography": {"geography"}},
+    )
+    removed = compare_table_schema(
+        {},
+        {},
+        "Location",
+        "location",
+        sql_loader=lambda *_: sql_schema,
+        pg_loader=lambda *_: pg_schema,
+        datatype_mappings={},
+    )
+
+    assert configured["status"] == "match"
+    assert configured["columns"][0]["expected_postgres"] == "GEOGRAPHY"
+    assert removed["status"] == "different"

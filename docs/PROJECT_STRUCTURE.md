@@ -21,7 +21,7 @@ data-sync-check/
 │   ├── templates/          Flask HTML templates
 │   └── static/             CSS, JavaScript, images, and branding
 ├── data/
-│   ├── config/             Saved profiles and reusable table selections
+│   ├── config/             App settings, profiles, and reusable table selections
 │   ├── reports/            Generated comparison reports
 │   └── logs/               Runtime logs
 ├── docs/
@@ -45,3 +45,5 @@ Do not manually move files out of these folders. The launchers resolve paths
 from the project root, and the application creates runtime JSON and report files
 inside `data/` when needed.
 
+`data/config/app-settings.json` is created after the user saves the Settings
+page. If it is absent, Data Sync Check uses the built-in v1.10.0 defaults.

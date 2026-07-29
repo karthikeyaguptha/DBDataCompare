@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.9
+# Data Sync Check v1.10.0
 
 Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
 
@@ -48,7 +48,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.9.9 setup completed successfully
+Data Sync Check v1.10.0 setup completed successfully
 ```
 
 ### Every normal launch
@@ -144,6 +144,20 @@ See [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) for the complete
 directory map. Existing `config/` and `reports/` content from an older checkout
 is moved into `data/` automatically on the first v1.9.9 launch without
 overwriting files already present in the new locations.
+
+## Version 1.10.0 changes
+
+- Adds an application **Settings** page in the top bar.
+- Stores user configuration in `data/config/app-settings.json`.
+- Allows approved SQL Server → PostgreSQL base datatype mappings to be added,
+  changed, or removed without editing Python source.
+- Keeps parameter-aware decimal, money, and character-length validation in the
+  comparison engine.
+- Makes notification duration configurable from 1 to 30 seconds and applies it
+  consistently in the workspace and HTML report.
+- Turns the Data Mismatch Report issue-count tags into clickable filters.
+- Clicking an active issue tag again clears that issue filter.
+- Preserves the v1.9.9 comparison behavior when no settings file has been saved.
 
 ## Version 1.9.9 changes
 

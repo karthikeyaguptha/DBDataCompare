@@ -45,6 +45,7 @@ const state = {
     runProcessedRows: 0,
     currentTableProcessedRows: 0,
     discoveredRowPositions: 0,
+    settingsDefaults: null,
 };
 
 const elements = {
@@ -120,6 +121,16 @@ const elements = {
     openDashboard: document.querySelector("#openDashboard"),
     exportLog: document.querySelector("#exportLog"),
     notificationStack: document.querySelector("#notificationStack"),
+    openSettings: document.querySelector("#openSettings"),
+    settingsDialog: document.querySelector("#settingsDialog"),
+    settingsForm: document.querySelector("#settingsForm"),
+    closeSettings: document.querySelector("#closeSettings"),
+    cancelSettings: document.querySelector("#cancelSettings"),
+    resetSettings: document.querySelector("#resetSettings"),
+    saveSettings: document.querySelector("#saveSettings"),
+    notificationDuration: document.querySelector("#notificationDuration"),
+    mappingsBody: document.querySelector("#datatypeMappingsBody"),
+    addDatatypeMapping: document.querySelector("#addDatatypeMapping"),
     themeToggle: document.querySelector("#themeToggle"),
     backToTop: document.querySelector("#backToTop"),
     serviceBanner: document.querySelector("#serviceBanner"),
@@ -136,7 +147,7 @@ const elements = {
     copySqlPortQuery: document.querySelector("#copySqlPortQuery"),
 };
 
-const NOTIFICATION_DURATION_MS = 5000;
+let notificationDurationMs = 5000;
 
 function applyTheme(theme, persist = true) {
     const selected = theme === "dark" ? "dark" : "light";
@@ -195,7 +206,7 @@ function showToast(message, type = "info") {
     const progress = document.createElement("span");
     progress.className = "notification-progress";
     progress.setAttribute("aria-hidden", "true");
-    progress.style.animationDuration = `${NOTIFICATION_DURATION_MS}ms`;
+    progress.style.animationDuration = `${notificationDurationMs}ms`;
 
     content.append(statusIcon, messageElement, closeButton);
     notification.append(content, progress);
@@ -209,8 +220,107 @@ function showToast(message, type = "info") {
     };
     closeButton.addEventListener("click", dismiss);
     window.requestAnimationFrame(() => notification.classList.add("is-visible"));
-    timer = window.setTimeout(dismiss, NOTIFICATION_DURATION_MS);
+    timer = window.setTimeout(dismiss, notificationDurationMs);
 }
+
+function mappingRow(mapping = { sqlserver: "", postgres: [] }) {
+    const row = document.createElement("tr");
+    const sqlCell = document.createElement("td");
+    const postgresCell = document.createElement("td");
+    const actionCell = document.createElement("td");
+    const sqlInput = document.createElement("input");
+    const postgresInput = document.createElement("input");
+    const remove = document.createElement("button");
+
+    sqlInput.type = "text";
+    sqlInput.className = "mapping-sqlserver";
+    sqlInput.value = mapping.sqlserver || "";
+    sqlInput.placeholder = "e.g. geography";
+    sqlInput.maxLength = 80;
+    sqlInput.required = true;
+    sqlInput.setAttribute("aria-label", "SQL Server datatype");
+    postgresInput.type = "text";
+    postgresInput.className = "mapping-postgres";
+    postgresInput.value = (mapping.postgres || []).join(", ");
+    postgresInput.placeholder = "e.g. geography, geometry";
+    postgresInput.maxLength = 500;
+    postgresInput.required = true;
+    postgresInput.setAttribute("aria-label", "Accepted PostgreSQL datatypes");
+    remove.type = "button";
+    remove.className = "mapping-remove";
+    remove.textContent = "×";
+    remove.title = "Remove datatype mapping";
+    remove.setAttribute("aria-label", `Remove mapping for ${mapping.sqlserver || "new datatype"}`);
+    remove.addEventListener("click", () => row.remove());
+
+    sqlCell.append(sqlInput);
+    postgresCell.append(postgresInput);
+    actionCell.append(remove);
+    row.append(sqlCell, postgresCell, actionCell);
+    return row;
+}
+
+function populateSettings(settings) {
+    elements.notificationDuration.value = settings.notification_duration_seconds;
+    elements.mappingsBody.replaceChildren(
+        ...settings.datatype_mappings.map((mapping) => mappingRow(mapping)),
+    );
+}
+
+function settingsPayload() {
+    return {
+        notification_duration_seconds: Number(elements.notificationDuration.value),
+        datatype_mappings: [...elements.mappingsBody.querySelectorAll("tr")].map((row) => ({
+            sqlserver: row.querySelector(".mapping-sqlserver").value,
+            postgres: row.querySelector(".mapping-postgres").value
+                .split(",")
+                .map((value) => value.trim())
+                .filter(Boolean),
+        })),
+    };
+}
+
+async function loadApplicationSettings({ open = false } = {}) {
+    try {
+        const result = await requestJson("/api/settings");
+        state.settingsDefaults = result.defaults;
+        notificationDurationMs = result.settings.notification_duration_seconds * 1000;
+        populateSettings(result.settings);
+        if (open) elements.settingsDialog.showModal();
+    } catch (error) {
+        if (open) showToast(error.message, "error");
+    }
+}
+
+elements.openSettings.addEventListener("click", () => loadApplicationSettings({ open: true }));
+elements.closeSettings.addEventListener("click", () => elements.settingsDialog.close());
+elements.cancelSettings.addEventListener("click", () => elements.settingsDialog.close());
+elements.addDatatypeMapping.addEventListener("click", () => {
+    const row = mappingRow();
+    elements.mappingsBody.append(row);
+    row.querySelector("input").focus();
+});
+elements.resetSettings.addEventListener("click", () => {
+    if (state.settingsDefaults) populateSettings(state.settingsDefaults);
+});
+elements.settingsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    elements.saveSettings.disabled = true;
+    try {
+        const result = await requestJson("/api/settings", {
+            method: "PUT",
+            body: JSON.stringify(settingsPayload()),
+        });
+        notificationDurationMs = result.settings.notification_duration_seconds * 1000;
+        populateSettings(result.settings);
+        elements.settingsDialog.close();
+        showToast(result.message, "success");
+    } catch (error) {
+        showToast(error.message, "error");
+    } finally {
+        elements.saveSettings.disabled = false;
+    }
+});
 
 function setAccordion(step, expanded, { scroll = false } = {}) {
     const panel = document.querySelector(`[data-step-panel="${step}"]`);
@@ -2604,4 +2714,5 @@ updatePagination();
 setReportExports();
 refreshProfiles();
 refreshTableSets();
+loadApplicationSettings();
 checkBackendHealth();

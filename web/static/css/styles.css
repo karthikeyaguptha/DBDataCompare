@@ -1382,9 +1382,141 @@ select:disabled {
     box-shadow: 0 24px 80px rgb(0 0 0 / 38%);
 }
 
-.reconciliation-dialog::backdrop {
+.reconciliation-dialog::backdrop,
+.settings-dialog::backdrop {
     background: rgb(3 8 18 / 72%);
     backdrop-filter: blur(3px);
+}
+
+.settings-dialog {
+    width: min(860px, calc(100vw - 32px));
+    max-height: min(780px, calc(100vh - 32px));
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 24px 80px rgb(0 0 0 / 38%);
+}
+
+.settings-dialog form {
+    display: flex;
+    max-height: min(780px, calc(100vh - 32px));
+    flex-direction: column;
+}
+
+.settings-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 22px;
+    border-bottom: 1px solid var(--line);
+}
+
+.settings-head h2 {
+    margin: 2px 0 4px;
+}
+
+.settings-head p:last-child,
+.settings-section p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.settings-section {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--line);
+}
+
+.duration-setting {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 9px 0 5px;
+}
+
+.duration-setting input {
+    width: 92px;
+    margin: 0;
+}
+
+.settings-section-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.settings-section-title p {
+    margin-top: 4px;
+}
+
+.settings-table-wrap {
+    max-height: 340px;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.settings-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.settings-table th,
+.settings-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+.settings-table th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    background: var(--table-head);
+    color: var(--ink-soft);
+    font-size: 11px;
+}
+
+.settings-table th:last-child,
+.settings-table td:last-child {
+    width: 46px;
+    text-align: center;
+}
+
+.settings-table input {
+    width: 100%;
+    min-height: 38px;
+    margin: 0;
+}
+
+.mapping-remove {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-muted);
+    color: var(--danger);
+    font-size: 20px;
+}
+
+.mapping-remove:hover {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.settings-actions {
+    flex: 0 0 auto;
+}
+
+.settings-action-spacer {
+    flex: 1;
 }
 
 .reconciliation-head,

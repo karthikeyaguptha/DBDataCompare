@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.9 — Windows installation
+# Data Sync Check v1.10.0 — Windows installation
 
 ## First-time setup
 
@@ -15,7 +15,7 @@ If setup installs Python through `winget`, close the window and run `setup.bat` 
 Successful setup ends with:
 
 ```text
-Data Sync Check v1.9.9 setup completed successfully
+Data Sync Check v1.10.0 setup completed successfully
 ```
 
 ## Starting the application

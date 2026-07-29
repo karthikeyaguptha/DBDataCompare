@@ -37,7 +37,7 @@ const state = {
     overviewFilter: "all",
     overviewPage: 1,
 };
-const NOTIFICATION_DURATION_MS = 5000;
+let notificationDurationMs = 5000;
 const OVERVIEW_PAGE_SIZE = 10;
 
 function applyTheme(theme, persist = true) {
@@ -151,9 +151,21 @@ function renderFacets(facets) {
         ["Only in SQL Server", facets.kinds.sql_only || 0, "sql-only"],
         ["Only in PostgreSQL", facets.kinds.postgres_only || 0, "pg-only"],
     ].forEach(([label, count, kind]) => {
-        const item = document.createElement("span");
+        const item = document.createElement("button");
+        item.type = "button";
         item.className = `legend-item ${kind}`;
+        item.dataset.kindFilter = kind === "sql-only"
+            ? "sql_only"
+            : kind === "pg-only"
+                ? "postgres_only"
+                : kind;
+        item.setAttribute("aria-pressed", String(elements.kindFilter.value === item.dataset.kindFilter));
         item.textContent = `${label}: ${Number(count).toLocaleString("en-IN")}`;
+        item.addEventListener("click", () => {
+            const selected = item.dataset.kindFilter;
+            elements.kindFilter.value = elements.kindFilter.value === selected ? "" : selected;
+            resetToFirstPage();
+        });
         elements.legend.append(item);
     });
 }
@@ -257,7 +269,7 @@ function showToast(message, type = "error") {
     const progress = document.createElement("span");
     progress.className = "notification-progress";
     progress.setAttribute("aria-hidden", "true");
-    progress.style.animationDuration = `${NOTIFICATION_DURATION_MS}ms`;
+    progress.style.animationDuration = `${notificationDurationMs}ms`;
 
     content.append(statusIcon, messageElement, closeButton);
     notification.append(content, progress);
@@ -271,7 +283,20 @@ function showToast(message, type = "error") {
     };
     closeButton.addEventListener("click", dismiss);
     window.requestAnimationFrame(() => notification.classList.add("is-visible"));
-    timer = window.setTimeout(dismiss, NOTIFICATION_DURATION_MS);
+    timer = window.setTimeout(dismiss, notificationDurationMs);
+}
+
+async function loadNotificationSettings() {
+    try {
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        const data = await response.json();
+        if (response.ok) {
+            notificationDurationMs =
+                Number(data.settings?.notification_duration_seconds || 5) * 1000;
+        }
+    } catch {
+        // The five-second default remains available if settings cannot be loaded.
+    }
 }
 
 elements.filters.addEventListener("submit", (event) => event.preventDefault());
@@ -346,5 +371,6 @@ elements.exportPdf.addEventListener("click", async () => {
 });
 
 applyTheme(document.documentElement.dataset.theme || "dark", false);
+loadNotificationSettings();
 applyOverviewFilter("all");
 loadRows();

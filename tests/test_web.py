@@ -47,7 +47,11 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.9.9" in response.data
+    assert b"v1.10.0" in response.data
+    assert b'id="openSettings"' in response.data
+    assert b'id="settingsDialog"' in response.data
+    assert b'id="notificationDuration"' in response.data
+    assert b'id="datatypeMappingsBody"' in response.data
     assert b'id="notificationStack"' in response.data
     assert b'id="tableSetType"' in response.data
     assert b'id="exportTableSet"' not in response.data
@@ -81,7 +85,7 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.9.9-organized-project-structure"
+    assert response.json["phase"] == "v1.10.0-configurable-validation-and-report-filters"
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():
@@ -616,7 +620,7 @@ def test_toast_has_theme_safe_contrast_tokens():
     assert "color: var(--toast-ink);" in source
 
 
-def test_notifications_use_top_right_stack_five_second_countdown_and_close():
+def test_notifications_use_configurable_countdown_and_close():
     project_root = Path(__file__).resolve().parents[1]
     template = (project_root / "web" / "templates" / "index.html").read_text(encoding="utf-8")
     dashboard_template = (project_root / "web" / "templates" / "dashboard.html").read_text(
@@ -638,7 +642,8 @@ def test_notifications_use_top_right_stack_five_second_countdown_and_close():
     assert 'id="notificationStack"' in template
     assert 'id="notificationStack"' in dashboard_template
     for source in (javascript, dashboard_javascript):
-        assert "const NOTIFICATION_DURATION_MS = 5000;" in source
+        assert "notificationDurationMs" in source
+        assert '"/api/settings"' in source
         assert 'closeButton.setAttribute("aria-label", "Dismiss notification");' in source
         assert "notification-progress" in source
         assert "notification-brand" not in source
@@ -652,6 +657,51 @@ def test_notifications_use_top_right_stack_five_second_countdown_and_close():
         assert ".notification-warning" in source
         assert ".notification-error" in source
         assert ".notification-brand" not in source
+
+
+def test_settings_api_validates_and_persists_configuration(tmp_path):
+    settings_file = tmp_path / "app-settings.json"
+    app = create_app({"TESTING": True, "SETTINGS_FILE": settings_file})
+    test_client = app.test_client()
+
+    initial = test_client.get("/api/settings")
+    assert initial.status_code == 200
+    assert initial.json["settings"]["notification_duration_seconds"] == 5
+
+    saved = test_client.put(
+        "/api/settings",
+        json={
+            "notification_duration_seconds": 8,
+            "datatype_mappings": [
+                {"sqlserver": "geography", "postgres": ["geography", "geometry"]}
+            ],
+        },
+    )
+    assert saved.status_code == 200
+    assert saved.json["settings"]["notification_duration_seconds"] == 8
+    assert saved.json["settings"]["datatype_mappings"][0]["sqlserver"] == "geography"
+    assert test_client.get("/api/settings").json["settings"] == saved.json["settings"]
+
+    invalid = test_client.put(
+        "/api/settings",
+        json={"notification_duration_seconds": 0, "datatype_mappings": []},
+    )
+    assert invalid.status_code == 400
+
+
+def test_report_issue_tags_are_clickable_filters():
+    project_root = Path(__file__).resolve().parents[1]
+    dashboard_js = (
+        project_root / "web" / "static" / "js" / "dashboard.js"
+    ).read_text(encoding="utf-8")
+    dashboard_css = (
+        project_root / "web" / "static" / "css" / "dashboard.css"
+    ).read_text(encoding="utf-8")
+
+    assert 'const item = document.createElement("button");' in dashboard_js
+    assert "item.dataset.kindFilter" in dashboard_js
+    assert "elements.kindFilter.value = elements.kindFilter.value === selected ? \"\" : selected;" in dashboard_js
+    assert '.legend-item[aria-pressed="true"]' in dashboard_css
 
 
 def test_cancel_unknown_operation_is_safe():
@@ -837,12 +887,15 @@ def test_schema_endpoint_uses_catalog_mapping(mock_load, mock_compare):
 
     assert response.status_code == 200
     assert response.json["result"]["status"] == "match"
-    mock_compare.assert_called_once_with(
+    mock_compare.assert_called_once()
+    args, kwargs = mock_compare.call_args
+    assert args == (
         {"server": "source"},
         {"host": "target"},
         "Customer",
         "customer",
     )
+    assert kwargs["datatype_mappings"]["int"] == {"integer"}
 
 
 def test_schema_endpoint_rejects_expired_catalog():

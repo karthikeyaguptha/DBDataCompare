@@ -162,10 +162,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .filters label { color: var(--muted); font-size: 11px; font-weight: 750; }
 .filters input, .filters select { width: 100%; min-height: 39px; margin-top: 5px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); }
 .issue-legend { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 11px; }
-.legend-item { padding: 6px 9px; border-radius: 999px; background: #eef1f6; color: var(--muted); font-size: 11px; font-weight: 750; }
+.legend-item { appearance: none; padding: 6px 9px; border: 1px solid transparent; border-radius: 999px; background: #eef1f6; color: var(--muted); font-size: 11px; font-weight: 750; cursor: pointer; }
 .legend-item.different { background: var(--warning-soft); color: var(--warning); }
 .legend-item.sql-only { background: var(--sql-soft); color: var(--sql-ink); }
 .legend-item.pg-only { background: var(--pg-soft); color: var(--pg-ink); }
+.legend-item:hover, .legend-item:focus-visible, .legend-item[aria-pressed="true"] { border-color: currentColor; box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent); }
 .detail-table { min-width: 980px; table-layout: fixed; }
 .detail-table th:nth-child(1) { width: 12%; } .detail-table th:nth-child(2) { width: 13%; } .detail-table th:nth-child(3) { width: 18%; } .detail-table th:nth-child(4) { width: 17%; } .detail-table th:nth-child(5), .detail-table th:nth-child(6) { width: 20%; }
 .detail-table td { overflow-wrap: anywhere; font-size: 12px; line-height: 1.45; }

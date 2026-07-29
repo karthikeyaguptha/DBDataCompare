@@ -26,7 +26,7 @@ _PG_TYPE_ALIASES = {
     "timetz": "time with time zone",
 }
 
-_SIMPLE_TYPE_MAPPINGS = {
+_DEFAULT_SIMPLE_TYPE_MAPPINGS = {
     "bigint": ({"bigint"}, "BIGINT"),
     "int": ({"integer"}, "INTEGER"),
     "smallint": ({"smallint"}, "SMALLINT"),
@@ -66,6 +66,7 @@ def compare_table_schema(
     sql_loader: Callable[[dict[str, Any], str], dict[str, Any]] | None = None,
     pg_loader: Callable[[dict[str, Any], str], dict[str, Any]] | None = None,
     cancellation: CancellationController | None = None,
+    datatype_mappings: dict[str, set[str]] | None = None,
 ) -> dict[str, Any]:
     """Compare one mapped table and return a JSON-safe result."""
     if not sqlserver_table or not postgres_table:
@@ -94,7 +95,11 @@ def compare_table_schema(
             postgres_config, postgres_table, cancellation=cancellation
         )
     )
-    columns = _compare_columns(sql_schema["columns"], pg_schema["columns"])
+    columns = _compare_columns(
+        sql_schema["columns"],
+        pg_schema["columns"],
+        datatype_mappings=datatype_mappings,
+    )
     comparison_key, key_status = _discover_comparison_key(sql_schema, pg_schema)
     sql_primary_key = sql_schema.get("primary_key") or []
     pg_primary_key = pg_schema.get("primary_key") or []
@@ -135,7 +140,10 @@ def compare_table_schema(
 
 
 def _compare_columns(
-    sql_columns: list[dict[str, Any]], pg_columns: list[dict[str, Any]]
+    sql_columns: list[dict[str, Any]],
+    pg_columns: list[dict[str, Any]],
+    *,
+    datatype_mappings: dict[str, set[str]] | None = None,
 ) -> list[dict[str, Any]]:
     sql_lookup = {str(item["name"]).casefold(): item for item in sql_columns}
     pg_lookup = {str(item["name"]).casefold(): item for item in pg_columns}
@@ -150,7 +158,9 @@ def _compare_columns(
         else:
             differences = []
             type_matches, type_reason, expected_postgres = _types_match(
-                sql_column, pg_column
+                sql_column,
+                pg_column,
+                datatype_mappings=datatype_mappings,
             )
             if not type_matches:
                 differences.append(type_reason or "Data type")
@@ -175,13 +185,23 @@ def _compare_columns(
 
 
 def _types_match(
-    sql_column: dict[str, Any], pg_column: dict[str, Any]
+    sql_column: dict[str, Any],
+    pg_column: dict[str, Any],
+    *,
+    datatype_mappings: dict[str, set[str]] | None = None,
 ) -> tuple[bool, str | None, str | None]:
     sql_type = str(sql_column.get("data_type", "")).strip().casefold()
     pg_type = _normalise_pg_type(pg_column.get("data_type"))
 
-    if sql_type in _SIMPLE_TYPE_MAPPINGS:
-        accepted, expected = _SIMPLE_TYPE_MAPPINGS[sql_type]
+    mappings = datatype_mappings
+    if mappings is None:
+        mappings = {
+            name: set(accepted)
+            for name, (accepted, _expected) in _DEFAULT_SIMPLE_TYPE_MAPPINGS.items()
+        }
+    if sql_type in mappings:
+        accepted = {_normalise_pg_type(value) for value in mappings[sql_type]}
+        expected = " / ".join(sorted(value.upper() for value in accepted))
         matches = pg_type in accepted
         return matches, None if matches else f"Data type (expected {expected})", expected
 
