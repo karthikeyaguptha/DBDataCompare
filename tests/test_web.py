@@ -47,7 +47,7 @@ def test_home_page_loads():
     assert b'id="backToTop"' in response.data
     assert b'id="stopCompare"' in response.data
     assert b'id="stopNow"' in response.data
-    assert b"v1.10.0" in response.data
+    assert b"v1.10.1" in response.data
     assert b'id="openSettings"' in response.data
     assert b'id="settingsDialog"' in response.data
     assert b'id="notificationDuration"' in response.data
@@ -85,7 +85,17 @@ def test_health_endpoint_reports_workflow_results_checkpoint():
     assert response.status_code == 200
     assert response.json["status"] == "ready"
     assert response.json["application"] == "Data Sync Check"
-    assert response.json["phase"] == "v1.10.0-configurable-validation-and-report-filters"
+    assert response.json["phase"] == "v1.10.1-settings-request-fix"
+
+
+def test_request_json_supports_get_requests_without_options():
+    project_root = Path(__file__).resolve().parents[1]
+    javascript = (project_root / "web" / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "async function requestJson(url, options = {})" in javascript
+    assert 'requestJson("/api/settings")' in javascript
 
 
 def test_dashboard_assets_and_active_run_handoff_are_present():

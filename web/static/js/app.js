@@ -1061,7 +1061,7 @@ function validateConnectionForm(form, prefix) {
     return false;
 }
 
-async function requestJson(url, options) {
+async function requestJson(url, options = {}) {
     let response;
     try {
         response = await fetch(url, {

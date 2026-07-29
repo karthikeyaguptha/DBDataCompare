@@ -1,4 +1,4 @@
-# Data Sync Check v1.10.0
+# Data Sync Check v1.10.1
 
 Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
 
@@ -48,7 +48,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.10.0 setup completed successfully
+Data Sync Check v1.10.1 setup completed successfully
 ```
 
 ### Every normal launch
@@ -144,6 +144,12 @@ See [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) for the complete
 directory map. Existing `config/` and `reports/` content from an older checkout
 is moved into `data/` automatically on the first v1.9.9 launch without
 overwriting files already present in the new locations.
+
+## Version 1.10.1 changes
+
+- Fixes the Settings page failing to open before or after database connections.
+- Keeps requests without custom options safe in the shared browser API helper.
+- Prevents this browser-side error from being misreported as a local-service outage.
 
 ## Version 1.10.0 changes
 

@@ -70,7 +70,7 @@ def health():
         {
             "application": "Data Sync Check",
             "status": "ready",
-            "phase": "v1.10.0-configurable-validation-and-report-filters",
+            "phase": "v1.10.1-settings-request-fix",
         }
     )
 
