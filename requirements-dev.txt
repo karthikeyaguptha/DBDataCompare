@@ -1,2 +1,0 @@
-# Installed only when a tests folder exists and setup is not run with -SkipTests.
-pytest==9.1.1

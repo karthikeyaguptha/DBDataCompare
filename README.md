@@ -1,4 +1,4 @@
-# Data Sync Check v1.9.8
+# Data Sync Check v1.9.9
 
 Data Sync Check compares Microsoft SQL Server and PostgreSQL databases across schema, row counts, and table data. It provides connection profiles, reusable table selections, progress tracking, mismatch details, exports, and an HTML comparison report.
 
@@ -48,7 +48,7 @@ The setup performs the complete Python installation workflow:
 When setup finishes, it displays:
 
 ```text
-Data Sync Check v1.9.8 setup completed successfully
+Data Sync Check v1.9.9 setup completed successfully
 ```
 
 ### Every normal launch
@@ -125,6 +125,35 @@ Run `setup.bat` again. `run.bat` starts the application only after setup has com
 - Saved profiles must not store passwords.
 - Reports should not contain passwords or authentication secrets.
 - Generated reports and exported mismatch data can contain business-sensitive information and should be handled accordingly.
+
+## Project folders
+
+The project root now contains only the files needed for setup, startup, and
+project identification. Implementation and generated files are grouped by
+purpose:
+
+```text
+db_compare/   Python application source
+web/          HTML templates, CSS, JavaScript, images, and branding
+data/         Saved configuration, generated reports, and logs
+docs/         Installation, release history, and Git checkpoints
+tests/        Automated regression tests
+```
+
+See [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) for the complete
+directory map. Existing `config/` and `reports/` content from an older checkout
+is moved into `data/` automatically on the first v1.9.9 launch without
+overwriting files already present in the new locations.
+
+## Version 1.9.9 changes
+
+- Organizes browser assets under `web/`.
+- Organizes saved configuration, generated reports, and logs under `data/`.
+- Moves historical release notes and Git checkpoints under `docs/`.
+- Keeps setup, run, entry-point, dependency, and version files at the root.
+- Adds automatic migration for existing root-level `config/` and `reports/`.
+- Adds a project-structure guide and runtime-safe `.gitignore`.
+- Preserves the existing Windows and macOS setup and launch workflow.
 
 ## Version 1.9.8 changes
 
